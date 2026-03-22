@@ -141,8 +141,13 @@ class ContentExtractor:
         # Extract specs from tables
         facts.specs = self._merge_spec_tables(source_text.spec_tables)
 
-        # Extract images
-        facts.images = self._extract_images(soup, base_url)
+        # Extract images (merge with any JSON-LD images already collected)
+        html_images = self._extract_images(soup, base_url)
+        seen_urls = {img.url for img in facts.images}
+        for img in html_images:
+            if img.url not in seen_urls:
+                facts.images.append(img)
+                seen_urls.add(img.url)
 
         # Extract variant/color information
         variants, variant_images = self._extract_variants(soup, base_url)
