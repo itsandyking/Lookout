@@ -1,0 +1,6 @@
+Product Handle,Vendor,Has Image,Has Variant Images,Has Description,Has Product Type,Has Tags,Gaps,Admin Link,Priority Score,Suggestions
+mens-nano-puff-jacket,Patagonia,false,false,false,true,true,Missing: description image variant_images,https://admin.shopify.com/store/mystore/products/123,85,Consider adding lifestyle images
+womens-torrentshell-3l,Patagonia,true,false,false,true,true,Missing: description variant_images,https://admin.shopify.com/store/mystore/products/124,75,
+altra-lone-peak-7,Altra,false,false,false,false,false,Missing: all,https://admin.shopify.com/store/mystore/products/125,95,
+mens-better-sweater,Patagonia,true,true,true,true,true,None,,10,
+unknown-product,UnknownVendor,false,false,false,false,false,Missing: all,https://admin.shopify.com/store/mystore/products/126,50,

@@ -1,0 +1,315 @@
+# Vendor Configuration for Merchfill Pipeline
+# Each vendor entry defines how to discover and scrape product pages
+
+vendors:
+  Patagonia:
+    domain: "patagonia.com"
+    use_playwright: false
+    # Paths that should be excluded from product matching
+    blocked_paths:
+      - "/blog"
+      - "/support"
+      - "/worn-wear"
+      - "/activism"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+      - "/cart"
+      - "/search"
+    # Optional: CSS selectors for content extraction
+    selectors:
+      product_name: "h1.product-hero__title, h1[data-testid='product-title']"
+      description: ".product-hero__description, .pdp-details__description"
+      features: ".pdp-features__list, .product-features ul"
+      specs: ".pdp-specs table, .product-specs dl"
+      images: ".product-hero__gallery img, .pdp-gallery img"
+      price: ".product-hero__price, .price--sale"
+    # URL patterns that indicate a product page
+    product_url_patterns:
+      - "/product/"
+      - "/p/"
+    # Search configuration
+    search:
+      method: "site_search"  # or "internal_api"
+      query_template: "site:{domain} {query}"
+
+  Altra:
+    domain: "altrarunning.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: "[data-testid='product-details'], .product-detail"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+      - "/cart"
+      - "/support"
+      - "/ambassadors"
+    selectors:
+      product_name: "h1.product-name, h1[data-testid='product-name']"
+      description: ".product-description, .pdp-description"
+      features: ".product-features ul, .feature-list"
+      specs: ".product-specs table, .specs-table"
+      images: ".product-gallery img, .pdp-gallery img, [data-testid='product-image']"
+    product_url_patterns:
+      - "/shop/"
+      - "/products/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  Rossignol:
+    domain: "rossignol.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+      - "/cart"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  "K2 Sports":
+    domain: "k2snow.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-container"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  BlueWater:
+    domain: "bluewaterropes.com"
+    use_playwright: false
+    blocked_paths:
+      - "/blog"
+      - "/about"
+      - "/contact"
+    product_url_patterns:
+      - "/product/"
+      - "/shop/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  "Smith Optics":
+    domain: "smithoptics.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  Nordica:
+    domain: "nordica.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  Burton:
+    domain: "burton.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, [data-testid='pdp']"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+      - "/cart"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  "Black Crows":
+    domain: "black-crows.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  Faction:
+    domain: "factionskis.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  Blizzard:
+    domain: "blizzard-tecnica.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  Arc'teryx:
+    domain: "arcteryx.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, [data-testid='pdp']"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 3000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+      - "/help"
+      - "/account"
+    product_url_patterns:
+      - "/shop/"
+      - "/products/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  "Jones Snowboards":
+    domain: "jonessnowboards.com"
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: ".product-detail, .pdp-main"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 2000
+    blocked_paths:
+      - "/blog"
+      - "/stories"
+      - "/about"
+    product_url_patterns:
+      - "/products/"
+      - "/p/"
+    search:
+      method: "site_search"
+      query_template: "site:{domain} {query}"
+
+  # Template for adding new vendors
+  # VendorName:
+  #   domain: "vendor-domain.com"
+  #   use_playwright: false  # Set to true for JS-heavy sites
+  #   blocked_paths:
+  #     - "/blog"
+  #     - "/support"
+  #   selectors:
+  #     product_name: "h1.product-title"
+  #     description: ".product-description"
+  #     features: ".feature-list"
+  #     specs: ".specs-table"
+  #     images: ".product-images img"
+  #   product_url_patterns:
+  #     - "/product/"
+  #   search:
+  #     method: "site_search"
+  #     query_template: "site:{domain} {query}"
+
+# Global settings
+settings:
+  # Default confidence thresholds for URL matching
+  confidence:
+    auto_proceed: 85
+    warn_threshold: 70
+    reject_threshold: 70
+
+  # Rate limiting (per domain)
+  rate_limiting:
+    min_delay_ms: 500
+    max_delay_ms: 2000
+    max_concurrent_per_domain: 2
+
+  # Retry configuration
+  retries:
+    max_attempts: 3
+    backoff_base_ms: 1000
+    backoff_max_ms: 30000
+
+  # Timeout settings
+  timeouts:
+    request_timeout_ms: 30000
+    page_load_timeout_ms: 60000

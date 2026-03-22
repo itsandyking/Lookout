@@ -1,0 +1,26 @@
+{% if result.valid %}
+<div class="alert alert-success">
+    <strong>Valid!</strong>
+    {{ result.row_count }} rows found.
+    {% if result.warnings %}
+    <ul class="validation-warnings">
+        {% for warning in result.warnings %}
+        <li>{{ warning }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% else %}
+<div class="alert alert-error">
+    <strong>Invalid CSV</strong>
+    <ul class="validation-errors">
+        {% for error in result.errors %}
+        <li>
+            {% if error.row %}Row {{ error.row }}: {% endif %}
+            {% if error.column %}{{ error.column }} - {% endif %}
+            {{ error.message }}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
