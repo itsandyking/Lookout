@@ -14,7 +14,7 @@ import os
 import secrets
 import shutil
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .schemas import (
@@ -40,7 +40,7 @@ def get_runs_dir() -> Path:
 
 def generate_run_id() -> str:
     """Generate a unique run ID."""
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     short_id = secrets.token_hex(3)
     return f"run_{timestamp}_{short_id}"
 
@@ -85,7 +85,7 @@ def create_run(
     # Create meta.json
     meta = RunMeta(
         run_id=run_id,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
         status=RunStatus.QUEUED,
         config=config,
         stats=RunStats(),
@@ -137,7 +137,7 @@ def update_run_stats(run_id: str, stats: RunStats) -> None:
     meta = load_run_meta(run_id)
     if meta:
         meta.stats = stats
-        meta.last_event_at = datetime.utcnow()
+        meta.last_event_at = datetime.now(UTC)
         save_run_meta(run_id, meta)
 
 

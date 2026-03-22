@@ -15,7 +15,7 @@ import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -256,7 +256,7 @@ class ProductProcessor:
             metadata["processing_time_ms"] = elapsed_ms
 
             # Save log
-            handle_log.completed_at = datetime.utcnow()
+            handle_log.completed_at = datetime.now(UTC)
             self._save_log(handle_log, artifacts_dir)
 
     def _is_cached(self, artifacts_dir: Path) -> bool:
@@ -331,7 +331,7 @@ class Pipeline:
         if self.event_cb:
             event = {
                 "type": event_type,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 **(data or {}),
             }
             try:
