@@ -14,9 +14,9 @@ os.environ["MERCHRUNS_DIR"] = tempfile.mkdtemp()
 os.environ["VENDORS_YAML_PATH"] = ""  # Will be mocked
 
 # Mock Redis/RQ before importing app
-with patch("merchfill_web.job_queue.get_redis_connection"):
-    with patch("merchfill_web.job_queue.get_queue"):
-        from merchfill_web.app import app
+with patch("lookout.enrich_web.job_queue.get_redis_connection"):
+    with patch("lookout.enrich_web.job_queue.get_queue"):
+        from lookout.enrich_web.app import app
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ test-1,TestVendor
 class TestRunCreation:
     """Tests for run creation."""
 
-    @patch("merchfill_web.routes.enqueue_run")
+    @patch("lookout.enrich_web.routes.enqueue_run")
     def test_create_run_success(self, mock_enqueue, client: TestClient, vendors_yaml: Path):
         """Test creating a run with valid CSV."""
         mock_enqueue.return_value = "job-123"
@@ -150,7 +150,7 @@ data,here,now
 class TestRunDetail:
     """Tests for run detail page."""
 
-    @patch("merchfill_web.routes.enqueue_run")
+    @patch("lookout.enrich_web.routes.enqueue_run")
     def test_run_detail_exists(self, mock_enqueue, client: TestClient, vendors_yaml: Path):
         """Test viewing an existing run."""
         mock_enqueue.return_value = "job-123"
@@ -185,7 +185,7 @@ test-1,TestVendor,false,false,false
 class TestProgressEndpoint:
     """Tests for progress partial endpoint."""
 
-    @patch("merchfill_web.routes.enqueue_run")
+    @patch("lookout.enrich_web.routes.enqueue_run")
     def test_progress_endpoint(self, mock_enqueue, client: TestClient, vendors_yaml: Path):
         """Test progress partial returns correct data."""
         mock_enqueue.return_value = "job-123"
@@ -213,7 +213,7 @@ test-1,TestVendor,false,false,false
 class TestResultsEndpoint:
     """Tests for results partial endpoint."""
 
-    @patch("merchfill_web.routes.enqueue_run")
+    @patch("lookout.enrich_web.routes.enqueue_run")
     def test_results_empty(self, mock_enqueue, client: TestClient, vendors_yaml: Path):
         """Test results endpoint with no results."""
         mock_enqueue.return_value = "job-123"

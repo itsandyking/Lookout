@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_REDIS_URL = "redis://redis:6379/0"
 
 # Queue name
-QUEUE_NAME = "merchfill"
+QUEUE_NAME = "lookout"
 
 
 def get_redis_url() -> str:
@@ -67,7 +67,7 @@ def enqueue_run(run_id: str) -> str | None:
     try:
         queue = get_queue()
         job = queue.enqueue(
-            "merchfill_web.job_queue.run_job",
+            "lookout.enrich_web.job_queue.run_job",
             run_id,
             job_timeout="2h",  # 2 hour timeout
             result_ttl=86400,  # Keep result for 24 hours
@@ -171,7 +171,7 @@ def run_job(run_id: str) -> dict[str, Any]:
             update_run_stats(run_id, stats)
 
     # Import pipeline components
-    from merchfill.pipeline import PipelineConfig, run_pipeline
+    from lookout.enrich.pipeline import PipelineConfig, run_pipeline
 
     # Create pipeline config
     config = PipelineConfig(

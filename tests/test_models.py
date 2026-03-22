@@ -2,7 +2,7 @@
 
 import pytest
 
-from merchfill.models import InputRow, ProcessingStatus
+from lookout.enrich.models import InputRow, ProcessingStatus
 
 
 class TestInputRow:

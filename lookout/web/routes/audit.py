@@ -32,7 +32,7 @@ def audit_landing(request: Request) -> Response:
 
 @router.post("/run")
 def audit_run(request: Request, vendor: str = Form("")) -> Response:
-    from tvr.modules.content_auditor import ContentAuditor
+    from lookout.audit.auditor import ContentAuditor
 
     store = get_store(request)
 

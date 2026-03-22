@@ -2,7 +2,7 @@
 
 import pytest
 
-from merchfill.utils.helpers import (
+from lookout.enrich.utils.helpers import (
     handle_to_query,
     is_product_url,
     normalize_url,

@@ -41,7 +41,7 @@ def merchandise_results(
     product_type: str = "",
     limit: int = 50,
 ) -> Response:
-    from tvr.modules.merchandiser import Merchandiser
+    from lookout.ranking.collection_ranker import Merchandiser
 
     templates = get_templates(request)
     store = get_store(request)
@@ -73,7 +73,7 @@ def merchandise_override(
     request: Request, result_id: str, handle: str = Form(...), action: str = Form(...)
 ) -> Response:
     """Apply pin/boost/bury override and re-rank."""
-    from tvr.modules.merchandiser import Merchandiser
+    from lookout.ranking.collection_ranker import Merchandiser
 
     templates = get_templates(request)
     data = get_result(request.app.state, result_id)

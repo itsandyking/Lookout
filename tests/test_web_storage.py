@@ -10,8 +10,8 @@ import pytest
 # Set test runs directory before importing storage
 os.environ["MERCHRUNS_DIR"] = tempfile.mkdtemp()
 
-from merchfill_web.schemas import RunConfig, RunStatus
-from merchfill_web.storage import (
+from lookout.enrich_web.schemas import RunConfig, RunStatus
+from lookout.enrich_web.storage import (
     append_event,
     cancel_run,
     create_run,

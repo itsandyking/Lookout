@@ -3,10 +3,10 @@
 RQ Worker entrypoint for processing pipeline jobs.
 
 Usage:
-    python -m merchfill_web.worker
+    python -m lookout.enrich_web.worker
 
 Or via the worker script:
-    rq worker merchfill
+    rq worker lookout
 """
 
 import logging
@@ -33,11 +33,11 @@ def main() -> None:
 
     redis_conn = get_redis_connection()
 
-    # Create worker with the merchfill queue
+    # Create worker with the lookout queue
     worker = Worker(
         queues=[QUEUE_NAME],
         connection=redis_conn,
-        name=f"merchfill-worker-{os.getpid()}",
+        name=f"lookout-worker-{os.getpid()}",
     )
 
     logger.info("Worker started, waiting for jobs...")

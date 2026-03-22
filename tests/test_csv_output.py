@@ -4,12 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from merchfill.csv_parser import (
+from lookout.enrich.csv_parser import (
     merch_output_to_shopify_rows,
     parse_input_csv,
     SHOPIFY_CSV_COLUMNS,
 )
-from merchfill.models import MerchOutput, OutputImage
+from lookout.enrich.models import MerchOutput, OutputImage
 
 
 @pytest.fixture

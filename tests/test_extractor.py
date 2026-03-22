@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from merchfill.extractor import ContentExtractor, extract_content
+from lookout.enrich.extractor import ContentExtractor, extract_content
 
 
 @pytest.fixture

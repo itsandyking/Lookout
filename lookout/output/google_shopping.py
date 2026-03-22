@@ -16,7 +16,7 @@ from html.parser import HTMLParser
 from openpyxl import Workbook
 
 from tvr.db.models import Product, Variant
-from tvr.modules.taxonomy import (
+from lookout.taxonomy.mappings import (
     DIMENSIONAL_TYPES,
     EU_SIZING_VENDORS,
     LB_TO_GRAMS,

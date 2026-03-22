@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from merchfill.utils.config import load_vendors_config
+from lookout.enrich.utils.config import load_vendors_config
 
 
 class TestVendorConfig:
