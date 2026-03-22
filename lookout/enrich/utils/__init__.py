@@ -10,10 +10,10 @@ from .helpers import (
 )
 
 __all__ = [
-    "load_vendors_config",
     "ensure_dir",
     "handle_to_query",
     "is_product_url",
+    "load_vendors_config",
     "normalize_url",
     "sanitize_filename",
 ]

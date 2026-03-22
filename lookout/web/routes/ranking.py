@@ -6,7 +6,6 @@ import io
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
 from starlette.responses import Response
-
 from tvr.web.app import get_result, store_result
 from tvr.web.deps import get_store, get_templates
 

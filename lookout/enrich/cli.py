@@ -57,21 +57,24 @@ def cli() -> None:
 
 @cli.command()
 @click.option(
-    "--input", "-i",
+    "--input",
+    "-i",
     "input_path",
     required=True,
     type=click.Path(exists=True, path_type=Path),
     help="Path to input CSV (merchandising_priority.csv format)",
 )
 @click.option(
-    "--out", "-o",
+    "--out",
+    "-o",
     "output_dir",
     required=True,
     type=click.Path(path_type=Path),
     help="Output directory for generated files",
 )
 @click.option(
-    "--vendors", "-v",
+    "--vendors",
+    "-v",
     "vendors_path",
     type=click.Path(exists=True, path_type=Path),
     default=None,
@@ -84,19 +87,22 @@ def cli() -> None:
     help="Optional Shopify product export CSV for variant rows",
 )
 @click.option(
-    "--concurrency", "-c",
+    "--concurrency",
+    "-c",
     type=int,
     default=5,
     help="Maximum concurrent requests (default: 5)",
 )
 @click.option(
-    "--max-rows", "-n",
+    "--max-rows",
+    "-n",
     type=int,
     default=None,
     help="Maximum rows to process (for testing)",
 )
 @click.option(
-    "--force", "-f",
+    "--force",
+    "-f",
     is_flag=True,
     help="Force re-processing even if cached",
 )
@@ -203,7 +209,8 @@ def run(
 
 @cli.command()
 @click.option(
-    "--vendors", "-v",
+    "--vendors",
+    "-v",
     "vendors_path",
     type=click.Path(exists=True, path_type=Path),
     default=None,
@@ -256,7 +263,6 @@ def validate_csv(input_path: Path) -> None:
     console.print(f"Validating: {input_path}\n")
 
     valid_count = 0
-    error_count = 0
     vendors: dict[str, int] = {}
     gaps: dict[str, int] = {
         "description": 0,

@@ -15,9 +15,9 @@ import logging
 import re
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, Tag
 
 from .models import ExtractedFacts, ImageInfo, SelectorsConfig, SourceText, VariantOption
 
@@ -25,15 +25,37 @@ logger = logging.getLogger(__name__)
 
 # Tags to skip when extracting text
 SKIP_TAGS = {
-    "script", "style", "noscript", "header", "footer", "nav",
-    "aside", "iframe", "svg", "canvas", "meta", "link",
+    "script",
+    "style",
+    "noscript",
+    "header",
+    "footer",
+    "nav",
+    "aside",
+    "iframe",
+    "svg",
+    "canvas",
+    "meta",
+    "link",
 }
 
 # Common class/id patterns for navigation/footer (case-insensitive)
 NAV_FOOTER_PATTERNS = [
-    r"nav", r"footer", r"header", r"menu", r"sidebar",
-    r"breadcrumb", r"cookie", r"popup", r"modal", r"newsletter",
-    r"subscribe", r"social", r"share", r"cart", r"wishlist",
+    r"nav",
+    r"footer",
+    r"header",
+    r"menu",
+    r"sidebar",
+    r"breadcrumb",
+    r"cookie",
+    r"popup",
+    r"modal",
+    r"newsletter",
+    r"subscribe",
+    r"social",
+    r"share",
+    r"cart",
+    r"wishlist",
 ]
 
 
@@ -137,8 +159,10 @@ class ContentExtractor:
         blocks: list[str] = []
 
         # Try to find main content area
-        main = soup.find("main") or soup.find("article") or soup.find(
-            "div", class_=re.compile(r"product|pdp|content", re.I)
+        main = (
+            soup.find("main")
+            or soup.find("article")
+            or soup.find("div", class_=re.compile(r"product|pdp|content", re.I))
         )
         search_area = main or soup.body or soup
 
@@ -380,10 +404,7 @@ class ContentExtractor:
                 continue
 
             # Look for associated image
-            img_url = (
-                swatch.get("data-image")
-                or swatch.get("data-variant-image")
-            )
+            img_url = swatch.get("data-image") or swatch.get("data-variant-image")
 
             if img_url and isinstance(img_url, str):
                 full_url = urljoin(base_url, img_url)
@@ -400,7 +421,7 @@ class ContentExtractor:
             text = script.string
             try:
                 # Try to find JSON objects with variant data
-                json_match = re.search(r'variants?\s*[=:]\s*(\[[\s\S]*?\])', text)
+                json_match = re.search(r"variants?\s*[=:]\s*(\[[\s\S]*?\])", text)
                 if json_match:
                     try:
                         variant_data = json.loads(json_match.group(1))
@@ -440,9 +461,7 @@ class ContentExtractor:
         sizes: list[str] = []
         for elem in soup.select("[data-size], .size-option, [data-option-value]"):
             size = (
-                elem.get("data-size")
-                or elem.get("data-option-value")
-                or elem.get_text(strip=True)
+                elem.get("data-size") or elem.get("data-option-value") or elem.get_text(strip=True)
             )
             if size and isinstance(size, str) and size not in sizes:
                 sizes.append(size)
@@ -525,9 +544,18 @@ class ContentExtractor:
 
         # Skip common non-product images
         skip_patterns = [
-            "placeholder", "loading", "spinner", "icon",
-            "logo", "badge", "banner", "1x1", "pixel",
-            "blank", "spacer", "transparent",
+            "placeholder",
+            "loading",
+            "spinner",
+            "icon",
+            "logo",
+            "badge",
+            "banner",
+            "1x1",
+            "pixel",
+            "blank",
+            "spacer",
+            "transparent",
         ]
 
         for pattern in skip_patterns:
@@ -535,7 +563,7 @@ class ContentExtractor:
                 return True
 
         # Skip very small images (often icons)
-        if re.search(r'[/_-](\d{1,2})x(\d{1,2})[/_.]', url_lower):
+        if re.search(r"[/_-](\d{1,2})x(\d{1,2})[/_.]", url_lower):
             return True
 
         # Skip data URLs
@@ -552,7 +580,7 @@ class ContentExtractor:
 
         for part in parts:
             part = part.strip()
-            match = re.match(r'(\S+)\s+(\d+)w', part)
+            match = re.match(r"(\S+)\s+(\d+)w", part)
             if match:
                 url, width = match.groups()
                 if int(width) > best_width:

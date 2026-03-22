@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
 
         # Ensure runs directory exists
         from .storage import get_runs_dir
+
         runs_dir = get_runs_dir()
         logger.info(f"Runs directory: {runs_dir}")
 

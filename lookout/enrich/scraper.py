@@ -87,8 +87,7 @@ class WebScraper:
                         "Chrome/120.0.0.0 Safari/537.36"
                     ),
                     "Accept": (
-                        "text/html,application/xhtml+xml,application/xml;"
-                        "q=0.9,image/webp,*/*;q=0.8"
+                        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
                     ),
                     "Accept-Language": "en-US,en;q=0.5",
                 },
@@ -190,6 +189,7 @@ class WebScraper:
             # Lazy-load Playwright
             if self._playwright is None:
                 from playwright.async_api import async_playwright
+
                 self._playwright = await async_playwright().start()
                 self._browser = await self._playwright.chromium.launch(
                     headless=True,
@@ -228,8 +228,7 @@ class WebScraper:
                         )
                     except Exception as e:
                         logger.warning(
-                            f"Selector wait failed for {url}: {e}. "
-                            "Continuing with current content."
+                            f"Selector wait failed for {url}: {e}. Continuing with current content."
                         )
 
                 # Additional wait for JS rendering

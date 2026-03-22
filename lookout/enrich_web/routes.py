@@ -20,10 +20,7 @@ from fastapi.templating import Jinja2Templates
 
 from .job_queue import enqueue_run
 from .schemas import (
-    CreateRunRequest,
-    ItemResult,
     RunConfig,
-    RunStatus,
     ValidationError,
     ValidationResult,
 )
@@ -45,6 +42,7 @@ router = APIRouter()
 # Templates directory
 TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
 
 # Get vendors.yaml path
 def get_vendors_yaml_path() -> Path:
@@ -99,15 +97,23 @@ async def create_new_run(
         reader = csv.DictReader(io.StringIO(text))
         headers = reader.fieldnames or []
 
-        required = {"Product Handle", "Vendor", "Has Image", "Has Variant Images", "Has Description"}
+        required = {
+            "Product Handle",
+            "Vendor",
+            "Has Image",
+            "Has Variant Images",
+            "Has Description",
+        }
         missing = required - set(headers)
         if missing:
             raise HTTPException(
                 status_code=400,
                 detail=f"Missing required columns: {', '.join(missing)}",
             )
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid CSV encoding. Please use UTF-8.")
+    except UnicodeDecodeError as exc:
+        raise HTTPException(
+            status_code=400, detail="Invalid CSV encoding. Please use UTF-8."
+        ) from exc
 
     # Create run config
     config = RunConfig(
@@ -391,9 +397,7 @@ async def validate_csv(
         text = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         result.valid = False
-        result.errors.append(
-            ValidationError(message="Invalid encoding. Please use UTF-8.")
-        )
+        result.errors.append(ValidationError(message="Invalid encoding. Please use UTF-8."))
         return templates.TemplateResponse(
             "partials/validation_result.html",
             {"request": request, "result": result},
@@ -404,7 +408,13 @@ async def validate_csv(
         headers = reader.fieldnames or []
 
         # Check required columns
-        required = {"Product Handle", "Vendor", "Has Image", "Has Variant Images", "Has Description"}
+        required = {
+            "Product Handle",
+            "Vendor",
+            "Has Image",
+            "Has Variant Images",
+            "Has Description",
+        }
         missing = required - set(headers)
         if missing:
             result.valid = False
@@ -435,7 +445,9 @@ async def validate_csv(
 
         # Warn about unknown vendors
         if vendors:
-            result.warnings.append(f"Found {len(vendors)} unique vendors: {', '.join(sorted(vendors))}")
+            result.warnings.append(
+                f"Found {len(vendors)} unique vendors: {', '.join(sorted(vendors))}"
+            )
 
     except csv.Error as e:
         result.valid = False

@@ -12,7 +12,6 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import Any
 
 from .llm_client import LLMClient
 from .models import ExtractedFacts, ImageInfo, InputRow, MerchOutput, OutputImage
@@ -66,9 +65,7 @@ class Merchandiser:
 
         # Generate body HTML if needed
         if input_row.needs_description:
-            body_html, body_warnings = await self._generate_body_html(
-                input_row, facts
-            )
+            body_html, body_warnings = await self._generate_body_html(input_row, facts)
             output.body_html = body_html
             warnings.extend(body_warnings)
 
@@ -80,9 +77,7 @@ class Merchandiser:
 
         # Generate variant images if needed
         if input_row.needs_variant_images:
-            variant_map, variant_warnings = await self._assign_variant_images(
-                facts
-            )
+            variant_map, variant_warnings = await self._assign_variant_images(facts)
             output.variant_image_map = variant_map
             warnings.extend(variant_warnings)
 
@@ -115,11 +110,7 @@ class Merchandiser:
             return self._generate_fallback_html(facts), warnings
 
         # Check if we have enough content to generate
-        has_content = (
-            facts.description_blocks
-            or facts.feature_bullets
-            or facts.specs
-        )
+        has_content = facts.description_blocks or facts.feature_bullets or facts.specs
 
         if not has_content:
             warnings.append("INSUFFICIENT_CONTENT_FOR_DESCRIPTION")
@@ -155,7 +146,7 @@ class Merchandiser:
 
         except Exception as e:
             logger.error(f"Error generating body HTML: {e}")
-            warnings.append(f"HTML_GENERATION_ERROR: {str(e)}")
+            warnings.append(f"HTML_GENERATION_ERROR: {e!s}")
             return self._generate_fallback_html(facts), warnings
 
     def _generate_fallback_html(self, facts: ExtractedFacts) -> str | None:
@@ -195,8 +186,7 @@ class Merchandiser:
             parts.append("<table>")
             for key, value in list(facts.specs.items())[:8]:
                 parts.append(
-                    f"<tr><td>{self._escape_html(key)}</td>"
-                    f"<td>{self._escape_html(value)}</td></tr>"
+                    f"<tr><td>{self._escape_html(key)}</td><td>{self._escape_html(value)}</td></tr>"
                 )
             parts.append("</table>")
 
@@ -247,9 +237,7 @@ class Merchandiser:
 
         # Create output images with positions
         for position, img in enumerate(unique_images[:10], start=1):
-            alt_text = img.alt_text or self._generate_alt_text(
-                facts.product_name, position
-            )
+            alt_text = img.alt_text or self._generate_alt_text(facts.product_name, position)
 
             images.append(
                 OutputImage(
@@ -311,8 +299,7 @@ class Merchandiser:
         if self.llm_client and facts.images:
             try:
                 images_for_llm = [
-                    {"url": img.url, "alt_text": img.alt_text}
-                    for img in facts.images[:20]
+                    {"url": img.url, "alt_text": img.alt_text} for img in facts.images[:20]
                 ]
 
                 llm_mapping = await self.llm_client.select_variant_images(
@@ -327,7 +314,7 @@ class Merchandiser:
 
             except Exception as e:
                 logger.warning(f"LLM variant image selection failed: {e}")
-                warnings.append(f"LLM_VARIANT_SELECTION_ERROR: {str(e)}")
+                warnings.append(f"LLM_VARIANT_SELECTION_ERROR: {e!s}")
 
         # Tier 0 fallback: No variant-specific images
         warnings.append("VARIANT_IMAGE_NOT_ASSIGNED")

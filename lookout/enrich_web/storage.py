@@ -16,7 +16,6 @@ import shutil
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Generator
 
 from .schemas import (
     ItemArtifacts,
@@ -242,6 +241,7 @@ def read_item_artifacts(run_id: str, handle: str) -> ItemArtifacts | None:
     run_dir = get_run_dir(run_id)
     # Sanitize handle for directory name (same logic as pipeline)
     import re
+
     safe_handle = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", handle)
     safe_handle = re.sub(r"_+", "_", safe_handle).strip("_.")
 
@@ -316,7 +316,7 @@ def create_artifacts_zip(run_id: str) -> Path | None:
 
     # Create zip file
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, dirs, files in os.walk(artifacts_dir):
+        for root, _dirs, files in os.walk(artifacts_dir):
             for file in files:
                 file_path = Path(root) / file
                 arcname = file_path.relative_to(artifacts_dir)

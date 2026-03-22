@@ -13,10 +13,9 @@ import json
 import logging
 import random
 import re
-from datetime import datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus, urljoin, urlparse
+from urllib.parse import urlparse
 
 import httpx
 from tenacity import (
@@ -128,7 +127,7 @@ class URLResolver:
             clean_title = title.strip()
             vendor_lower = vendor.lower()
             if clean_title.lower().startswith(vendor_lower):
-                clean_title = clean_title[len(vendor):].strip(" -")
+                clean_title = clean_title[len(vendor) :].strip(" -")
 
             title_query = f"site:{vendor_config.domain} {clean_title}"
             queries_used.append(f"title: {title_query}")
@@ -215,10 +214,30 @@ class URLResolver:
             hint_words = re.findall(r"\b[a-zA-Z]{3,}\b", hints)
             # Filter out common words
             stopwords = {
-                "the", "and", "for", "this", "that", "with", "from",
-                "has", "have", "are", "was", "were", "been", "being",
-                "missing", "needs", "add", "update", "description",
-                "image", "images", "variant", "variants", "product",
+                "the",
+                "and",
+                "for",
+                "this",
+                "that",
+                "with",
+                "from",
+                "has",
+                "have",
+                "are",
+                "was",
+                "were",
+                "been",
+                "being",
+                "missing",
+                "needs",
+                "add",
+                "update",
+                "description",
+                "image",
+                "images",
+                "variant",
+                "variants",
+                "product",
             }
             hint_words = [w.lower() for w in hint_words if w.lower() not in stopwords]
             if hint_words:
@@ -266,9 +285,7 @@ class URLResolver:
             response.raise_for_status()
 
             # Parse results from HTML
-            candidates = self._parse_duckduckgo_results(
-                response.text, domain, vendor_config
-            )
+            candidates = self._parse_duckduckgo_results(response.text, domain, vendor_config)
 
         except Exception as e:
             logger.warning(f"Search failed for query '{query}': {e}")
@@ -374,8 +391,15 @@ class URLResolver:
 
         # Penalize non-product patterns
         non_product_patterns = [
-            "/blog", "/news", "/support", "/help", "/about",
-            "/category", "/collection", "/search", "/tag",
+            "/blog",
+            "/news",
+            "/support",
+            "/help",
+            "/about",
+            "/category",
+            "/collection",
+            "/search",
+            "/tag",
         ]
         if any(p in path for p in non_product_patterns):
             score -= 20
@@ -398,9 +422,7 @@ class URLResolver:
             score -= 25
 
         # Penalize if URL has query parameters suggesting search/filter
-        if "?" in url and any(
-            p in url.lower() for p in ["search=", "filter=", "page=", "sort="]
-        ):
+        if "?" in url and any(p in url.lower() for p in ["search=", "filter=", "page=", "sort="]):
             score -= 15
 
         # Ensure score is in valid range

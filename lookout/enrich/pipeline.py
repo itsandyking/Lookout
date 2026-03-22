@@ -14,9 +14,10 @@ import json
 import logging
 import time
 from collections import defaultdict
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncGenerator, Callable
+from typing import Any
 
 import httpx
 
@@ -25,13 +26,11 @@ from .extractor import ContentExtractor, extract_content
 from .llm_client import LLMClient, get_llm_client
 from .merchandiser import Merchandiser
 from .models import (
-    ExtractedFacts,
     HandleLog,
     InputRow,
     LogEntry,
     MerchOutput,
     ProcessingStatus,
-    VendorConfig,
     VendorsConfig,
 )
 from .resolver import URLResolver
@@ -131,9 +130,7 @@ class ProductProcessor:
         try:
             # Check if product has any gaps
             if not input_row.has_any_gap:
-                handle_log.entries.append(
-                    LogEntry(level="INFO", message="No gaps to fill")
-                )
+                handle_log.entries.append(LogEntry(level="INFO", message="No gaps to fill"))
                 return None, ProcessingStatus.SKIPPED_NO_GAPS, metadata
 
             # Check vendor configuration
@@ -150,9 +147,7 @@ class ProductProcessor:
 
             # Check cache
             if not self.force and self._is_cached(artifacts_dir):
-                handle_log.entries.append(
-                    LogEntry(level="INFO", message="Using cached artifacts")
-                )
+                handle_log.entries.append(LogEntry(level="INFO", message="Using cached artifacts"))
                 return self._load_cached_output(artifacts_dir, input_row, metadata)
 
             # Step 1: Resolve URL
@@ -184,9 +179,7 @@ class ProductProcessor:
                 return None, ProcessingStatus.NO_MATCH, metadata
 
             if not resolver_output.selected_url:
-                handle_log.entries.append(
-                    LogEntry(level="WARNING", message="No URL found")
-                )
+                handle_log.entries.append(LogEntry(level="WARNING", message="No URL found"))
                 return None, ProcessingStatus.NO_MATCH, metadata
 
             # Step 2: Scrape page
@@ -253,9 +246,7 @@ class ProductProcessor:
 
         except Exception as e:
             logger.exception(f"Error processing {handle}")
-            handle_log.entries.append(
-                LogEntry(level="ERROR", message=str(e))
-            )
+            handle_log.entries.append(LogEntry(level="ERROR", message=str(e)))
             metadata["error"] = str(e)
             return None, ProcessingStatus.FAILED, metadata
 
@@ -382,10 +373,12 @@ class Pipeline:
         output_builder = ShopifyOutputBuilder(self.config.shopify_export_path)
 
         # Count total rows for progress tracking
-        input_rows = list(parse_input_csv(
-            self.config.input_path,
-            max_rows=self.config.max_rows,
-        ))
+        input_rows = list(
+            parse_input_csv(
+                self.config.input_path,
+                max_rows=self.config.max_rows,
+            )
+        )
         total_rows = len(input_rows)
 
         # Emit RUN_STARTED event
@@ -440,14 +433,17 @@ class Pipeline:
         )
 
         # Emit RUN_DONE event
-        self._emit_event("RUN_DONE", {
-            "total": summary["total"],
-            "updated": summary["updated"],
-            "skipped": summary["skipped"],
-            "no_match": summary["no_match"],
-            "failed": summary["failed"],
-            "cancelled": self._cancelled,
-        })
+        self._emit_event(
+            "RUN_DONE",
+            {
+                "total": summary["total"],
+                "updated": summary["updated"],
+                "skipped": summary["skipped"],
+                "no_match": summary["no_match"],
+                "failed": summary["failed"],
+                "cancelled": self._cancelled,
+            },
+        )
 
         return outputs
 
@@ -504,18 +500,24 @@ class Pipeline:
             # Emit appropriate event based on status
             warnings = metadata.get("warnings", [])
             if status == ProcessingStatus.FAILED:
-                self._emit_event("ITEM_FAILED", {
-                    "handle": handle,
-                    "error": metadata.get("error", "Unknown error"),
-                })
+                self._emit_event(
+                    "ITEM_FAILED",
+                    {
+                        "handle": handle,
+                        "error": metadata.get("error", "Unknown error"),
+                    },
+                )
             else:
-                self._emit_event("ITEM_DONE", {
-                    "handle": handle,
-                    "status": status.value,
-                    "match_confidence": metadata.get("confidence", 0),
-                    "warnings_count": len(warnings),
-                    "output_rows_count": output_rows,
-                })
+                self._emit_event(
+                    "ITEM_DONE",
+                    {
+                        "handle": handle,
+                        "status": status.value,
+                        "match_confidence": metadata.get("confidence", 0),
+                        "warnings_count": len(warnings),
+                        "output_rows_count": output_rows,
+                    },
+                )
 
 
 async def run_pipeline(

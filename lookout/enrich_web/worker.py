@@ -11,9 +11,7 @@ Or via the worker script:
 
 import logging
 import os
-import sys
 
-from redis import Redis
 from rq import Worker
 
 from .job_queue import QUEUE_NAME, get_redis_connection

@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func
-
 from tvr.core.config import (
     LOCATIONS,
     LOW_INVENTORY_THRESHOLD,

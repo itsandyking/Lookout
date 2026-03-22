@@ -15,7 +15,6 @@ import re
 from dataclasses import dataclass, field
 
 from sqlalchemy import func
-
 from tvr.db.models import (
     Image,
     InventoryItem,

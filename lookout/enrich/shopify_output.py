@@ -10,11 +10,9 @@ This module handles:
 
 import logging
 from pathlib import Path
-from typing import Generator
 
 from .csv_parser import (
     ShopifyExportRow,
-    get_variant_options_from_export,
     merch_output_to_shopify_rows,
     parse_shopify_export,
     write_run_report,

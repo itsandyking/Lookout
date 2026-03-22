@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from sqlalchemy.orm import Session
-
 from tvr.core.sizes import sort_key
 from tvr.db.models import Product, Variant
 from tvr.db.models_vendor import CatalogItem, VendorStyleMap

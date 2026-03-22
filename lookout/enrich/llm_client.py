@@ -103,6 +103,7 @@ class AnthropicProvider(LLMProvider):
         """Get or create the Anthropic client."""
         if self._client is None:
             import anthropic
+
             self._client = anthropic.AsyncAnthropic(api_key=self.api_key)
         return self._client
 
@@ -163,12 +164,13 @@ class AnthropicProvider(LLMProvider):
             parsed = self._extract_and_parse_json(response)
             return schema.model_validate(parsed)
         except (json.JSONDecodeError, ValidationError) as e:
+            parse_error = e
             logger.warning(f"First JSON parse attempt failed: {e}. Retrying...")
 
         # Retry with fix instruction
         fix_prompt = (
             f"The previous response was not valid JSON or didn't match the schema.\n"
-            f"Error: {e}\n\n"
+            f"Error: {parse_error}\n\n"
             f"Original response:\n{response}\n\n"
             f"Please fix the JSON to match this schema:\n{schema_json}\n\n"
             f"Respond ONLY with the corrected JSON, no other text."
@@ -196,7 +198,7 @@ class AnthropicProvider(LLMProvider):
             pass
 
         # Try to find JSON object in text
-        match = re.search(r'\{[\s\S]*\}', text)
+        match = re.search(r"\{[\s\S]*\}", text)
         if match:
             return json.loads(match.group())
 
@@ -227,9 +229,7 @@ class LLMClient:
             prompts_dir: Directory containing prompt templates.
         """
         self.provider = provider or AnthropicProvider()
-        self.prompts_dir = prompts_dir or (
-            Path(__file__).parent / "prompts"
-        )
+        self.prompts_dir = prompts_dir or (Path(__file__).parent / "prompts")
         self._prompt_cache: dict[str, str] = {}
 
     def load_prompt(self, name: str) -> str:

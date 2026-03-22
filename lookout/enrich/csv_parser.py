@@ -4,17 +4,15 @@ CSV parsing utilities for input and output files.
 
 import csv
 import logging
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 from pydantic import ValidationError
 
 from .models import (
     InputRow,
     MerchOutput,
-    OutputImage,
     RunReportRow,
-    ShopifyProductRow,
     VariantImageAssignment,
 )
 
