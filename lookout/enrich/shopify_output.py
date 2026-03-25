@@ -11,10 +11,9 @@ This module handles:
 import logging
 from pathlib import Path
 
-from .csv_parser import (
-    ShopifyExportRow,
+from .io import ShopifyExportRow, parse_shopify_export
+from ..output.enrich_export import (
     merch_output_to_shopify_rows,
-    parse_shopify_export,
     write_run_report,
     write_shopify_csv,
     write_variant_image_assignments,

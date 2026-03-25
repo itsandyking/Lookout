@@ -21,7 +21,7 @@ from typing import Any
 
 import httpx
 
-from .csv_parser import parse_input_csv
+from .io import parse_input_csv
 from .extractor import ContentExtractor, extract_content
 from .llm import LLMClient, get_llm_client
 from .generator import Generator

@@ -195,7 +195,7 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
 def validate(input_path, verbose):
     """Validate an input CSV file."""
     setup_logging(verbose)
-    from lookout.enrich.csv_parser import parse_input_csv
+    from lookout.enrich.io import parse_input_csv
 
     valid = 0
     vendors = {}
