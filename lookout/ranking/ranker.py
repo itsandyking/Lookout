@@ -1,6 +1,6 @@
-"""Module 7: Merchandising Ranking.
+"""Collection ranking module.
 
-Manages product sort order within Shopify collections for website merchandising.
+Scores and ranks products for merchandising within Shopify collections.
 """
 
 from __future__ import annotations
@@ -8,24 +8,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func
-from tvr.core.config import (
-    LOCATIONS,
+from lookout.taxonomy.mappings import (
     LOW_INVENTORY_THRESHOLD,
     MERCH_WEIGHTS,
     NEW_ARRIVAL_DAYS,
 )
-from tvr.db.models import (
-    Collection,
-    CollectionProduct,
-    InventoryItem,
-    InventoryLevel,
-    Order,
-    OrderLineItem,
-    Product,
-    Variant,
-)
-from tvr.db.store import ShopifyStore
 
 
 @dataclass
@@ -103,15 +90,15 @@ class RankingResult:
         return "\n".join(lines)
 
 
-class Merchandiser:
+class CollectionRanker:
     """Calculate and manage product rankings within collections."""
 
-    def __init__(self, store: ShopifyStore) -> None:
+    def __init__(self, store: object) -> None:
         self.store = store
 
-    def rank_collection(
+    def rank(
         self,
-        collection_handle: str | None = None,
+        collection: str | None = None,
         vendor: str | None = None,
         product_type: str | None = None,
         overrides: dict[str, dict] | None = None,
@@ -121,7 +108,7 @@ class Merchandiser:
         """Rank products for a collection or filtered product set.
 
         Args:
-            collection_handle: Collection to rank (by handle)
+            collection: Collection handle to rank
             vendor: Filter by vendor instead of collection
             product_type: Filter by product type
             overrides: Dict of handle -> {"pin": position, "boost": float, "bury": bool}
@@ -129,20 +116,20 @@ class Merchandiser:
             limit: Max products to rank
         """
         if reference_date is None:
-            reference_date = datetime.now(UTC).replace(tzinfo=None)
+            reference_date = datetime.now(UTC)
 
         overrides = overrides or {}
 
         # Get products
-        products = self._get_products(collection_handle, vendor, product_type, limit)
+        products = self._get_products(collection, vendor, product_type, limit)
 
         # Score each product
-        ranked = []
+        ranked: list[RankedProduct] = []
         for product in products:
             scored = self._score_product(product, reference_date)
 
             # Apply overrides
-            handle_overrides = overrides.get(product.handle, {})
+            handle_overrides = overrides.get(product["handle"], {})
             if "pin" in handle_overrides:
                 scored.pinned_position = handle_overrides["pin"]
             if "boost" in handle_overrides:
@@ -158,7 +145,7 @@ class Merchandiser:
         # Assign ranks
         self._assign_ranks(ranked)
 
-        collection_name = collection_handle or vendor or product_type or "All Products"
+        collection_name = collection or vendor or product_type or "All Products"
         return RankingResult(
             collection_name=collection_name,
             products=ranked,
@@ -167,100 +154,71 @@ class Merchandiser:
 
     def _get_products(
         self,
-        collection_handle: str | None,
+        collection: str | None,
         vendor: str | None,
         product_type: str | None,
         limit: int,
-    ) -> list[Product]:
+    ) -> list[dict]:
         """Get products to rank."""
-        with self.store.session() as s:
-            if collection_handle:
-                collection = (
-                    s.query(Collection).filter(Collection.handle == collection_handle).first()
-                )
-                if collection:
-                    product_ids = (
-                        s.query(CollectionProduct.product_id)
-                        .filter(CollectionProduct.collection_id == collection.id)
-                        .all()
-                    )
-                    pids = [pid for (pid,) in product_ids]
-                    return (
-                        s.query(Product)
-                        .filter(Product.id.in_(pids))
-                        .filter(Product.status == "active")
-                        .limit(limit)
-                        .all()
-                    )
+        if collection:
+            products = self.store.get_collection_products(collection)
+            if products:
+                return products[:limit]
 
-            query = s.query(Product).filter(Product.status == "active")
-            query = query.filter(Product.vendor != "The Switchback")
+        # Fall back to filtered list
+        return self.store.list_products(vendor=vendor, product_type=product_type)[:limit]
 
-            if vendor:
-                query = query.filter(Product.vendor == vendor)
-            if product_type:
-                query = query.filter(Product.product_type == product_type)
-
-            return query.limit(limit).all()
-
-    def _score_product(self, product: Product, reference_date: datetime) -> RankedProduct:
+    def _score_product(self, product: dict, reference_date: datetime) -> RankedProduct:
         """Score a single product on all ranking factors."""
-        tma_location_id = LOCATIONS["The Mountain Air"]["id"]
+        product_id = product["id"]
 
-        with self.store.session() as s:
-            variants = s.query(Variant).filter(Variant.product_id == product.id).all()
+        # Get variant data for margin calculation
+        variants = self.store.get_variants(product_id)
 
-            # Sales velocity (last 28 days) — match by SKU since order data lacks product_id
-            cutoff_28d = reference_date - timedelta(days=28)
-            variant_skus = [v.sku for v in variants if v.sku]
-            if variant_skus:
-                total_units = (
-                    s.query(func.coalesce(func.sum(OrderLineItem.quantity), 0))
-                    .join(Order)
-                    .filter(OrderLineItem.sku.in_(variant_skus))
-                    .filter(Order.created_at >= cutoff_28d)
-                    .scalar()
-                )
+        total_cost = 0.0
+        total_price = 0.0
+        variant_count = 0
+        for v in variants:
+            cost = v.get("cost") or 0.0
+            price = v.get("price") or 0.0
+            if cost > 0:
+                total_cost += cost
+                variant_count += 1
+            if price > 0:
+                total_price += price
+
+        avg_cost = total_cost / variant_count if variant_count > 0 else 0
+        avg_price = total_price / variant_count if variant_count > 0 else 0
+        margin_pct = ((avg_price - avg_cost) / avg_price * 100) if avg_price > 0 else 0
+
+        # Sales velocity
+        velocity = self.store.get_sales_velocity(product_id)
+        weekly_units = velocity.get("weekly_avg", 0.0)
+
+        # Inventory
+        inventory = self.store.get_inventory(product_id)
+        total_inv = inventory.get("total", 0)
+
+        # Weeks of supply
+        wos = total_inv / weekly_units if weekly_units > 0 else 999
+
+        # Days since creation
+        created_at = product.get("created_at")
+        if created_at:
+            # Handle both timezone-aware and naive datetimes
+            if created_at.tzinfo is None:
+                delta = reference_date.replace(tzinfo=None) - created_at
             else:
-                total_units = 0
-            weekly_units = float(total_units) / 4.0
-
-            # Inventory
-            total_inv = 0
-            total_cost = 0.0
-            total_price = 0.0
-            variant_count = 0
-
-            for v in variants:
-                inv = (
-                    s.query(func.coalesce(func.sum(InventoryLevel.available), 0))
-                    .join(InventoryItem)
-                    .filter(InventoryItem.variant_id == v.id)
-                    .filter(InventoryLevel.location_id == tma_location_id)
-                    .scalar()
-                )
-                total_inv += inv
-                if v.cost and v.cost > 0:
-                    total_cost += v.cost
-                    variant_count += 1
-                if v.price and v.price > 0:
-                    total_price += v.price
-
-            avg_cost = total_cost / variant_count if variant_count > 0 else 0
-            avg_price = total_price / variant_count if variant_count > 0 else 0
-            margin_pct = ((avg_price - avg_cost) / avg_price * 100) if avg_price > 0 else 0
-
-            # Weeks of supply
-            wos = total_inv / weekly_units if weekly_units > 0 else 999
-
-            # Days since creation
-            days_old = (reference_date - product.created_at).days if product.created_at else 999
+                delta = reference_date - created_at
+            days_old = delta.days
+        else:
+            days_old = 999
 
         return RankedProduct(
-            product_id=product.id,
-            handle=product.handle,
-            title=product.title,
-            vendor=product.vendor,
+            product_id=product_id,
+            handle=product["handle"],
+            title=product["title"],
+            vendor=product["vendor"],
             weekly_units=round(weekly_units, 2),
             margin_pct=round(margin_pct, 1),
             total_inventory=total_inv,
