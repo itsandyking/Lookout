@@ -98,6 +98,89 @@ def _assess_extraction_quality(facts: Any) -> dict[str, Any]:
     return {"usable": usable, "score": score, "reason": reason}
 
 
+def _cross_reference_catalog(store: Any, input_row: Any, facts: Any) -> dict[str, Any]:
+    """Cross-reference scraped data against vendor catalog in TVR.
+
+    Checks:
+    - Product name similarity (scraped vs. catalog)
+    - Price plausibility (scraped price vs. known cost/MSRP)
+    - Catalog image availability (may be higher quality than scraped)
+    - Catalog description availability
+
+    Returns dict with 'warnings' list and optional 'catalog_description'.
+    """
+    from difflib import SequenceMatcher
+
+    warnings: list[str] = []
+    result: dict[str, Any] = {"warnings": warnings}
+
+    barcode = (input_row.barcode or "").strip()
+    if not barcode:
+        return result
+
+    # Look up variant by barcode
+    variant = store.get_variant_by_barcode(barcode)
+    if not variant:
+        return result
+
+    product = store.get_product(input_row.product_handle)
+
+    # Check product name similarity
+    if facts.product_name and product:
+        catalog_title = product.get("title", "")
+        if catalog_title:
+            ratio = SequenceMatcher(
+                None,
+                facts.product_name.lower(),
+                catalog_title.lower(),
+            ).ratio()
+            if ratio < 0.3:
+                warnings.append(
+                    f"PRODUCT_NAME_MISMATCH: scraped='{facts.product_name}' "
+                    f"vs catalog='{catalog_title}' (similarity={ratio:.0%})"
+                )
+            elif ratio < 0.6:
+                warnings.append(
+                    f"PRODUCT_NAME_LOW_SIMILARITY: scraped='{facts.product_name}' "
+                    f"vs catalog='{catalog_title}' (similarity={ratio:.0%})"
+                )
+
+    # Check price plausibility
+    if variant.get("price") and facts.json_ld_data:
+        scraped_price = None
+        offers = facts.json_ld_data.get("offers", {})
+        if isinstance(offers, dict):
+            scraped_price = offers.get("price")
+        elif isinstance(offers, list) and offers:
+            scraped_price = offers[0].get("price")
+
+        if scraped_price:
+            try:
+                scraped_f = float(scraped_price)
+                known_price = float(variant["price"])
+                # Flag if scraped price differs by more than 50% from known price
+                if known_price > 0 and abs(scraped_f - known_price) / known_price > 0.5:
+                    warnings.append(
+                        f"PRICE_MISMATCH: scraped=${scraped_f:.2f} "
+                        f"vs catalog=${known_price:.2f}"
+                    )
+            except (ValueError, TypeError):
+                pass
+
+    # Check for catalog image (may be higher quality)
+    catalog_img = store.find_catalog_image(barcode)
+    if catalog_img:
+        result["catalog_image"] = catalog_img
+
+    # Check for catalog description
+    if product:
+        catalog_desc = store.find_catalog_description(product["id"])
+        if catalog_desc:
+            result["catalog_description"] = catalog_desc
+
+    return result
+
+
 class PipelineConfig:
     """Configuration for the pipeline."""
 
@@ -141,12 +224,14 @@ class ProductProcessor:
         llm_client: LLMClient | None,
         artifacts_base: Path,
         force: bool = False,
+        store: Any | None = None,
     ) -> None:
         self.vendors_config = vendors_config
         self.http_client = http_client
         self.llm_client = llm_client
         self.artifacts_base = artifacts_base
         self.force = force
+        self.store = store  # Optional LookoutStore for catalog cross-referencing
 
         self.resolver = URLResolver(http_client=http_client)
         self.scraper = WebScraper(http_client=http_client)
@@ -351,6 +436,25 @@ class ProductProcessor:
                     img.position = i
                 merch_output.images = valid_images
 
+            # Step 4c: Catalog cross-reference (if store available)
+            if self.store and input_row.barcode:
+                xref = _cross_reference_catalog(
+                    self.store, input_row, facts
+                )
+                if xref["warnings"]:
+                    metadata["warnings"].extend(xref["warnings"])
+                    for w in xref["warnings"]:
+                        handle_log.entries.append(
+                            LogEntry(level="WARNING", message=f"Catalog xref: {w}")
+                        )
+                if xref.get("catalog_description"):
+                    handle_log.entries.append(
+                        LogEntry(
+                            message="Catalog description available for comparison",
+                            data={"catalog_desc_length": len(xref["catalog_description"])},
+                        )
+                    )
+
             # Save merchandising output
             await self.generator.save_output(merch_output, artifacts_dir)
 
@@ -513,12 +617,22 @@ class Pipeline:
             timeout=30.0,
             follow_redirects=True,
         ) as http_client:
+            # Try to initialize store for catalog cross-referencing (optional)
+            store = None
+            try:
+                from lookout.store import LookoutStore
+                store = LookoutStore()
+                logger.info("Store connected — catalog cross-referencing enabled")
+            except Exception:
+                logger.debug("Store not available — catalog cross-referencing disabled")
+
             processor = ProductProcessor(
                 vendors_config=self.vendors_config,
                 http_client=http_client,
                 llm_client=self.llm_client,
                 artifacts_base=artifacts_dir,
                 force=self.config.force,
+                store=store,
             )
 
             # Create semaphore for global concurrency

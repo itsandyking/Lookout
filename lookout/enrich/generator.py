@@ -39,8 +39,9 @@ def _check_image_importable(url: str) -> str | None:
         if path.endswith(ext):
             return f"unsupported format: {ext}"
 
-    # Check for tiny/icon images in URL
-    if any(marker in url_lower for marker in ["icon", "logo", "badge", "favicon", "1x1", "pixel"]):
+    # Check for tiny/icon images in URL (but not aspect ratio suffixes like "-1x1.")
+    icon_markers = ["icon", "logo", "badge", "favicon", "pixel"]
+    if any(marker in url_lower for marker in icon_markers):
         return "likely icon/badge"
 
     # Check for data URIs
