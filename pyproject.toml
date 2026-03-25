@@ -13,6 +13,8 @@ dependencies = [
     "openpyxl>=3.1",
     "pydantic>=2.0",
     "pyyaml>=6.0",
+    "click>=8.0",
+    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
@@ -23,8 +25,6 @@ enrich = [
     "playwright>=1.40",
     "anthropic>=0.30",
     "tenacity>=8.0",
-    "click>=8.0",
-    "rich>=13.0",
 ]
 web = [
     "fastapi",
@@ -42,13 +42,13 @@ dev = [
 ]
 
 [project.scripts]
-lookout = "lookout.enrich.cli:main"
+lookout = "lookout.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["lookout*"]
 
 [tool.uv.sources]
-the-variant-range = { path = "../The-Variant-Range", editable = true }
+the-variant-range = { path = "/Users/andyking/The-Variant-Range", editable = true }
 
 [tool.ruff]
 line-length = 100
