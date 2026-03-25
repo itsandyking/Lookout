@@ -23,8 +23,8 @@ import httpx
 
 from .csv_parser import parse_input_csv
 from .extractor import ContentExtractor, extract_content
-from .llm_client import LLMClient, get_llm_client
-from .merchandiser import Merchandiser
+from .llm import LLMClient, get_llm_client
+from .generator import Generator
 from .models import (
     HandleLog,
     InputRow,
@@ -96,7 +96,7 @@ class ProductProcessor:
 
         self.resolver = URLResolver(http_client=http_client)
         self.scraper = WebScraper(http_client=http_client)
-        self.merchandiser = Merchandiser(llm_client=llm_client)
+        self.generator = Generator(llm_client=llm_client)
 
     async def process(
         self,
@@ -224,11 +224,11 @@ class ProductProcessor:
             # Step 4: Generate merchandising output
             handle_log.entries.append(LogEntry(message="Generating merchandising output"))
 
-            merch_output = await self.merchandiser.generate_output(input_row, facts)
+            merch_output = await self.generator.generate_output(input_row, facts)
             metadata["warnings"].extend(merch_output.warnings)
 
             # Save merchandising output
-            await self.merchandiser.save_output(merch_output, artifacts_dir)
+            await self.generator.save_output(merch_output, artifacts_dir)
 
             handle_log.entries.append(
                 LogEntry(

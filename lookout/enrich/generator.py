@@ -1,5 +1,5 @@
 """
-Merchandising output generator.
+Content generator for enrichment pipeline.
 
 This module handles:
 1. Generating Body HTML from extracted facts
@@ -13,15 +13,15 @@ import logging
 import re
 from pathlib import Path
 
-from .llm_client import LLMClient
+from .llm import LLMClient
 from .models import ExtractedFacts, ImageInfo, InputRow, MerchOutput, OutputImage
 
 logger = logging.getLogger(__name__)
 
 
-class Merchandiser:
+class Generator:
     """
-    Generates merchandising output from extracted facts.
+    Generates content output from extracted facts.
 
     Handles:
     - Body HTML generation (LLM-assisted)
@@ -31,7 +31,7 @@ class Merchandiser:
 
     def __init__(self, llm_client: LLMClient | None = None) -> None:
         """
-        Initialize the merchandiser.
+        Initialize the generator.
 
         Args:
             llm_client: LLM client for text generation. If not provided,
@@ -424,7 +424,7 @@ class Merchandiser:
             json.dump(output.model_dump(mode="json"), f, indent=2, default=str)
 
 
-async def generate_merch_output(
+async def generate_output(
     input_row: InputRow,
     facts: ExtractedFacts,
     llm_client: LLMClient | None = None,
@@ -440,5 +440,5 @@ async def generate_merch_output(
     Returns:
         MerchOutput with generated content.
     """
-    merchandiser = Merchandiser(llm_client)
-    return await merchandiser.generate_output(input_row, facts)
+    generator = Generator(llm_client)
+    return await generator.generate_output(input_row, facts)
