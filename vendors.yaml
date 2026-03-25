@@ -4,7 +4,11 @@
 vendors:
   Patagonia:
     domain: "patagonia.com"
-    use_playwright: false
+    use_playwright: true
+    playwright_config:
+      wait_for_selector: "h1, .product-hero__title, [data-testid='product-title']"
+      wait_timeout_ms: 15000
+      extra_wait_ms: 3000
     # Paths that should be excluded from product matching
     blocked_paths:
       - "/blog"

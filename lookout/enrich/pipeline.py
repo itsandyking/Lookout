@@ -43,6 +43,60 @@ logger = logging.getLogger(__name__)
 # Type alias for event callback function
 EventCallback = Callable[[dict[str, Any]], None]
 
+# Markers of bot-protection / waiting room pages
+_BAD_CONTENT_MARKERS = [
+    "sit tight",
+    "hands full at the moment",
+    "please verify you are a human",
+    "checking your browser",
+    "access denied",
+    "enable javascript",
+    "ray id",  # Cloudflare
+]
+
+
+def _assess_extraction_quality(facts: Any) -> dict[str, Any]:
+    """Check if extracted content looks like a real product page.
+
+    Returns dict with 'usable' bool, 'score' 0-100, and 'reason' string.
+    """
+    score = 0
+    reasons: list[str] = []
+
+    if facts.product_name:
+        score += 30
+    else:
+        reasons.append("no product name")
+
+    if facts.json_ld_data:
+        score += 25
+    if facts.images:
+        score += 20
+    elif not facts.json_ld_data:
+        reasons.append("no images")
+
+    if facts.feature_bullets:
+        score += 10
+    if facts.description_blocks:
+        score += 10
+        # Check for bot-protection markers in description
+        all_text = " ".join(facts.description_blocks).lower()
+        for marker in _BAD_CONTENT_MARKERS:
+            if marker in all_text:
+                score = max(0, score - 40)
+                reasons.append(f"bot-protection detected: '{marker}'")
+                break
+    else:
+        reasons.append("no description")
+
+    if facts.specs:
+        score += 5
+
+    usable = score >= 30
+    reason = "; ".join(reasons) if reasons else "good"
+
+    return {"usable": usable, "score": score, "reason": reason}
+
 
 class PipelineConfig:
     """Configuration for the pipeline."""
@@ -220,6 +274,45 @@ class ProductProcessor:
 
             # Save extraction outputs
             await extractor.save_outputs(source_text, facts, artifacts_dir)
+
+            # Step 3b: Content quality check
+            quality = _assess_extraction_quality(facts)
+            if not quality["usable"]:
+                handle_log.entries.append(
+                    LogEntry(
+                        level="WARNING",
+                        message=f"Low quality extraction: {quality['reason']}",
+                        data=quality,
+                    )
+                )
+                # If we used static scraping, retry with Playwright
+                if not vendor_config.use_playwright:
+                    handle_log.entries.append(
+                        LogEntry(message="Retrying with Playwright")
+                    )
+                    playwright_page = await self.scraper._scrape_dynamic(
+                        resolver_output.selected_url,
+                        vendor_config.playwright_config,
+                    )
+                    if playwright_page.success:
+                        source_text, facts = extract_content(
+                            playwright_page.html,
+                            playwright_page.final_url,
+                            vendor_config.selectors,
+                        )
+                        await extractor.save_outputs(source_text, facts, artifacts_dir)
+                        quality = _assess_extraction_quality(facts)
+                        handle_log.entries.append(
+                            LogEntry(
+                                message=f"Playwright retry quality: {quality['reason']}",
+                                data=quality,
+                            )
+                        )
+
+                if not quality["usable"]:
+                    metadata["warnings"].append(
+                        f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
+                    )
 
             # Step 4: Generate merchandising output
             handle_log.entries.append(LogEntry(message="Generating merchandising output"))
