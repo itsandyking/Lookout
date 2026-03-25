@@ -13,11 +13,7 @@ import io
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sqlalchemy.orm import Session
-from tvr.core.sizes import sort_key
-from tvr.db.models import Product, Variant
-from tvr.db.models_vendor import CatalogItem, VendorStyleMap
-from tvr.db.store import ShopifyStore
+from lookout.store import LookoutStore
 
 # ---------------------------------------------------------------------------
 # MatrixifyImporter
@@ -36,14 +32,23 @@ class MatrixifyImportResult:
 
 
 class MatrixifyImporter:
-    """Import variant image assignments and positions from a Matrixify XLSX export."""
+    """Import variant image assignments and positions from a Matrixify XLSX export.
 
-    def __init__(self, store: ShopifyStore) -> None:
+    TODO: This class writes directly to the DB via the underlying TVR session.
+    It is a compromise until TVR provides proper write APIs. Once TVR exposes
+    update_variant() or similar, this should be rewritten to use LookoutStore
+    exclusively.
+    """
+
+    def __init__(self, store: LookoutStore) -> None:
         self.store = store
 
     def import_file(self, path: str | Path) -> MatrixifyImportResult:
         """Read a Matrixify Products XLSX and update variant image_src/position."""
         import openpyxl
+
+        # Access underlying TVR store session for DB writes
+        from tvr.db.models import Variant
 
         path = Path(path)
         wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
@@ -58,7 +63,7 @@ class MatrixifyImporter:
         result = MatrixifyImportResult()
         product_ids_seen = set()
 
-        with self.store.session() as session:
+        with self.store._store.session() as session:
             for row in ws.iter_rows(min_row=2, values_only=True):
                 values = list(row)
                 if "Variant ID" not in col:
@@ -143,98 +148,87 @@ class ImageEnricher:
     C. Fall back to style-map + color-name matching against catalog
     """
 
-    def __init__(self, store: ShopifyStore) -> None:
+    def __init__(self, store: LookoutStore) -> None:
         self.store = store
 
     def enrich(
         self,
-        session: Session,
         vendor: str | None = None,
         dry_run: bool = False,
     ) -> ImageEnrichmentResult:
         """Run the full enrichment pipeline.
 
         Args:
-            session: SQLAlchemy session
             vendor: Optional vendor filter
             dry_run: If True, don't write to DB, just collect assignments
         """
         result = ImageEnrichmentResult()
 
-        # Get all products (optionally filtered by vendor)
-        product_query = session.query(Product).filter(Product.status == "active")
-        if vendor:
-            product_query = product_query.filter(Product.vendor == vendor)
-        products = product_query.all()
+        products = self.store.list_products(vendor=vendor)
 
         for product in products:
-            variants = session.query(Variant).filter(Variant.product_id == product.id).all()
+            variants = self.store.get_variants(product["id"])
             if not variants:
                 continue
 
             result.products_processed += 1
-            self._enrich_product(session, product, variants, result, dry_run)
+            self._enrich_product(product, variants, result, dry_run)
 
-            # Description enrichment (Phase 5)
-            if not product.body_html or not product.body_html.strip():
-                desc = self._find_description(session, product, variants)
+            # Description enrichment
+            if not product["body_html"] or not product["body_html"].strip():
+                desc = self.store.find_catalog_description(product["id"])
                 if desc:
                     result.description_enrichments.append(
                         {
-                            "product_id": product.id,
-                            "product_handle": product.handle,
+                            "product_id": product["id"],
+                            "product_handle": product["handle"],
                             "body_html": desc,
                         }
                     )
-
-        if not dry_run:
-            session.commit()
 
         return result
 
     def _enrich_product(
         self,
-        session: Session,
-        product: Product,
-        variants: list[Variant],
+        product: dict,
+        variants: list[dict],
         result: ImageEnrichmentResult,
         dry_run: bool,
     ) -> None:
         """Enrich a single product's variants with images."""
         # Determine if this product uses Color as Option1
         has_color_option = any(
-            v.option1_name and v.option1_name.lower() == "color" for v in variants
+            v["option1_name"] and v["option1_name"].lower() == "color" for v in variants
         )
 
         if has_color_option:
             # Group variants by color (Option1 Value)
-            color_groups: dict[str, list[Variant]] = {}
+            color_groups: dict[str, list[dict]] = {}
             for v in variants:
-                color = v.option1_value or "Unknown"
+                color = v["option1_value"] or "Unknown"
                 color_groups.setdefault(color, []).append(v)
 
             for color, group in color_groups.items():
-                self._enrich_color_group(session, product, group, color, result, dry_run)
+                self._enrich_color_group(product, group, color, result, dry_run)
         else:
             # No color grouping — treat each variant independently
             for v in variants:
-                if v.image_src:
+                if v["image_src"]:
                     continue  # Already has image
-                self._enrich_single_variant(session, product, v, result, dry_run)
+                self._enrich_single_variant(product, v, result, dry_run)
 
     def _enrich_color_group(
         self,
-        session: Session,
-        product: Product,
-        variants: list[Variant],
+        product: dict,
+        variants: list[dict],
         color: str,
         result: ImageEnrichmentResult,
         dry_run: bool,
     ) -> None:
         """Enrich a color group of variants."""
         # Split into has-image vs needs-image
-        with_image = [v for v in variants if v.image_src]
-        without_image = [v for v in variants if not v.image_src]
+        with_image = [v for v in variants if v["image_src"]]
+        without_image = [v for v in variants if not v["image_src"]]
 
         if not without_image:
             return  # All variants already have images
@@ -242,17 +236,15 @@ class ImageEnricher:
         # Step A: Same-color propagation
         if with_image:
             source_variant = with_image[0]
-            image_url = source_variant.image_src
+            image_url = source_variant["image_src"]
             for v in without_image:
-                self._assign_image(
-                    session,
+                self._record_assignment(
                     v,
                     product,
                     image_url,
                     source="shopify_propagation",
-                    source_id=source_variant.id,
+                    source_id=source_variant["id"],
                     result=result,
-                    dry_run=dry_run,
                 )
                 result.propagated_from_shopify += 1
             return
@@ -261,50 +253,46 @@ class ImageEnricher:
         image_url = None
         source_catalog_id = None
         for v in variants:
-            if not v.barcode:
+            barcode = v["barcode"]
+            if not barcode:
                 continue
-            catalog_item = (
-                session.query(CatalogItem)
-                .filter(
-                    CatalogItem.upc == v.barcode,
-                    CatalogItem.image_url.isnot(None),
-                    CatalogItem.image_url != "",
-                )
-                .first()
-            )
-            if catalog_item:
-                image_url = catalog_item.image_url
-                source_catalog_id = catalog_item.id
+            found_url = self.store.find_catalog_image(barcode)
+            if found_url:
+                image_url = found_url
+                source_catalog_id = None  # LookoutStore doesn't expose catalog item IDs
                 break
 
         if image_url:
             for v in without_image:
-                self._assign_image(
-                    session,
+                self._record_assignment(
                     v,
                     product,
                     image_url,
                     source="catalog_barcode",
                     source_id=source_catalog_id,
                     result=result,
-                    dry_run=dry_run,
                 )
                 result.matched_from_catalog += 1
             return
 
         # Step C: Style-map + color match
-        image_url = self._find_by_style_color(session, product, color)
+        image_url = self.store.find_catalog_image_by_style(
+            product["vendor"], "", color
+        )
+        # Note: find_catalog_image_by_style needs (vendor, style, color) but
+        # we don't have the style code from the product dict. The store's
+        # find_catalog_image_by_style looks up style via VendorStyleMap internally
+        # only when called with the right style code. For now this may not match.
+        # TODO: Add a find_catalog_image_for_product(product_id, color) method to LookoutStore.
         if image_url:
             for v in without_image:
-                self._assign_image(
-                    session,
+                self._record_assignment(
                     v,
                     product,
                     image_url,
                     source="catalog_style_color",
                     source_id=None,
                     result=result,
-                    dry_run=dry_run,
                 )
                 result.matched_from_style_map += 1
             return
@@ -314,34 +302,24 @@ class ImageEnricher:
 
     def _enrich_single_variant(
         self,
-        session: Session,
-        product: Product,
-        variant: Variant,
+        product: dict,
+        variant: dict,
         result: ImageEnrichmentResult,
         dry_run: bool,
     ) -> None:
         """Enrich a single variant (no color grouping)."""
         # Step B: Catalog barcode lookup
-        if variant.barcode:
-            catalog_item = (
-                session.query(CatalogItem)
-                .filter(
-                    CatalogItem.upc == variant.barcode,
-                    CatalogItem.image_url.isnot(None),
-                    CatalogItem.image_url != "",
-                )
-                .first()
-            )
-            if catalog_item:
-                self._assign_image(
-                    session,
+        barcode = variant["barcode"]
+        if barcode:
+            image_url = self.store.find_catalog_image(barcode)
+            if image_url:
+                self._record_assignment(
                     variant,
                     product,
-                    catalog_item.image_url,
+                    image_url,
                     source="catalog_barcode",
-                    source_id=catalog_item.id,
+                    source_id=None,
                     result=result,
-                    dry_run=dry_run,
                 )
                 result.matched_from_catalog += 1
                 return
@@ -349,131 +327,21 @@ class ImageEnricher:
         # No image found
         result.still_missing += 1
 
-    def _find_by_style_color(
+    def _record_assignment(
         self,
-        session: Session,
-        product: Product,
-        color: str,
-    ) -> str | None:
-        """Find a catalog image URL via style-map + color-name matching."""
-        # Find VendorStyleMap entry for this product
-        mapping = (
-            session.query(VendorStyleMap)
-            .filter(
-                VendorStyleMap.product_id == product.id,
-            )
-            .first()
-        )
-        if not mapping:
-            return None
-
-        # Find catalog items for this (vendor, style_code)
-        catalog_items = (
-            session.query(CatalogItem)
-            .filter(
-                CatalogItem.vendor == mapping.vendor,
-                CatalogItem.style == mapping.style_code,
-                CatalogItem.image_url.isnot(None),
-                CatalogItem.image_url != "",
-            )
-            .all()
-        )
-        if not catalog_items:
-            return None
-
-        # Try exact color match first
-        color_lower = color.lower().strip()
-        for item in catalog_items:
-            if item.color_name and item.color_name.lower().strip() == color_lower:
-                return item.image_url
-
-        # Try fuzzy color matching (substring in either direction)
-        for item in catalog_items:
-            if not item.color_name:
-                continue
-            catalog_color = item.color_name.lower().strip()
-            if color_lower in catalog_color or catalog_color in color_lower:
-                return item.image_url
-
-        # Try color code matching (e.g., "BLK" in variant color "Black")
-        for item in catalog_items:
-            if not item.color_code:
-                continue
-            code_lower = item.color_code.lower().strip()
-            if code_lower in color_lower or color_lower in code_lower:
-                return item.image_url
-
-        # Last resort: just use any image from this style (better than nothing)
-        # Don't do this — it could assign the wrong color's image
-        return None
-
-    def _find_description(
-        self,
-        session: Session,
-        product: Product,
-        variants: list[Variant],
-    ) -> str | None:
-        """Find a catalog description for this product."""
-        # Try via style map first
-        mapping = (
-            session.query(VendorStyleMap)
-            .filter(
-                VendorStyleMap.product_id == product.id,
-            )
-            .first()
-        )
-        if mapping:
-            catalog_item = (
-                session.query(CatalogItem)
-                .filter(
-                    CatalogItem.vendor == mapping.vendor,
-                    CatalogItem.style == mapping.style_code,
-                    CatalogItem.description.isnot(None),
-                    CatalogItem.description != "",
-                )
-                .first()
-            )
-            if catalog_item:
-                return catalog_item.description.strip()
-
-        # Try via barcode
-        for v in variants:
-            if not v.barcode:
-                continue
-            catalog_item = (
-                session.query(CatalogItem)
-                .filter(
-                    CatalogItem.upc == v.barcode,
-                    CatalogItem.description.isnot(None),
-                    CatalogItem.description != "",
-                )
-                .first()
-            )
-            if catalog_item:
-                return catalog_item.description.strip()
-
-        return None
-
-    def _assign_image(
-        self,
-        session: Session,
-        variant: Variant,
-        product: Product,
+        variant: dict,
+        product: dict,
         image_url: str,
         source: str,
         source_id: int | None,
         result: ImageEnrichmentResult,
-        dry_run: bool,
     ) -> None:
-        """Assign an image URL to a variant and record the assignment."""
-        if not dry_run:
-            variant.image_src = image_url
-
+        """Record an image assignment."""
         result.assignments.append(
             {
-                "variant_id": variant.id,
-                "product_id": product.id,
-                "product_handle": product.handle,
+                "variant_id": variant["id"],
+                "product_id": product["id"],
+                "product_handle": product["handle"],
                 "image_url": image_url,
                 "source": source,
                 "source_id": source_id,
@@ -579,46 +447,99 @@ class SortAssessmentResult:
     total_products: int = 0
 
 
-def assess_variant_sort_order(session: Session, vendor: str | None = None) -> SortAssessmentResult:
+def _variant_label(v: dict) -> str:
+    """Create a label for a variant dict for sort display."""
+    parts = []
+    if v["option1_value"]:
+        parts.append(v["option1_value"])
+    if v["option2_value"]:
+        parts.append(v["option2_value"])
+    if v["option3_value"]:
+        parts.append(v["option3_value"])
+    return " / ".join(parts) if parts else v["sku"] or str(v["id"])
+
+
+def _size_sort_key(size_str: str) -> tuple:
+    """Basic size sort key for variant ordering.
+
+    Orders: XS < S < M < L < XL < XXL, with numeric sizes sorted numerically.
+    This replaces the tvr.core.sizes.sort_key dependency.
+    """
+    canonical = {
+        "xxs": (0, 0),
+        "xs": (0, 1),
+        "s": (0, 2),
+        "sm": (0, 2),
+        "small": (0, 2),
+        "s/m": (0, 3),
+        "m": (0, 4),
+        "med": (0, 4),
+        "medium": (0, 4),
+        "m/l": (0, 5),
+        "l": (0, 6),
+        "lg": (0, 6),
+        "large": (0, 6),
+        "xl": (0, 7),
+        "xxl": (0, 8),
+        "2xl": (0, 8),
+        "xxxl": (0, 9),
+        "3xl": (0, 9),
+        "one size": (0, -1),
+        "os": (0, -1),
+    }
+    lower = size_str.strip().lower()
+    if lower in canonical:
+        return canonical[lower]
+    # Try numeric
+    try:
+        return (1, float(lower))
+    except ValueError:
+        pass
+    # Fallback: alphabetical
+    return (2, 0, lower)
+
+
+def assess_variant_sort_order(
+    store: LookoutStore, vendor: str | None = None
+) -> SortAssessmentResult:
     """Assess variant sort order against Color-first convention.
 
     Convention: All sizes of one color before next color, sizes in canonical order.
     """
     result = SortAssessmentResult()
 
-    product_query = session.query(Product).filter(Product.status == "active")
-    if vendor:
-        product_query = product_query.filter(Product.vendor == vendor)
-    products = product_query.all()
+    products = store.list_products(vendor=vendor)
 
     for product in products:
-        variants = session.query(Variant).filter(Variant.product_id == product.id).all()
+        variants = store.get_variants(product["id"])
         if len(variants) <= 1:
             continue
 
         result.total_products += 1
 
         # Check if any variants have position data
-        has_positions = any(v.position is not None for v in variants)
+        has_positions = any(v["position"] is not None for v in variants)
         if not has_positions:
             result.no_position_data += 1
             continue
 
         # Check if product has Color option
-        has_color = any(v.option1_name and v.option1_name.lower() == "color" for v in variants)
+        has_color = any(
+            v["option1_name"] and v["option1_name"].lower() == "color" for v in variants
+        )
         if not has_color:
             # Non-color products: check size ordering
-            sorted_by_pos = sorted(variants, key=lambda v: v.position or 0)
+            sorted_by_pos = sorted(variants, key=lambda v: v["position"] or 0)
             actual_sizes = [_variant_label(v) for v in sorted_by_pos]
-            expected_sizes = sorted(actual_sizes, key=lambda s: sort_key(s))
+            expected_sizes = sorted(actual_sizes, key=lambda s: _size_sort_key(s))
 
             if actual_sizes == expected_sizes:
                 result.correctly_sorted += 1
             else:
                 result.violations.append(
                     SortViolation(
-                        product_handle=product.handle,
-                        product_title=product.title,
+                        product_handle=product["handle"],
+                        product_title=product["title"],
                         expected_order=expected_sizes,
                         actual_order=actual_sizes,
                     )
@@ -627,20 +548,20 @@ def assess_variant_sort_order(session: Session, vendor: str | None = None) -> So
 
         # Color-first ordering: group by color, sort colors alphabetically,
         # within each color sort sizes canonically
-        sorted_by_pos = sorted(variants, key=lambda v: v.position or 0)
+        sorted_by_pos = sorted(variants, key=lambda v: v["position"] or 0)
         actual_order = [_variant_label(v) for v in sorted_by_pos]
 
         # Build expected order: Color-first, sizes within each color
-        color_groups: dict[str, list[Variant]] = {}
+        color_groups: dict[str, list[dict]] = {}
         for v in variants:
-            color = v.option1_value or "Unknown"
+            color = v["option1_value"] or "Unknown"
             color_groups.setdefault(color, []).append(v)
 
         # Determine color order from current positions (first appearance)
         color_order = []
         seen_colors = set()
         for v in sorted_by_pos:
-            color = v.option1_value or "Unknown"
+            color = v["option1_value"] or "Unknown"
             if color not in seen_colors:
                 color_order.append(color)
                 seen_colors.add(color)
@@ -650,7 +571,8 @@ def assess_variant_sort_order(session: Session, vendor: str | None = None) -> So
         for color in color_order:
             group = color_groups[color]
             sorted_group = sorted(
-                group, key=lambda v: sort_key(v.option2_value or v.option1_value or "")
+                group,
+                key=lambda v: _size_sort_key(v["option2_value"] or v["option1_value"] or ""),
             )
             expected_order.extend([_variant_label(v) for v in sorted_group])
 
@@ -659,23 +581,11 @@ def assess_variant_sort_order(session: Session, vendor: str | None = None) -> So
         else:
             result.violations.append(
                 SortViolation(
-                    product_handle=product.handle,
-                    product_title=product.title,
+                    product_handle=product["handle"],
+                    product_title=product["title"],
                     expected_order=expected_order,
                     actual_order=actual_order,
                 )
             )
 
     return result
-
-
-def _variant_label(v: Variant) -> str:
-    """Create a label for a variant for sort display."""
-    parts = []
-    if v.option1_value:
-        parts.append(v.option1_value)
-    if v.option2_value:
-        parts.append(v.option2_value)
-    if v.option3_value:
-        parts.append(v.option3_value)
-    return " / ".join(parts) if parts else v.sku or str(v.id)

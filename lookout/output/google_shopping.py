@@ -6,19 +6,22 @@ Produces three files:
   3. weight_audit.csv -- Manual review report for dimensional/bulky products
 
 Ported from CE's ``src/generate_google_shopping.py``, adapted to use
-SQLAlchemy models (Product + Variant) via ``ShopifyStore.session()``.
+LookoutStore dict-based API.
 """
+
+from __future__ import annotations
 
 import csv
 import re
 from html.parser import HTMLParser
 
 from openpyxl import Workbook
-from tvr.db.models import Product, Variant
 
+from lookout.store import LookoutStore
 from lookout.taxonomy.mappings import (
     DIMENSIONAL_TYPES,
     EU_SIZING_VENDORS,
+    EXCLUDED_VENDORS,
     LB_TO_GRAMS,
     MONDO_TYPES,
     PRICE_TIERS,
@@ -33,13 +36,6 @@ from lookout.taxonomy.mappings import (
 # ── Constants ────────────────────────────────────────────────────────────────
 
 STORE_NAME = "The Mountain Air"
-
-EXCLUDED_VENDORS = {
-    "The Switchback",
-    "The Mountain Air",
-    "The Mountain Air Back Shop",
-    "The Mountain Air Deposits",
-}
 
 # Regex to detect non-size option values (volumes, weights, lengths, pack counts)
 NON_SIZE_PATTERN = re.compile(
@@ -402,40 +398,16 @@ def _auto_size(ws) -> None:
 # ── Main generators ──────────────────────────────────────────────────────────
 
 
-def generate_google_shopping(output_path, store) -> dict:
+def generate_google_shopping(output_path, store: LookoutStore) -> dict:
     """Generate Matrixify XLSX with Google Shopping metafields + SEO meta.
 
     Args:
         output_path: Path to write XLSX
-        store: ShopifyStore instance
+        store: LookoutStore instance
 
     Returns: dict with coverage stats.
     """
-    with store.session() as s:
-        rows = (
-            s.query(
-                Product.id,
-                Variant.id.label("variant_id"),
-                Product.handle,
-                Product.title,
-                Product.vendor,
-                Product.product_type,
-                Product.tags,
-                Product.body_html,
-                Variant.price,
-                Variant.option1_name,
-                Variant.option1_value,
-                Variant.option2_value,
-            )
-            .join(Variant, Variant.product_id == Product.id)
-            .filter(
-                Product.status == "active",
-                Product.id.isnot(None),
-                Product.vendor.notin_(EXCLUDED_VENDORS),
-            )
-            .order_by(Product.handle, Variant.id)
-            .all()
-        )
+    products = store.list_products()
 
     wb = Workbook()
     ws = wb.active
@@ -477,82 +449,90 @@ def generate_google_shopping(output_path, store) -> dict:
     # Track SEO titles already generated per handle (product-level, not variant)
     seen_seo = set()
 
-    for row in rows:
-        product_id = row.id
-        handle = row.handle or ""
-        title = row.title or ""
-        vendor = row.vendor or ""
-        product_type = row.product_type or ""
-        tags = row.tags or ""
-        body_html = row.body_html or ""
-        price = row.price
-        option1_name = row.option1_name or ""
-        option1_value = row.option1_value or ""
-        option2_value = row.option2_value or ""
+    for product in products:
+        vendor = product["vendor"]
+        if vendor in EXCLUDED_VENDORS:
+            continue
 
-        stats["total_variants"] += 1
-        stats["total_products"].add(handle)
+        handle = product["handle"] or ""
+        title = product["title"] or ""
+        product_type = product["product_type"] or ""
+        tags = product["tags"] or ""
+        body_html = product["body_html"] or ""
 
-        # Google Product Category (product-level, same for all variants)
-        category = get_google_category(product_type)
-        if category:
-            stats["has_category"] += 1
-            bucket = category.split(" > ")[0]
-            stats["categories_by_bucket"][bucket] = stats["categories_by_bucket"].get(bucket, 0) + 1
+        variants = store.get_variants(product["id"])
 
-        # Gender + age_group
-        gender = get_gender(tags, title)
-        age_group = get_age_group(tags, title)
-        if gender:
-            stats["has_gender"] += 1
-        stats["has_age_group"] += 1  # always set
+        for variant in variants:
+            price = variant["price"]
+            option1_name = variant["option1_name"] or ""
+            option1_value = variant["option1_value"] or ""
+            option2_value = variant["option2_value"] or ""
 
-        # Color + size + size_system
-        color = extract_color(option1_name, option1_value, option2_value)
-        size = extract_size(option1_name, option1_value, option2_value)
-        size_system = detect_size_system(vendor, product_type, size) if size else ""
+            stats["total_variants"] += 1
+            stats["total_products"].add(handle)
 
-        if color:
-            stats["has_color"] += 1
-        if size:
-            stats["has_size"] += 1
+            # Google Product Category (product-level, same for all variants)
+            category = get_google_category(product_type)
+            if category:
+                stats["has_category"] += 1
+                bucket = category.split(" > ")[0]
+                stats["categories_by_bucket"][bucket] = (
+                    stats["categories_by_bucket"].get(bucket, 0) + 1
+                )
 
-        # Custom labels
-        season = get_season_label(tags)
-        price_tier = get_price_tier(price)
-        activity = get_activity_label(tags)
+            # Gender + age_group
+            gender = get_gender(tags, title)
+            age_group = get_age_group(tags, title)
+            if gender:
+                stats["has_gender"] += 1
+            stats["has_age_group"] += 1  # always set
 
-        # SEO (product-level but included on each row for Matrixify)
-        seo_title = ""
-        seo_desc = ""
-        if handle not in seen_seo:
-            seen_seo.add(handle)
-            seo_title = build_seo_title(vendor, title)
-            seo_desc = build_seo_description(vendor, title, body_html, product_type)
-            if seo_title:
-                stats["has_seo_title"] += 1
-            if seo_desc:
-                stats["has_seo_desc"] += 1
+            # Color + size + size_system
+            color = extract_color(option1_name, option1_value, option2_value)
+            size = extract_size(option1_name, option1_value, option2_value)
+            size_system = detect_size_system(vendor, product_type, size) if size else ""
 
-        ws.append(
-            [
-                product_id,
-                handle,
-                "MERGE",
-                category,
-                gender,
-                age_group,
-                "new",
-                color,
-                size,
-                size_system,
-                season,
-                price_tier,
-                activity,
-                seo_title,
-                seo_desc,
-            ]
-        )
+            if color:
+                stats["has_color"] += 1
+            if size:
+                stats["has_size"] += 1
+
+            # Custom labels
+            season = get_season_label(tags)
+            price_tier = get_price_tier(price)
+            activity = get_activity_label(tags)
+
+            # SEO (product-level but included on each row for Matrixify)
+            seo_title = ""
+            seo_desc = ""
+            if handle not in seen_seo:
+                seen_seo.add(handle)
+                seo_title = build_seo_title(vendor, title)
+                seo_desc = build_seo_description(vendor, title, body_html, product_type)
+                if seo_title:
+                    stats["has_seo_title"] += 1
+                if seo_desc:
+                    stats["has_seo_desc"] += 1
+
+            ws.append(
+                [
+                    product["id"],
+                    handle,
+                    "MERGE",
+                    category,
+                    gender,
+                    age_group,
+                    "new",
+                    color,
+                    size,
+                    size_system,
+                    season,
+                    price_tier,
+                    activity,
+                    seo_title,
+                    seo_desc,
+                ]
+            )
 
     _auto_size(ws)
     wb.save(output_path)
@@ -561,7 +541,7 @@ def generate_google_shopping(output_path, store) -> dict:
     return stats
 
 
-def generate_weights(output_path, store) -> dict:
+def generate_weights(output_path, store: LookoutStore) -> dict:
     """Generate Matrixify XLSX with weight corrections for variants.
 
     Only includes variants of product types that have a weight default.
@@ -569,30 +549,11 @@ def generate_weights(output_path, store) -> dict:
 
     Args:
         output_path: Path to write XLSX
-        store: ShopifyStore instance
+        store: LookoutStore instance
 
     Returns: dict with update stats.
     """
-    with store.session() as s:
-        rows = (
-            s.query(
-                Product.id,
-                Variant.id.label("variant_id"),
-                Product.handle,
-                Product.product_type,
-            )
-            .join(Variant, Variant.product_id == Product.id)
-            .filter(
-                Product.status == "active",
-                Product.id.isnot(None),
-                Variant.id.isnot(None),
-                Product.vendor.notin_(EXCLUDED_VENDORS),
-                Product.product_type.isnot(None),
-                Product.product_type != "",
-            )
-            .order_by(Product.handle, Variant.id)
-            .all()
-        )
+    products = store.list_products()
 
     wb = Workbook()
     ws = wb.active
@@ -603,30 +564,39 @@ def generate_weights(output_path, store) -> dict:
 
     count = 0
     types_updated = {}
-    for row in rows:
-        product_type = row.product_type
+
+    for product in products:
+        if product["vendor"] in EXCLUDED_VENDORS:
+            continue
+
+        product_type = product["product_type"]
+        if not product_type:
+            continue
+
         weight_g = get_weight_grams(product_type)
         if weight_g is None:
             continue
 
-        ws.append(
-            [
-                row.id,
-                row.variant_id,
-                row.handle,
-                "MERGE",
-                weight_g,
-            ]
-        )
-        count += 1
-        types_updated[product_type] = types_updated.get(product_type, 0) + 1
+        variants = store.get_variants(product["id"])
+        for variant in variants:
+            ws.append(
+                [
+                    product["id"],
+                    variant["id"],
+                    product["handle"],
+                    "MERGE",
+                    weight_g,
+                ]
+            )
+            count += 1
+            types_updated[product_type] = types_updated.get(product_type, 0) + 1
 
     _auto_size(ws)
     wb.save(output_path)
     return {"variants_updated": count, "types": types_updated}
 
 
-def generate_weight_audit(output_path, store) -> dict:
+def generate_weight_audit(output_path, store: LookoutStore) -> dict:
     """Generate CSV audit report for dimensional/bulky products.
 
     Lists all products of dimensional types for manual weight review,
@@ -634,29 +604,37 @@ def generate_weight_audit(output_path, store) -> dict:
 
     Args:
         output_path: Path to write CSV
-        store: ShopifyStore instance
+        store: LookoutStore instance
 
     Returns: dict with row count.
     """
-    with store.session() as s:
-        rows = (
-            s.query(
-                Product.handle,
-                Product.title,
-                Product.vendor,
-                Product.product_type,
-                Variant.sku,
-                Variant.price,
+    products = store.list_products()
+
+    # Collect all rows, then sort by price descending
+    audit_rows = []
+    for product in products:
+        if product["vendor"] in EXCLUDED_VENDORS:
+            continue
+        if product["product_type"] not in DIMENSIONAL_TYPES:
+            continue
+
+        variants = store.get_variants(product["id"])
+        for variant in variants:
+            weight_g = get_weight_grams(product["product_type"])
+            audit_rows.append(
+                {
+                    "handle": product["handle"],
+                    "title": product["title"],
+                    "vendor": product["vendor"],
+                    "product_type": product["product_type"],
+                    "variant_sku": variant["sku"],
+                    "suggested_weight_g": weight_g or "",
+                    "price": variant["price"],
+                }
             )
-            .join(Variant, Variant.product_id == Product.id)
-            .filter(
-                Product.status == "active",
-                Product.vendor.notin_(EXCLUDED_VENDORS),
-                Product.product_type.in_(DIMENSIONAL_TYPES),
-            )
-            .order_by(Variant.price.desc())
-            .all()
-        )
+
+    # Sort by price descending
+    audit_rows.sort(key=lambda r: float(r["price"] or 0), reverse=True)
 
     with open(output_path, "w", newline="") as f:
         writer = csv.writer(f)
@@ -671,18 +649,17 @@ def generate_weight_audit(output_path, store) -> dict:
                 "price",
             ]
         )
-        for row in rows:
-            weight_g = get_weight_grams(row.product_type)
+        for row in audit_rows:
             writer.writerow(
                 [
-                    row.handle,
-                    row.title,
-                    row.vendor,
-                    row.product_type,
-                    row.sku,
-                    weight_g or "",
-                    row.price,
+                    row["handle"],
+                    row["title"],
+                    row["vendor"],
+                    row["product_type"],
+                    row["variant_sku"],
+                    row["suggested_weight_g"],
+                    row["price"],
                 ]
             )
 
-    return {"rows": len(rows)}
+    return {"rows": len(audit_rows)}

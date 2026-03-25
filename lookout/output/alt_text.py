@@ -5,16 +5,14 @@ Pattern:
   - Size/other/Default Title: "{Vendor} {Title}"
 """
 
+from __future__ import annotations
+
 from openpyxl import Workbook
 
-COLOR_OPTION_NAMES = {"color", "style"}
+from lookout.store import LookoutStore
+from lookout.taxonomy.mappings import EXCLUDED_VENDORS
 
-EXCLUDED_VENDORS = {
-    "The Switchback",
-    "The Mountain Air",
-    "The Mountain Air Back Shop",
-    "The Mountain Air Deposits",
-}
+COLOR_OPTION_NAMES = {"color", "style"}
 
 
 def build_alt_text(vendor, title, option1_name, option1_value) -> str:
@@ -30,39 +28,17 @@ def build_alt_text(vendor, title, option1_name, option1_value) -> str:
     return base
 
 
-def generate_alt_text_xlsx(output_path, store) -> dict:
+def generate_alt_text_xlsx(output_path, store: LookoutStore) -> dict:
     """Generate Matrixify XLSX with alt text for product images.
 
     Args:
         output_path: Path to write XLSX
-        store: ShopifyStore instance
+        store: LookoutStore instance
 
     Returns:
         dict with 'products' and 'images' counts.
     """
-    with store.session() as s:
-        from tvr.db.models import Product, Variant
-
-        rows = (
-            s.query(
-                Product.id,
-                Product.handle,
-                Product.title,
-                Product.vendor,
-                Variant.option1_name,
-                Variant.option1_value,
-                Variant.image_src,
-            )
-            .join(Variant, Variant.product_id == Product.id)
-            .filter(
-                Product.status == "active",
-                Variant.image_src.isnot(None),
-                Variant.image_src != "",
-                Product.vendor.notin_(EXCLUDED_VENDORS),
-            )
-            .order_by(Product.handle, Variant.option1_value)
-            .all()
-        )
+    products = store.list_products()
 
     wb = Workbook()
     ws = wb.active
@@ -72,15 +48,34 @@ def generate_alt_text_xlsx(output_path, store) -> dict:
     product_ids = set()
     seen_images = set()
     image_count = 0
-    for product_id, handle, title, vendor, opt1_name, opt1_value, image_src in rows:
-        key = (product_id, image_src)
-        if key in seen_images:
+
+    for product in products:
+        if product["vendor"] in EXCLUDED_VENDORS:
             continue
-        seen_images.add(key)
-        alt = build_alt_text(vendor or "", title or "", opt1_name, opt1_value)
-        product_ids.add(product_id)
-        image_count += 1
-        ws.append([product_id, handle, "MERGE", image_src, "MERGE", alt])
+
+        variants = store.get_variants(product["id"])
+        # Sort variants by option1_value for consistent output
+        variants.sort(key=lambda v: v.get("option1_value", ""))
+
+        for variant in variants:
+            image_src = variant["image_src"]
+            if not image_src:
+                continue
+
+            key = (product["id"], image_src)
+            if key in seen_images:
+                continue
+            seen_images.add(key)
+
+            alt = build_alt_text(
+                product["vendor"],
+                product["title"],
+                variant["option1_name"],
+                variant["option1_value"],
+            )
+            product_ids.add(product["id"])
+            image_count += 1
+            ws.append([product["id"], product["handle"], "MERGE", image_src, "MERGE", alt])
 
     wb.save(output_path)
     return {"products": len(product_ids), "images": image_count}
