@@ -18,6 +18,104 @@ from .models import ExtractedFacts, ImageInfo, InputRow, MerchOutput, OutputImag
 
 logger = logging.getLogger(__name__)
 
+# Extensions Shopify won't import
+_NON_IMPORTABLE_EXTENSIONS = {".svg", ".webp", ".avif", ".gif", ".bmp", ".ico"}
+
+# Query param patterns that suggest expiring/signed URLs
+_EXPIRING_URL_PARAMS = {"token", "expires", "signature", "sig", "x-amz-credential"}
+
+
+def _check_image_importable(url: str) -> str | None:
+    """Check if an image URL is likely importable into Shopify.
+
+    Returns None if OK, or a reason string if not importable.
+    """
+    url_lower = url.lower()
+
+    # Check extension
+    # Strip query params for extension check
+    path = url_lower.split("?")[0]
+    for ext in _NON_IMPORTABLE_EXTENSIONS:
+        if path.endswith(ext):
+            return f"unsupported format: {ext}"
+
+    # Check for tiny/icon images in URL
+    if any(marker in url_lower for marker in ["icon", "logo", "badge", "favicon", "1x1", "pixel"]):
+        return "likely icon/badge"
+
+    # Check for data URIs
+    if url.startswith("data:"):
+        return "data URI"
+
+    # Warn about potentially expiring signed URLs (don't block, just note)
+    from urllib.parse import parse_qs, urlparse
+
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query.lower())
+    for param in _EXPIRING_URL_PARAMS:
+        if param in params:
+            logger.debug(f"Image URL may expire (has {param} param): {url[:80]}")
+
+    return None
+
+
+async def validate_image_urls(
+    images: list[dict], http_client: object | None = None
+) -> list[dict]:
+    """HEAD-request image URLs and annotate with validation results.
+
+    Args:
+        images: List of dicts with at least 'src' key.
+        http_client: Optional shared HTTP client.
+
+    Returns:
+        Same list with added 'valid', 'status_code', 'content_type', 'size' keys.
+    """
+    import httpx
+
+    close_client = False
+    if http_client is None:
+        http_client = httpx.AsyncClient(timeout=10.0, follow_redirects=True)
+        close_client = True
+
+    try:
+        for img in images:
+            try:
+                resp = await http_client.head(
+                    img["src"],
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                content_type = resp.headers.get("content-type", "")
+                content_length = int(resp.headers.get("content-length", 0))
+
+                img["status_code"] = resp.status_code
+                img["content_type"] = content_type
+                img["size_bytes"] = content_length
+
+                if resp.status_code != 200:
+                    img["valid"] = False
+                    img["validation_error"] = f"HTTP {resp.status_code}"
+                elif not content_type.startswith("image/"):
+                    img["valid"] = False
+                    img["validation_error"] = f"not an image: {content_type}"
+                elif content_length > 0 and content_length < 1024:
+                    img["valid"] = False
+                    img["validation_error"] = f"too small: {content_length} bytes"
+                elif content_length > 20 * 1024 * 1024:
+                    img["valid"] = False
+                    img["validation_error"] = f"too large: {content_length} bytes"
+                else:
+                    img["valid"] = True
+
+            except Exception as e:
+                img["valid"] = False
+                img["validation_error"] = str(e)
+    finally:
+        if close_client:
+            await http_client.aclose()
+
+    return images
+
 
 class Generator:
     """
@@ -225,6 +323,15 @@ class Generator:
                 seen_urls.add(normalized)
                 unique_images.append(img)
 
+        # Filter out non-importable images
+        importable: list[ImageInfo] = []
+        for img in unique_images:
+            issue = _check_image_importable(img.url)
+            if issue:
+                warnings.append(f"IMAGE_SKIPPED: {issue} — {img.url[:80]}")
+            else:
+                importable.append(img)
+
         # Sort by source hint (prefer JSON-LD, then img_tag)
         def sort_key(img: ImageInfo) -> int:
             if img.source_hint == "json_ld":
@@ -233,10 +340,10 @@ class Generator:
                 return 1
             return 2
 
-        unique_images.sort(key=sort_key)
+        importable.sort(key=sort_key)
 
         # Create output images with positions
-        for position, img in enumerate(unique_images[:10], start=1):
+        for position, img in enumerate(importable[:10], start=1):
             alt_text = img.alt_text or self._generate_alt_text(facts.product_name, position)
 
             images.append(
@@ -247,8 +354,10 @@ class Generator:
                 )
             )
 
-        if len(unique_images) > 10:
-            warnings.append(f"TRUNCATED_IMAGES: {len(unique_images)} found, limited to 10")
+        if len(importable) > 10:
+            warnings.append(f"TRUNCATED_IMAGES: {len(importable)} importable, limited to 10")
+        if not importable and unique_images:
+            warnings.append("ALL_IMAGES_FILTERED: none passed import validation")
 
         return images, warnings
 

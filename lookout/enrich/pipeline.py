@@ -320,6 +320,37 @@ class ProductProcessor:
             merch_output = await self.generator.generate_output(input_row, facts)
             metadata["warnings"].extend(merch_output.warnings)
 
+            # Step 4b: Validate image URLs (HEAD request)
+            if merch_output.images:
+                from .generator import validate_image_urls
+                from .models import OutputImage
+
+                img_dicts = [{"src": img.src, "alt": img.alt, "position": img.position}
+                             for img in merch_output.images]
+                validated = await validate_image_urls(img_dicts, self.http_client)
+
+                valid_images = []
+                for img_data in validated:
+                    if img_data.get("valid", True):
+                        valid_images.append(
+                            OutputImage(src=img_data["src"], position=img_data["position"], alt=img_data["alt"])
+                        )
+                    else:
+                        reason = img_data.get("validation_error", "unknown")
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="WARNING",
+                                message=f"Image failed validation: {reason}",
+                                data={"url": img_data["src"][:80]},
+                            )
+                        )
+                        metadata["warnings"].append(f"IMAGE_INVALID: {reason} — {img_data['src'][:60]}")
+
+                # Re-number positions
+                for i, img in enumerate(valid_images, 1):
+                    img.position = i
+                merch_output.images = valid_images
+
             # Save merchandising output
             await self.generator.save_output(merch_output, artifacts_dir)
 
