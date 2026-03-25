@@ -1,0 +1,64 @@
+{
+  "handle": "i-o-mag",
+  "body_html": "<p>The I/O MAG from Smith Optics offers advanced goggle technology for enhanced on-mountain performance.</p>\n\n<h3>Features</h3>\n<ul>\n<li>4D MAG Series technology</li>\n<li>Guide's Choice selection</li>\n</ul>",
+  "images": [
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/ChromaPop.png?v=1756396772&width=300",
+      "position": 1,
+      "alt": "I/O MAG"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpSunGreenMirror_3Q.png?v=1759321387&width=1946",
+      "position": 2,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpSunGreenMirror_02.png?v=1759321387&width=1946",
+      "position": 3,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpSunGreenMirror_03.png?v=1759321387&width=1946",
+      "position": 4,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpSunGreenMirror_04.png?v=1759321387&width=1946",
+      "position": 5,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpSunGreenMirror_05.png?v=1759321387&width=1946",
+      "position": 6,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_bonusLens_stormRoseFlash_EI.png?v=1760571281&width=1946",
+      "position": 7,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpSunRedMirror_3Q.png?v=1760571281&width=1946",
+      "position": 8,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpEverydayRoseGoldMirror_3Q.png?v=1760571281&width=1946",
+      "position": 9,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    },
+    {
+      "src": "https://www.smithoptics.com/cdn/shop/files/io-mag-goggles_black-cpEverydayRedMirror_3Q.png?v=1760571281&width=1946",
+      "position": 10,
+      "alt": "I/O MAG, Smith x High Fives | ChromaPop Sun Black"
+    }
+  ],
+  "variant_image_map": {
+    "__all__": "https://www.smithoptics.com/cdn/shop/files/ChromaPop.png?v=1756396772&width=300"
+  },
+  "warnings": [
+    "TRUNCATED_IMAGES: 20 importable, limited to 10"
+  ],
+  "confidence": 90,
+  "generated_at": "2026-03-25T23:53:22.730350"
+}

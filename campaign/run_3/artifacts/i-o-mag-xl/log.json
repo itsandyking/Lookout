@@ -1,0 +1,47 @@
+{
+  "handle": "i-o-mag-xl",
+  "started_at": "2026-03-25T23:52:58.472813",
+  "completed_at": "2026-03-25T23:53:29.126432Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-25T23:52:58.472858",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T23:53:02.913971",
+      "level": "INFO",
+      "message": "Scraping https://www.smithoptics.com/en-us/products/i-o-mag-xl",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-25T23:53:22.913324",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T23:53:23.121032",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-25T23:53:29.126394",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 10,
+        "variant_mappings": 1
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

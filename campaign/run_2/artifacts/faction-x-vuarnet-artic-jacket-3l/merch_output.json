@@ -1,0 +1,29 @@
+{
+  "handle": "faction-x-vuarnet-artic-jacket-3l",
+  "body_html": "<p>The Faction X Vuarnet Neckwarmer is a collaboration piece between The Faction Collective and Vuarnet. Made with merino wool and crafted in France, this neckwarmer features Oeko-Tex Standard 100 certification and a jacquard design with Vuarnet and Faction logos.</p>\n\n<h3>Features</h3>\n<ul>\n  <li>Made with luxurious merino wool</li>\n  <li>Crafted in France</li>\n  <li>Oeko-Tex Standard 100 certification</li>\n  <li>Jacquard design with Vuarnet and Faction logos</li>\n</ul>",
+  "images": [
+    {
+      "src": "https://factionskis.com/cdn/shop/files/Faction-Vuarnet-Neckwarmer-1.jpg?v=1701181330&width=480",
+      "position": 1,
+      "alt": "Faction X Vuarnet Neckwarmer"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FACTION_HOODIES_2026_03_120032_450x.jpg?v=1773939585",
+      "position": 2,
+      "alt": "Logo Tee Black"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FACTION_HOODIES_2026_03_120111_450x.jpg?v=1773939099",
+      "position": 3,
+      "alt": "Man wearing a black hoodie with 'FACTION' logo on a gray background"
+    }
+  ],
+  "variant_image_map": {
+    "__all__": "https://factionskis.com/cdn/shop/files/Faction-Vuarnet-Neckwarmer-1.jpg?v=1701181330&width=480"
+  },
+  "warnings": [
+    "IMAGE_SKIPPED: unsupported format: .gif \u2014 https://factionskis.com/cdn/shopifycloud/storefront/assets/no-image-50-e6fb86f4_"
+  ],
+  "confidence": 84,
+  "generated_at": "2026-03-25T23:19:54.752390"
+}

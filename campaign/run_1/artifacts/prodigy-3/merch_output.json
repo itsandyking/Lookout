@@ -1,0 +1,66 @@
+{
+  "handle": "prodigy-3",
+  "body_html": "<p>The Prodigy 3 is an all-mountain ski designed for supreme all-mountain enjoyment and durability in any conditions, making it ideal for both packed and powder snow. This intuitive, perfectly balanced, and stable ski features a 106 mm waist with Directional Twin shape and Elliptical Sidecut for user-friendly performance.</p>\n\n<h3>Features</h3>\n<ul>\n  <li>106 mm waist width for versatile performance</li>\n  <li>Directional Twin shape for skiing and landing backwards</li>\n  <li>Elliptical Sidecut ensures user-friendly performance</li>\n  <li>Designed for both packed and powder snow conditions</li>\n  <li>Playful character suitable for buttering and pivoting</li>\n</ul>\n\n<h3>Specifications</h3>\n<table>\n  <tr><td>Ski Size</td><td>164 cm</td></tr>\n  <tr><td>Tip Width</td><td>133 mm</td></tr>\n  <tr><td>Waist Width</td><td>106 mm</td></tr>\n  <tr><td>Tail Width</td><td>125 mm</td></tr>\n  <tr><td>Radius</td><td>15 m</td></tr>\n  <tr><td>Weight Per Ski</td><td>1750 g</td></tr>\n</table>",
+  "images": [
+    {
+      "src": "https://factionskis.com/cdn/shop/files/Faction-Skis-2526-Prodigy-3-Topsheet-1x1.jpg?v=1750405805&width=480",
+      "position": 1,
+      "alt": "Prodigy 3"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_poplar_883f6cf1-0cdc-456f-a349-399369ca406c.png?v=1696600101&width=1200",
+      "position": 2,
+      "alt": "Poplar Core"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_moustache.png?v=1696599780&width=1200",
+      "position": 3,
+      "alt": "Mustache Flex"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_elliptical_sidecut.png?v=1696600036&width=1200",
+      "position": 4,
+      "alt": "Elliptical Sidecut"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_recycled_materials.png?v=1696607625&width=1200",
+      "position": 5,
+      "alt": "Recycled Materials"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_2-5mm_edges.png?v=1696601210&width=1200",
+      "position": 6,
+      "alt": "XL 2.5mm Edges"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_fullstrength_sidewall.png?v=1696601184&width=1200",
+      "position": 7,
+      "alt": "Full Strength Sidewall"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FAC_CORE_chipcap.png?v=1696600203&width=1200",
+      "position": 8,
+      "alt": "Anti-Chip Micro-Cap"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FACTION_HOODIES_2026_03_120111_450x.jpg?v=1773939099",
+      "position": 9,
+      "alt": "Man wearing a black hoodie with 'FACTION' logo on a gray background"
+    },
+    {
+      "src": "https://factionskis.com/cdn/shop/files/FACTION_HOODIES_2026_03_120032_450x.jpg?v=1773939585",
+      "position": 10,
+      "alt": "Logo Tee Black"
+    }
+  ],
+  "variant_image_map": {
+    "__all__": "https://factionskis.com/cdn/shop/files/Faction-Skis-2526-Prodigy-3-Topsheet-1x1.jpg?v=1750405805&width=480"
+  },
+  "warnings": [
+    "IMAGE_SKIPPED: unsupported format: .svg \u2014 https://factionskis.com/cdn/shop/files/Terrain-type-Freeride.svg?v=1745586845&wi",
+    "IMAGE_SKIPPED: unsupported format: .svg \u2014 https://factionskis.com/cdn/shop/files/Terrain-type-all-mountain.svg?v=174558684",
+    "IMAGE_SKIPPED: unsupported format: .svg \u2014 https://factionskis.com/cdn/shop/files/Terrain-type-powder.svg?v=1745586845&widt"
+  ],
+  "confidence": 91,
+  "generated_at": "2026-03-25T23:18:50.851700"
+}

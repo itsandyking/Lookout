@@ -19,7 +19,8 @@ from .models import ExtractedFacts, ImageInfo, InputRow, MerchOutput, OutputImag
 logger = logging.getLogger(__name__)
 
 # Extensions Shopify won't import
-_NON_IMPORTABLE_EXTENSIONS = {".svg", ".webp", ".avif", ".gif", ".bmp", ".ico"}
+# SVG and ICO can't be Shopify product images. WebP/AVIF are now accepted.
+_NON_IMPORTABLE_EXTENSIONS = {".svg", ".ico"}
 
 # Query param patterns that suggest expiring/signed URLs
 _EXPIRING_URL_PARAMS = {"token", "expires", "signature", "sig", "x-amz-credential"}

@@ -1,0 +1,111 @@
+{
+  "canonical_url": "https://factionskis.com/en-us/products/faction-x-vuarnet-neckwarmer",
+  "product_name": "Faction X Vuarnet Neckwarmer",
+  "brand": "The Faction Collective",
+  "description_blocks": [
+    "Default Title - Default TitleFaction X Vuarnet Neckwarmer$48.00$80.00Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.(3)FIND IT LOCALLYDecrease quantityIncrease quantitySold out(Pre Order) Available fromFIND IT LOCALLYIntroducing the Warm Neckwarmer, a standout piece from the Vuarnet X Faction collaboration. Made with luxurious merino wool and crafted in France, this neckwarmer boasts the prestigious Oeko-Tex Standard 100 certification. Featuring a sleek jacquard design showcasing the Vuarnet and Faction logos, it's both a fashion statement and a testament to quality. Stay stylishly warm on your winter adventures with this premium accessory.",
+    "Default Title - Default Title",
+    "Faction X Vuarnet Neckwarmer$48.00$80.00Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.(3)FIND IT LOCALLY",
+    "Faction X Vuarnet Neckwarmer$48.00$80.00Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.",
+    "Faction X Vuarnet Neckwarmer",
+    "$48.00$80.00Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.",
+    "Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.",
+    "Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.",
+    "Your ExpertVoice deal.",
+    "$[Deal Price]$[Original Price]Discount applied at checkout."
+  ],
+  "feature_bullets": [
+    "Andorra (\u20ac)",
+    "Austria / \u00d6sterreich (\u20ac)",
+    "Belgium (\u20ac)",
+    "Bosnia and Herzegovina (\u20ac)",
+    "Bulgaria / \u0411\u044a\u043b\u0433\u0430\u0440\u0438\u044f (\u20ac)",
+    "Canada ($)",
+    "Czech Republic (\u20ac)",
+    "Danmark (\u20ac)",
+    "Deutschland / Germany (\u20ac)",
+    "Eesti / Estonia (\u20ac)",
+    "Espa\u00f1a (\u20ac)",
+    "Finland (\u20ac)",
+    "France (\u20ac)",
+    "Greece / \u0395\u03bb\u03bb\u03b1\u03b4\u03b1 (\u20ac)",
+    "Hrvatska / Croatia (\u20ac)"
+  ],
+  "specs": {},
+  "materials": "",
+  "care": "",
+  "fit_dimensions": "",
+  "images": [
+    {
+      "url": "https://factionskis.com/cdn/shop/files/Faction-Vuarnet-Neckwarmer-1.jpg?v=1701181330&width=480",
+      "inferred_view": null,
+      "source_hint": "json_ld",
+      "alt_text": "",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://factionskis.com/cdn/shop/files/Faction-Vuarnet-Neckwarmer-1.jpg?v=1701181330&width=1920",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Faction X Vuarnet Neckwarmer",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://factionskis.com/cdn/shopifycloud/storefront/assets/no-image-50-e6fb86f4_50x.gif",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://factionskis.com/cdn/shop/files/FACTION_HOODIES_2026_03_120032_450x.jpg?v=1773939585",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Logo Tee Black",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://factionskis.com/cdn/shop/files/FACTION_HOODIES_2026_03_120111_450x.jpg?v=1773939099",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Man wearing a black hoodie with 'FACTION' logo on a gray background",
+      "width": null,
+      "height": null
+    }
+  ],
+  "variants": [],
+  "variant_image_candidates": {},
+  "json_ld_data": {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "aggregateRating": {
+      "@type": "AggregateRating",
+      "ratingValue": "5.0",
+      "reviewCount": "3"
+    },
+    "name": "Faction X Vuarnet Neckwarmer",
+    "image": [
+      "https://factionskis.com/cdn/shop/files/Faction-Vuarnet-Neckwarmer-1.jpg?v=1701181330&width=480"
+    ],
+    "offers": {
+      "@type": "Offer",
+      "availability": "https://schema.org/InStock",
+      "price": "48.0",
+      "priceCurrency": "EUR",
+      "sku": "FCACW24-FXVN-BK-ZZZ-1",
+      "url": "https://factionskis.com/en-us/products/faction-x-vuarnet-neckwarmer?variant=41530278608947"
+    },
+    "brand": {
+      "@type": "Brand",
+      "name": "The Faction Collective"
+    },
+    "description": "Introducing the Warm Neckwarmer, a standout piece from the Vuarnet X Faction collaboration. Made with luxurious merino wool and crafted in France, this neckwarmer boasts the prestigious Oeko-Tex Standard 100 certification. Featuring a sleek jacquard design showcasing the Vuarnet and Faction logos, it's both a fashion statement and a testament to quality. Stay stylishly warm on your winter adventures with this premium accessory.\n\n",
+    "sku": "FCACW24-FXVN-BK-ZZZ-1"
+  },
+  "evidence_snippets": {},
+  "extraction_warnings": []
+}

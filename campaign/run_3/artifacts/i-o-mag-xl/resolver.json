@@ -1,0 +1,46 @@
+{
+  "handle": "i-o-mag-xl",
+  "vendor": "Smith Optics",
+  "query_used": "title: site:smithoptics.com I/O MAG XL Snow Goggles | handle: site:smithoptics.com i o mag xl | broad: Smith Optics I/O MAG XL Snow Goggles",
+  "candidates": [
+    {
+      "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl",
+      "confidence": 100,
+      "reasoning": "Title search: Brave search: score=85 +broad_validated(12 results)",
+      "title": "I/O MAG XL Snow Goggles | Smith Optics",
+      "snippet": "Large fit; Available in Low Bridge Fit for faces with a lower nose bridge and/or a wide or high cheekbone shape \u00b7 Includes two lenses: ChromaPop lens for bright light (installed) and bonus ChromaPop lens for low light conditions \u00b7 Microfiber goggle bag with replacement lens sleeve"
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/i-o-mag",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "I/O MAG Snow Goggles | Smith Optics",
+      "snippet": "Medium fit; Available in Low Bridge Fit for faces with a lower nose bridge and/or a wide or high cheekbone shape \u00b7 Includes two lenses: ChromaPop lens for bright light (installed) and bonus ChromaPop lens for low light conditions \u00b7 Microfiber goggle bag with replacement lens sleeve"
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl-sale",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "I/O MAG XL Snow Goggles | Smith Optics Sale",
+      "snippet": "Large fit; Available in Low Bridge Fit for faces with a lower nose bridge and/or a wide or high cheekbone shape \u00b7 Includes two lenses: ChromaPop lens for bright light (installed) and bonus ChromaPop lens for low light conditions \u00b7 Microfiber goggle bag with replacement lens sleeve"
+    },
+    {
+      "url": "https://www.smithoptics.com/en_US/p/goggle/io-mag-xl-snow-goggles/IO-MAG-XL-GOGGLES.html",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=75",
+      "title": "I/O MAG XL | Smith Optics | US",
+      "snippet": "We took the Smith MAG interchangeable system and integrated it with a more expansive window to the mountains. The I/O MAG XL&#x27;s <strong>extra-large spherical ChromaPop lens enhances clarity and amplifies your experience</strong>."
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl-low-bridge-fit-sale",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=75",
+      "title": "I/O MAG XL Low Bridge Fit Snow Goggles | Smith Optics",
+      "snippet": "Meet the I/O MAG XL snow goggles, available in low bridge fit. We took our best-selling I/O MAG goggles and made them bigger to fit more faces."
+    }
+  ],
+  "selected_url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl",
+  "selected_confidence": 100,
+  "warnings": [],
+  "timestamp": "2026-03-25T23:53:02.912963"
+}

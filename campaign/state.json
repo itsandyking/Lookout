@@ -1,0 +1,70 @@
+{
+  "iteration": 3,
+  "total_processed": 7,
+  "total_updated": 6,
+  "total_failed": 0,
+  "total_no_match": 0,
+  "products_completed": [
+    {
+      "handle": "prodigy-3",
+      "vendor": "Faction",
+      "confidence": 95,
+      "images": 10,
+      "variant_type": "tier0_all"
+    },
+    {
+      "handle": "102502",
+      "vendor": "Black Crows",
+      "confidence": 95,
+      "images": 9,
+      "variant_type": "tier1_color",
+      "colors": [
+        "olive-green",
+        "wax-yellow",
+        "black"
+      ]
+    },
+    {
+      "handle": "faction-x-vuarnet-artic-jacket-3l",
+      "vendor": "Faction",
+      "confidence": 84,
+      "images": 3,
+      "variant_type": "tier0_all",
+      "note": "WRONG PRODUCT: resolved to neckwarmer, not jacket. Needs human review."
+    },
+    {
+      "handle": "i-o-mag",
+      "vendor": "Smith Optics",
+      "confidence": 100,
+      "images": 10,
+      "variant_type": "tier0_all",
+      "note": "Goggles have colors but behind JS configurator \u2014 needs better extraction"
+    },
+    {
+      "handle": "i-o-mag-xl",
+      "vendor": "Smith Optics",
+      "confidence": 100,
+      "images": 10,
+      "variant_type": "tier0_all"
+    },
+    {
+      "handle": "mind-expander-snowboard-2025",
+      "vendor": "Jones Snowboards",
+      "confidence": 85,
+      "images": 7,
+      "variant_type": "tier0_all",
+      "note": "WebP images were filtered \u2014 fix applied"
+    }
+  ],
+  "products_retry": [],
+  "products_review": [
+    {
+      "handle": "faction-x-vuarnet-artic-jacket-3l",
+      "reason": "Product name mismatch: searched for jacket, found neckwarmer"
+    }
+  ],
+  "api_usage": {
+    "brave_queries": 14,
+    "llm_calls": 6
+  }
+}

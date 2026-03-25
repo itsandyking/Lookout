@@ -1,0 +1,46 @@
+{
+  "handle": "102502",
+  "vendor": "Black Crows",
+  "query_used": "title: site:black-crows.com Men's Aurion 3L Ski Pant | handle: site:black-crows.com 102502",
+  "candidates": [
+    {
+      "url": "https://www.black-crows.com/products/102502",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "Men's Aurion 3L Ski Pant \u2013 blackcrows",
+      "snippet": "<strong>Designed for movement, with perfect functionality and a focus on breathability and strength</strong>, the Aurion 3L pants, made with the Toray Dermizax 20K / 20K membrane, invite you to explore the mountains."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102500",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "Men's Aurion 3L Ski Jacket \u2013 blackcrows",
+      "snippet": "Designed for adventure skiing, the Aurion 3L jacket is <strong>made with Toray&#x27;s Dermizax 20K / 20K membrane, offering exceptional breathability, stretch, and durability</strong>. Its streamlined cut, comfort, and freedom of movement allow you to forget you&#x27;re ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102518",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "Women's Aurion 3L Ski Pant \u2013 blackcrows",
+      "snippet": "<strong>Designed for movement, with perfect functionality and a focus on breathability and strength</strong>, the Aurion 3L pants, made with the Toray Dermizax 20K / 20K membrane, invite you to explore the mountains."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102516",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "Women's Aurion 3L Ski Jacket \u2013 blackcrows",
+      "snippet": "Designed for adventure skiing, the Aurion 3L jacket is <strong>made with Toray&#x27;s Dermizax 20K / 20K membrane, offering exceptional breathability, stretch, and durability</strong>. Its streamlined cut, comfort, and freedom of movement allow you to forget you&#x27;re ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102501",
+      "confidence": 95,
+      "reasoning": "Title search: Brave search: score=85",
+      "title": "Men's Crista 3L Bib Ski Pant \u2013 blackcrows",
+      "snippet": "Bibs were <strong>originally designed as workwear to be robust, practical, and comfortable</strong>. We&#x27;ve added extreme protection and breathability, thanks to the 3L Toray Dermizax 20K / 10K membrane, not to mention a touch of elegance to shine in company."
+    }
+  ],
+  "selected_url": "https://www.black-crows.com/products/102502",
+  "selected_confidence": 95,
+  "warnings": [],
+  "timestamp": "2026-03-25T23:18:30.680282"
+}
