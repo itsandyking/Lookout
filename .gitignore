@@ -8,3 +8,4 @@ build/
 .hypothesis/
 .pytest_cache/
 *.db
+.worktrees/
