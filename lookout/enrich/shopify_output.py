@@ -174,14 +174,21 @@ class ShopifyOutputBuilder:
                 if isinstance(image_src, list):
                     image_src = image_src[0] if image_src else ""
 
+                # __all__ means "apply this image to every variant"
+                option_name = "Color"
+                warning = ""
+                if option_value == "__all__":
+                    option_name = "__all__"
+                    warning = "ASSIGN_TO_ALL_VARIANTS"
+
                 self._variant_assignments.append(
                     VariantImageAssignment(
                         Handle=handle,
-                        Option_Name="Color",  # Assuming color is the variant option
-                        Option_Value=option_value,
+                        Option_Name=option_name,
+                        Option_Value=option_value if option_value != "__all__" else "",
                         Image_Src=image_src,
                         Confidence=merch_output.confidence,
-                        Warning="",
+                        Warning=warning,
                     )
                 )
 

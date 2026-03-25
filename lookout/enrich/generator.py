@@ -176,7 +176,9 @@ class Generator:
 
         # Generate variant images if needed
         if input_row.needs_variant_images:
-            variant_map, variant_warnings = await self._assign_variant_images(facts)
+            variant_map, variant_warnings = await self._assign_variant_images(
+                facts, selected_images=output.images or None
+            )
             output.variant_image_map = variant_map
             warnings.extend(variant_warnings)
 
@@ -365,15 +367,18 @@ class Generator:
     async def _assign_variant_images(
         self,
         facts: ExtractedFacts,
+        selected_images: list[OutputImage] | None = None,
     ) -> tuple[dict[str, str | list[str]], list[str]]:
         """
         Assign images to variants using tiered approach.
 
-        Tier 0: Always works - just use product gallery images
-        Tier 1: Only if explicit color->image mapping exists
+        Tier 0: Assign hero image to ALL variants (size-only, single-color)
+        Tier 1: Use explicit color->image mappings from HTML/JS extraction
+        Tier 2: LLM-assisted color->image matching
 
         Args:
             facts: Extracted product facts.
+            selected_images: Already-selected output images (for Tier 0).
 
         Returns:
             Tuple of (variant_image_map, warnings)
@@ -383,10 +388,9 @@ class Generator:
 
         # Check if we have variant image candidates from extraction
         if facts.variant_image_candidates:
-            # Tier 1: Use explicit mappings
+            # Tier 1: Use explicit color->image mappings from HTML
             for color, image_urls in facts.variant_image_candidates.items():
                 if image_urls:
-                    # Use first image as hero
                     variant_map[color] = image_urls[0]
 
             if variant_map:
@@ -400,13 +404,8 @@ class Generator:
                 color_variant = variant
                 break
 
-        if not color_variant:
-            # No color variants, nothing to assign
-            warnings.append("NO_COLOR_VARIANTS_FOUND")
-            return variant_map, warnings
-
-        # Try LLM-assisted matching if client available
-        if self.llm_client and facts.images:
+        # Tier 2: LLM-assisted color matching (only if color variants exist)
+        if color_variant and self.llm_client and facts.images:
             try:
                 images_for_llm = [
                     {"url": img.url, "alt_text": img.alt_text} for img in facts.images[:20]
@@ -419,16 +418,32 @@ class Generator:
 
                 if llm_mapping:
                     variant_map = llm_mapping
-                    logger.info(f"LLM variant images assigned: {len(variant_map)} colors")
+                    logger.info(f"Tier 2 (LLM) variant images assigned: {len(variant_map)} colors")
                     return variant_map, warnings
 
             except Exception as e:
                 logger.warning(f"LLM variant image selection failed: {e}")
                 warnings.append(f"LLM_VARIANT_SELECTION_ERROR: {e!s}")
 
-        # Tier 0 fallback: No variant-specific images
-        warnings.append("VARIANT_IMAGE_NOT_ASSIGNED")
-        logger.info("Tier 0: No variant-specific image assignments")
+        # Tier 0: Assign hero image to all variants
+        # Works for: single-color products, size-only variants, or when
+        # color matching fails. Every variant gets the first product image.
+        hero_url = None
+        if selected_images:
+            hero_url = selected_images[0].src
+        elif facts.images:
+            hero_url = facts.images[0].url
+
+        if hero_url:
+            # Use "__all__" as a special key meaning "apply to every variant"
+            variant_map["__all__"] = hero_url
+            if not color_variant:
+                logger.info("Tier 0: Hero image assigned to all variants (no color options)")
+            else:
+                logger.info("Tier 0: Hero image assigned to all variants (color matching failed)")
+                warnings.append("COLOR_MATCHING_FAILED_USING_HERO")
+        else:
+            warnings.append("NO_IMAGES_FOR_VARIANT_ASSIGNMENT")
 
         return variant_map, warnings
 
