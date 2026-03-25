@@ -1,16 +1,14 @@
-You are writing a product description for The Mountain Air, an independent outdoor gear shop in San Luis Obispo, California. Write like a knowledgeable shop employee — someone who knows the gear, has handled it, and can explain why it matters to the customer.
+You are formatting a product description for a Shopify store. Your job is to organize the vendor's own product information into clean HTML — not to write original copy.
 
 ## RULES
 
-1. **Only use the provided facts.** Don't invent specs, features, or claims. If the facts don't say it, don't write it.
+1. **Use the vendor's own words.** Pull directly from the description blocks, feature bullets, and specs provided. Rephrase only for formatting (e.g., turning a paragraph into bullets), not for style.
 
-2. **Write like a person, not a brochure.** Vary sentence length. Start some sentences with the feature, not the product name. Use "you" and "your" naturally. Skip filler words ("boasts", "delivers", "ensures", "utilize").
+2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler.
 
-3. **Be specific, not vague.** "60g PrimaLoft Gold insulation" is better than "premium synthetic insulation." Use the actual numbers, materials, and tech names from the facts.
+3. **Don't remove important details.** Keep material names, tech specs, measurements, and certifications exactly as the vendor states them.
 
-4. **Skip the obvious.** Don't say "this jacket is a jacket" or "designed for outdoor use." Get to what makes it worth knowing about.
-
-5. **Don't mention** shipping, returns, pricing, warranties, or the store name.
+4. **Clean up, don't rewrite.** Fix obvious formatting issues (all caps, broken sentences, duplicate content), but preserve the vendor's terminology and phrasing.
 
 ## PRODUCT FACTS
 
@@ -23,28 +21,18 @@ Vendor: {vendor}
 
 Generate valid HTML. Structure:
 
-1. **Opening** (2-3 sentences): What is it, what's it for, what's notable about it. Get to the point fast.
+1. **Description** (1-3 sentences): Pull the most informative sentence(s) from the description blocks. Keep the vendor's wording.
 
-2. **Features** (if available): `<h3>Features</h3>` with `<ul>`. Keep bullets tight — one thing per bullet, 12 words max. Pull from the facts, don't rephrase into marketing language.
+2. **Features** (if available): `<h3>Features</h3>` with `<ul>`. Use the vendor's feature bullets directly. Clean up formatting, deduplicate, but don't rephrase.
 
-3. **Specs** (if available): `<h3>Specifications</h3>` with an HTML `<table>`. Only include specs that a shopper would actually care about.
-
-## TONE EXAMPLES
-
-Good: "The 60g PrimaLoft body and 40g sleeves keep the weight down without sacrificing warmth on cold belays."
-Bad: "This innovative jacket delivers exceptional warmth through its premium PrimaLoft insulation technology."
-
-Good: "Fits trim through the body with room for a base layer underneath."
-Bad: "Designed with an athletic fit that allows for comfortable layering."
-
-Good: "Pertex Quantum GL shell — light, wind-resistant, and surprisingly tough for its weight."
-Bad: "Features a durable and lightweight Pertex Quantum GL shell that provides excellent wind protection."
+3. **Specs** (if available): `<h3>Specifications</h3>` with an HTML `<table>`. Use the vendor's spec labels and values exactly.
 
 ## OUTPUT
 
-- If you don't have enough facts for a section, skip it.
-- Minimum output: one paragraph.
+- If a section has no data, skip it.
+- Minimum output: one paragraph from the description blocks.
 - Use semantic HTML (p, h3, ul, li, table).
 - Output only HTML — no commentary, no markdown code blocks.
+- Do not include store name, pricing, shipping, or return info.
 
 Generate the HTML body now:

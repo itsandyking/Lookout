@@ -320,13 +320,11 @@ class LLMClient:
         )
 
         system = (
-            "You write product descriptions for an independent outdoor gear shop. "
-            "Write like a knowledgeable shop employee — direct, specific, human. "
-            "ONLY use information from the provided facts. Never invent specs or claims. "
-            "Vary your sentence structure. Avoid AI-writing patterns: don't start "
-            "every sentence the same way, don't use filler words like 'boasts', "
-            "'delivers', 'ensures', 'innovative', 'exceptional', 'utilize'. "
-            "Be specific (use real numbers, materials, tech names) not vague."
+            "You are a product data formatter. Your job is to organize vendor-provided "
+            "product information into clean Shopify HTML. Use the vendor's own words "
+            "and terminology — do not rewrite, embellish, or add original copy. "
+            "Pull directly from the provided facts. Clean up formatting issues "
+            "but preserve the vendor's phrasing and technical details exactly."
         )
 
         return await self.provider.complete(prompt, system)
