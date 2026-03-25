@@ -149,10 +149,25 @@ class ContentExtractor:
                 facts.images.append(img)
                 seen_urls.add(img.url)
 
-        # Extract variant/color information
-        variants, variant_images = self._extract_variants(soup, base_url)
-        facts.variants = variants
-        facts.variant_image_candidates = variant_images
+        # Extract variant/color information from HTML, merge with JSON-LD
+        html_variants, html_variant_images = self._extract_variants(soup, base_url)
+
+        # Merge variants: keep JSON-LD variants, add any new from HTML
+        existing_option_names = {v.option_name.lower() for v in facts.variants}
+        for v in html_variants:
+            if v.option_name.lower() not in existing_option_names:
+                facts.variants.append(v)
+
+        # Merge variant image candidates: HTML overrides JSON-LD for same color
+        for color, urls in html_variant_images.items():
+            if color not in facts.variant_image_candidates:
+                facts.variant_image_candidates[color] = urls
+            else:
+                # Add new URLs not already present
+                existing = set(facts.variant_image_candidates[color])
+                for url in urls:
+                    if url not in existing:
+                        facts.variant_image_candidates[color].append(url)
 
         # Set canonical URL
         facts.canonical_url = self._extract_canonical_url(soup, base_url)
@@ -523,10 +538,94 @@ class ContentExtractor:
                     )
                 )
 
+        # Extract variants from JSON-LD offers
+        offers = product.get("offers", [])
+        if isinstance(offers, dict):
+            offers = [offers]
+        if isinstance(offers, list) and len(offers) > 1:
+            colors, sizes, color_images = self._parse_jsonld_offers(offers, base_url)
+            if colors:
+                facts.variants.append(VariantOption(option_name="Color", values=colors))
+            if sizes:
+                facts.variants.append(VariantOption(option_name="Size", values=sizes))
+            if color_images:
+                facts.variant_image_candidates = color_images
+
         # Store raw JSON-LD
         facts.json_ld_data = product
 
         return facts
+
+    def _parse_jsonld_offers(
+        self,
+        offers: list[dict[str, Any]],
+        base_url: str,
+    ) -> tuple[list[str], list[str], dict[str, list[str]]]:
+        """Parse variant colors, sizes, and color→image mappings from JSON-LD offers.
+
+        Offer names typically follow patterns like:
+        - "Product Name - L / black"
+        - "Product Name - black / L"
+        - "Product Name - black"
+
+        Returns:
+            Tuple of (unique_colors, unique_sizes, color_to_images)
+        """
+        colors: list[str] = []
+        sizes: list[str] = []
+        color_images: dict[str, list[str]] = {}
+        seen_colors: set[str] = set()
+        seen_sizes: set[str] = set()
+
+        # Common size patterns
+        size_pattern = re.compile(
+            r"^(XXS|XS|S|M|L|XL|XXL|2XL|3XL|4XL|5XL|"
+            r"\d{1,3}(\.\d)?|"  # numeric (26, 32.5, 171)
+            r"\d+/\d+|"  # waist/inseam (32/32)
+            r"One Size)$",
+            re.IGNORECASE,
+        )
+
+        for offer in offers:
+            name = offer.get("name", "")
+            if not name:
+                continue
+
+            # Extract the variant part after " - " separator
+            parts = name.split(" - ", 1)
+            if len(parts) < 2:
+                continue
+            variant_part = parts[1].strip()
+
+            # Split on " / " to get option values
+            options = [o.strip() for o in variant_part.split("/")]
+
+            offer_color = None
+            for opt in options:
+                if not opt:
+                    continue
+                if size_pattern.match(opt):
+                    if opt not in seen_sizes:
+                        seen_sizes.add(opt)
+                        sizes.append(opt)
+                else:
+                    # Treat as color
+                    if opt not in seen_colors:
+                        seen_colors.add(opt)
+                        colors.append(opt)
+                    offer_color = opt
+
+            # Map color to offer image
+            if offer_color:
+                offer_image = offer.get("image")
+                if isinstance(offer_image, str) and offer_image:
+                    img_url = urljoin(base_url, offer_image)
+                    if offer_color not in color_images:
+                        color_images[offer_color] = []
+                    if img_url not in color_images[offer_color]:
+                        color_images[offer_color].append(img_url)
+
+        return colors, sizes, color_images
 
     def _should_skip_element(self, elem: Tag) -> bool:
         """Check if an element should be skipped during extraction."""
