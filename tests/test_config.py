@@ -1,6 +1,5 @@
 """Tests for vendor configuration loading."""
 
-import tempfile
 from pathlib import Path
 
 import pytest

@@ -1,5 +1,5 @@
 """Tests for LookoutStore — mocks TVR's ShopifyStore."""
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

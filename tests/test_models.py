@@ -1,6 +1,5 @@
 """Tests for data models."""
 
-import pytest
 
 from lookout.enrich.models import InputRow, ProcessingStatus
 

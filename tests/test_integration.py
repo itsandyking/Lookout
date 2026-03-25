@@ -1,7 +1,6 @@
 """Integration test: audit finds gaps, enrich pipeline processes them."""
 import csv
 import io
-
 from unittest.mock import MagicMock
 
 from lookout.audit.auditor import ContentAuditor

@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 
 from lookout.enrich.io import parse_input_csv
-from lookout.output.enrich_export import (
-    merch_output_to_shopify_rows,
-    SHOPIFY_CSV_COLUMNS,
-)
 from lookout.enrich.models import MerchOutput, OutputImage
+from lookout.output.enrich_export import (
+    SHOPIFY_CSV_COLUMNS,
+    merch_output_to_shopify_rows,
+)
 
 
 @pytest.fixture

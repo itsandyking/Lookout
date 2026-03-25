@@ -6,11 +6,8 @@ import csv
 import io
 from unittest.mock import MagicMock
 
-import pytest
-
-from lookout.audit.models import AuditResult, ProductScore
 from lookout.audit.auditor import ContentAuditor
-
+from lookout.audit.models import AuditResult, ProductScore
 
 # ---------------------------------------------------------------------------
 # ProductScore tests

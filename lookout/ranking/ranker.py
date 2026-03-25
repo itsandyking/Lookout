@@ -6,7 +6,7 @@ Scores and ranks products for merchandising within Shopify collections.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from lookout.taxonomy.mappings import (
     LOW_INVENTORY_THRESHOLD,

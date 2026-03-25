@@ -1,9 +1,9 @@
-from unittest.mock import MagicMock
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import pytest
 
-from lookout.ranking.ranker import CollectionRanker, RankedProduct, RankingResult
+from lookout.ranking.ranker import CollectionRanker, RankingResult
 
 
 @pytest.fixture

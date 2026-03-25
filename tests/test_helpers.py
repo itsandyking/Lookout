@@ -1,6 +1,5 @@
 """Tests for helper utilities."""
 
-import pytest
 
 from lookout.enrich.utils.helpers import (
     handle_to_query,

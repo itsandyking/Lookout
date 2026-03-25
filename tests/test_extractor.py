@@ -36,7 +36,7 @@ class TestContentExtractor:
         # Should have spec tables
         assert len(source_text.spec_tables) > 0
         specs = source_text.spec_tables[0]
-        assert "Weight" in specs or any("weight" in k.lower() for k in specs.keys())
+        assert "Weight" in specs or any("weight" in k.lower() for k in specs)
 
         # Should have JSON-LD
         assert len(source_text.json_ld_products) > 0
@@ -47,7 +47,6 @@ class TestContentExtractor:
 
     def test_extract_facts(self, sample_html: str):
         """Test extracting structured facts from HTML."""
-        extractor = ContentExtractor()
         _, facts = extract_content(
             sample_html, "https://www.patagonia.com/product/test"
         )
@@ -84,7 +83,6 @@ class TestContentExtractor:
 
     def test_extract_images(self, sample_html: str):
         """Test image extraction including lazy-loaded."""
-        extractor = ContentExtractor()
         _, facts = extract_content(
             sample_html, "https://www.patagonia.com/product/test"
         )
@@ -116,7 +114,6 @@ class TestContentExtractor:
 
     def test_extract_canonical_url(self, sample_html: str):
         """Test canonical URL extraction."""
-        extractor = ContentExtractor()
         _, facts = extract_content(
             sample_html, "https://www.patagonia.com/product/test"
         )
@@ -131,13 +128,12 @@ class TestContentExtractor:
         )
 
         # Should not include navigation links
-        all_text = " ".join(source_text.visible_text_blocks)
         # Home/Shop are in nav, should be filtered
         # (This is a soft test since nav text might still appear in other contexts)
+        assert isinstance(source_text.visible_text_blocks, list)
 
     def test_empty_html(self):
         """Test handling empty HTML."""
-        extractor = ContentExtractor()
         source_text, facts = extract_content("", "https://example.com")
 
         assert len(source_text.visible_text_blocks) == 0
@@ -147,8 +143,7 @@ class TestContentExtractor:
     def test_malformed_html(self):
         """Test handling malformed HTML."""
         html = "<html><body><p>Unclosed tag<div>Content</body>"
-        extractor = ContentExtractor()
-        source_text, facts = extract_content(html, "https://example.com")
+        source_text, _facts = extract_content(html, "https://example.com")
 
         # Should not crash, might extract some text
         assert isinstance(source_text.visible_text_blocks, list)
