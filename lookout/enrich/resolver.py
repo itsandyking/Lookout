@@ -30,8 +30,9 @@ from .utils.helpers import handle_to_query, is_product_url
 
 logger = logging.getLogger(__name__)
 
-# DuckDuckGo HTML search URL (no API key required)
+# Search endpoints
 DUCKDUCKGO_HTML_URL = "https://html.duckduckgo.com/html/"
+BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search"
 
 
 class URLResolver:
@@ -270,33 +271,99 @@ class URLResolver:
         domain: str,
         vendor_config: VendorConfig,
     ) -> list[URLCandidate]:
-        """
-        Search for candidate URLs using DuckDuckGo.
-
-        Args:
-            query: The search query.
-            domain: The vendor domain.
-            vendor_config: Vendor configuration.
-
-        Returns:
-            List of URL candidates with confidence scores.
-        """
-        # Add polite delay
+        """Search for candidate URLs. Tries Brave Search first, falls back to DuckDuckGo."""
         await asyncio.sleep(random.uniform(self._min_delay, self._max_delay))
 
-        candidates: list[URLCandidate] = []
+        # Try Brave Search first (if API key available)
+        candidates = await self._search_brave(query, domain, vendor_config)
+        if candidates:
+            return candidates
 
+        # Fall back to DuckDuckGo
+        candidates = await self._search_duckduckgo(query, domain, vendor_config)
+        return candidates
+
+    async def _search_brave(
+        self,
+        query: str,
+        domain: str,
+        vendor_config: VendorConfig,
+    ) -> list[URLCandidate]:
+        """Search using Brave Search API."""
+        import os
+
+        api_key = os.environ.get("BRAVE_SEARCH_API_KEY")
+        if not api_key:
+            return []
+
+        candidates: list[URLCandidate] = []
         try:
-            # Use sync httpx for DuckDuckGo — their async endpoint returns
-            # a 202 JS challenge page, but sync requests get real results.
-            html = await asyncio.to_thread(self._sync_ddg_search, query)
-            if html:
-                candidates = self._parse_duckduckgo_results(html, domain, vendor_config)
+            response = await self._client.get(
+                BRAVE_SEARCH_URL,
+                params={"q": query, "count": 10},
+                headers={
+                    "Accept": "application/json",
+                    "Accept-Encoding": "gzip",
+                    "X-Subscription-Token": api_key,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            for result in data.get("web", {}).get("results", []):
+                url = result.get("url", "")
+                title = result.get("title", "")
+                snippet = result.get("description", "")
+
+                if not url:
+                    continue
+
+                # Filter to target domain
+                parsed = urlparse(url)
+                result_domain = parsed.netloc.lower().replace("www.", "")
+                if domain.lower() not in result_domain and result_domain not in domain.lower():
+                    continue
+
+                # Filter blocked paths and non-product URLs
+                if not is_product_url(
+                    url, vendor_config.blocked_paths, vendor_config.product_url_patterns
+                ):
+                    continue
+
+                confidence = self._score_candidate(url, title, snippet, domain)
+                candidates.append(
+                    URLCandidate(
+                        url=url,
+                        confidence=confidence,
+                        title=title,
+                        snippet=snippet,
+                        reasoning=f"Brave search: score={confidence}",
+                    )
+                )
+
+            candidates.sort(key=lambda c: c.confidence, reverse=True)
+            if candidates:
+                logger.info(f"Brave search found {len(candidates)} candidates")
+            return candidates[:5]
 
         except Exception as e:
-            logger.warning(f"Search failed for query '{query}': {e}")
+            logger.warning(f"Brave search failed: {e}")
+            return []
 
-        return candidates
+    async def _search_duckduckgo(
+        self,
+        query: str,
+        domain: str,
+        vendor_config: VendorConfig,
+    ) -> list[URLCandidate]:
+        """Search using DuckDuckGo HTML endpoint (fallback)."""
+        try:
+            html = await asyncio.to_thread(self._sync_ddg_search, query)
+            if html:
+                return self._parse_duckduckgo_results(html, domain, vendor_config)
+        except Exception as e:
+            logger.warning(f"DuckDuckGo search failed: {e}")
+        return []
 
     async def _probe_direct_urls(
         self,
