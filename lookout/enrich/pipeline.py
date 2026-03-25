@@ -298,6 +298,7 @@ class ProductProcessor:
                 hints=input_row.gaps or input_row.suggestions or "",
                 title=input_row.title,
                 barcode=input_row.barcode,
+                sku=input_row.sku,
             )
 
             # Save resolver output

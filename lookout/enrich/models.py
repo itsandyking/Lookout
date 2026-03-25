@@ -49,6 +49,7 @@ class InputRow(BaseModel):
     # Optional fields for better search matching
     title: str | None = Field(None, alias="Title")
     barcode: str | None = Field(None, alias="Barcode")
+    sku: str | None = Field(None, alias="SKU")
 
     model_config = {"populate_by_name": True}
 
