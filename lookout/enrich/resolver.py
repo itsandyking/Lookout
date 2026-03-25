@@ -156,6 +156,17 @@ class URLResolver:
         except Exception as e:
             logger.warning(f"Handle search failed for {handle}: {e}")
 
+        # Strategy 4: Direct URL probe (fallback when search fails)
+        if not all_candidates:
+            queries_used.append("direct_probe")
+            try:
+                probe_candidates = await self._probe_direct_urls(
+                    handle, vendor_config
+                )
+                all_candidates.extend(probe_candidates)
+            except Exception as e:
+                logger.warning(f"Direct URL probe failed for {handle}: {e}")
+
         # Deduplicate candidates by URL, keeping highest confidence
         seen_urls: dict[str, URLCandidate] = {}
         for candidate in all_candidates:
@@ -276,22 +287,94 @@ class URLResolver:
         candidates: list[URLCandidate] = []
 
         try:
-            # Use DuckDuckGo HTML search
-            response = await self._client.post(
-                DUCKDUCKGO_HTML_URL,
-                data={"q": query, "b": ""},
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-            response.raise_for_status()
-
-            # Parse results from HTML
-            candidates = self._parse_duckduckgo_results(response.text, domain, vendor_config)
+            # Use sync httpx for DuckDuckGo — their async endpoint returns
+            # a 202 JS challenge page, but sync requests get real results.
+            html = await asyncio.to_thread(self._sync_ddg_search, query)
+            if html:
+                candidates = self._parse_duckduckgo_results(html, domain, vendor_config)
 
         except Exception as e:
             logger.warning(f"Search failed for query '{query}': {e}")
-            # Return empty candidates on failure
 
         return candidates
+
+    async def _probe_direct_urls(
+        self,
+        handle: str,
+        vendor_config: VendorConfig,
+    ) -> list[URLCandidate]:
+        """Construct and probe candidate URLs directly on the vendor domain.
+
+        Tries common URL patterns like:
+        - {domain}/product/{handle}
+        - {domain}/products/{handle}
+        - {domain}/p/{handle}
+        - {domain}/shop/{handle}
+
+        Only returns candidates that respond with HTTP 200.
+        """
+        domain = vendor_config.domain
+        candidates: list[URLCandidate] = []
+
+        # Build candidate URLs from product_url_patterns
+        patterns = vendor_config.product_url_patterns or ["/product/", "/products/"]
+        urls_to_try: list[str] = []
+
+        for pattern in patterns:
+            # Try handle as-is and with .html suffix
+            base = f"https://www.{domain}{pattern}{handle}"
+            urls_to_try.append(base)
+            if not base.endswith(".html"):
+                urls_to_try.append(f"{base}.html")
+
+        for url in urls_to_try:
+            try:
+                await asyncio.sleep(random.uniform(0.3, 0.8))
+                response = await self._client.head(url, follow_redirects=True)
+                if response.status_code == 200:
+                    final_url = str(response.url)
+                    candidates.append(
+                        URLCandidate(
+                            url=final_url,
+                            confidence=70,
+                            title="",
+                            snippet="",
+                            reasoning=f"Direct URL probe: {url} → {response.status_code}",
+                        )
+                    )
+                    logger.info(f"Direct probe hit: {final_url}")
+                    break  # Take the first hit
+            except Exception as e:
+                logger.debug(f"Direct probe failed for {url}: {e}")
+                continue
+
+        return candidates
+
+    @staticmethod
+    def _sync_ddg_search(query: str) -> str | None:
+        """Run DuckDuckGo HTML search synchronously (avoids 202 JS challenge)."""
+        try:
+            with httpx.Client(
+                timeout=30.0,
+                follow_redirects=True,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    ),
+                },
+            ) as client:
+                response = client.post(
+                    DUCKDUCKGO_HTML_URL,
+                    data={"q": query, "b": ""},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+                response.raise_for_status()
+                return response.text
+        except Exception as e:
+            logger.warning(f"DuckDuckGo sync search failed: {e}")
+            return None
 
     def _parse_duckduckgo_results(
         self,
