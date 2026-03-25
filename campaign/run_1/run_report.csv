@@ -1,4 +1,0 @@
-handle,vendor,status,match_confidence,warnings,output_rows_count,error_message,processing_time_ms
-faction-x-vuarnet-artic-jacket-3l,Faction,FAILED,95,,0,'NoneType' object has no attribute 'new_context',5658
-prodigy-3,Faction,UPDATED,95,IMAGE_SKIPPED: unsupported format: .svg — https://factionskis.com/cdn/shop/files/Terrain-type-Freeride.svg?v=1745586845&wi; IMAGE_SKIPPED: unsupported format: .svg — https://factionskis.com/cdn/shop/files/Terrain-type-all-mountain.svg?v=174558684; IMAGE_SKIPPED: unsupported format: .svg — https://factionskis.com/cdn/shop/files/Terrain-type-powder.svg?v=1745586845&widt,10,,29530
-102502,Black Crows,UPDATED,95,"IMAGE_SKIPPED: unsupported format: .svg — https://cdn.shopify.com/s/files/1/0892/1071/6439/files/paypal-label.svg?v=177331; TRUNCATED_IMAGES: 20 importable, limited to 10; IMAGE_INVALID: too small: 188 bytes — https://www.black-crows.com/cdn/shop/files/colorswatch_olive",9,,32942
