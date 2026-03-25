@@ -1786,3 +1786,31 @@ def apply_mapping(conn, mapping_path, replace_tags=False) -> dict:
 
     conn.commit()
     return {"updates_queued": updates_queued}
+
+
+# ---------------------------------------------------------------------------
+# Merchandising Configuration
+# ---------------------------------------------------------------------------
+
+EXCLUDED_VENDORS = (
+    "The Switchback",
+    "The Mountain Air",
+    "The Mountain Air Back Shop",
+    "The Mountain Air Deposits",
+)
+
+MERCH_WEIGHTS = {
+    "sales_velocity": 0.35,
+    "margin": 0.20,
+    "inventory_health": 0.20,
+    "new_arrival_boost": 0.15,
+    "low_inventory_penalty": 0.10,
+}
+
+NEW_ARRIVAL_DAYS = 30
+LOW_INVENTORY_THRESHOLD = 3
+
+LOCATIONS = {
+    "The Mountain Air": {"id": 44797132845, "active": True},
+    "The Switchback": {"id": 71628587255, "active": True},
+}
