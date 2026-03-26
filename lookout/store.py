@@ -31,7 +31,11 @@ class LookoutStore:
         else:
             logger.warning(f"Database not found at {db_path}, using in-memory")
             self._store = ShopifyStore()
-        self._vendor_store = VendorStore()
+        vendor_db_path = os.environ.get("LOOKOUT_VENDOR_DB_PATH")
+        if vendor_db_path:
+            self._vendor_store = VendorStore(vendor_db_path)
+        else:
+            self._vendor_store = VendorStore()
 
     # --- Product data ---
 
@@ -105,17 +109,29 @@ class LookoutStore:
 
     def find_catalog_image(self, barcode: str) -> str | None:
         """Find a catalog image URL by barcode."""
-        return self._vendor_store.find_image_by_upc(barcode)
+        try:
+            return self._vendor_store.find_image_by_upc(barcode)
+        except Exception as e:
+            logger.warning(f"Catalog image lookup failed for {barcode}: {e}")
+            return None
 
     def find_catalog_image_by_style(
         self, vendor: str, style: str, color: str
     ) -> str | None:
         """Find a catalog image URL by vendor style code and color."""
-        return self._vendor_store.find_image_by_style_color(vendor, style, color)
+        try:
+            return self._vendor_store.find_image_by_style_color(vendor, style, color)
+        except Exception as e:
+            logger.warning(f"Catalog style lookup failed: {e}")
+            return None
 
     def find_catalog_description(self, product_id: int) -> str | None:
         """Find a catalog description for a product."""
-        return self._vendor_store.find_description_by_product(product_id)
+        try:
+            return self._vendor_store.find_description_by_product(product_id)
+        except Exception as e:
+            logger.warning(f"Catalog description lookup failed: {e}")
+            return None
 
     # --- Collections ---
 
