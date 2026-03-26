@@ -49,11 +49,30 @@ class LookoutStore:
         vendor: str | None = None,
         product_type: str | None = None,
         status: str = "active",
+        limit: int = 0,
     ) -> list[dict]:
-        products = self._store.list_products(
-            vendor=vendor, product_type=product_type, status=status
-        )
-        return [self._product_to_dict(p) for p in products]
+        """List products. limit=0 means all products (no limit)."""
+        if limit <= 0:
+            # Paginate to get all products
+            all_products = []
+            page_size = 1000
+            offset = 0
+            while True:
+                batch = self._store.list_products(
+                    vendor=vendor, product_type=product_type,
+                    status=status, limit=page_size, offset=offset,
+                )
+                all_products.extend(batch)
+                if len(batch) < page_size:
+                    break
+                offset += page_size
+            return [self._product_to_dict(p) for p in all_products]
+        else:
+            products = self._store.list_products(
+                vendor=vendor, product_type=product_type,
+                status=status, limit=limit,
+            )
+            return [self._product_to_dict(p) for p in products]
 
     def get_product(self, handle: str) -> dict | None:
         results = self._store.search_products(handle, limit=10)
