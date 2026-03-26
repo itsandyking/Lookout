@@ -47,6 +47,37 @@ class ContentAuditor:
         self.online_signals = online_signals or {}
         self.gmc_signals = gmc_signals or {}
 
+        # Build product_id → aggregated GMC signals lookup.
+        # GMC offer_ids are "shopify_us_{product_id}_{variant_id}" — aggregate
+        # clicks/impressions across variants to the product level.
+        self._gmc_by_product: dict[int, GMCSignals] = {}
+        for offer_id, sig in self.gmc_signals.items():
+            parts = offer_id.split("_")
+            if len(parts) >= 4 and parts[0] == "shopify":
+                try:
+                    pid = int(parts[2])
+                except (ValueError, IndexError):
+                    continue
+                if pid in self._gmc_by_product:
+                    existing = self._gmc_by_product[pid]
+                    existing.clicks += sig.clicks
+                    existing.impressions += sig.impressions
+                    if sig.disapproved:
+                        existing.disapproved = True
+                    existing.issues.extend(sig.issues)
+                else:
+                    self._gmc_by_product[pid] = GMCSignals(
+                        offer_id=offer_id,
+                        title=sig.title,
+                        clicks=sig.clicks,
+                        impressions=sig.impressions,
+                        disapproved=sig.disapproved,
+                        issues=list(sig.issues),
+                    )
+        # Recalculate CTR after aggregation
+        for sig in self._gmc_by_product.values():
+            sig.ctr = sig.clicks / sig.impressions if sig.impressions > 0 else 0.0
+
     def audit(self, vendor: str | None = None) -> AuditResult:
         """Run content audit on all active products (or filtered by vendor)."""
         products = self.store.list_products(vendor=vendor, status="active")
@@ -68,10 +99,8 @@ class ContentAuditor:
                 score.opportunity_gap = sig.opportunity_gap
                 needs_recalc = True
 
-            # Enrich with GMC signals if available (matched by SKU/barcode)
-            sku = score.sku
-            barcode = score.barcode
-            gmc_sig = self.gmc_signals.get(sku) or self.gmc_signals.get(barcode)
+            # Enrich with GMC signals if available (matched by product_id)
+            gmc_sig = self._gmc_by_product.get(score.product_id)
             if gmc_sig:
                 score.gmc_clicks = gmc_sig.clicks
                 score.gmc_impressions = gmc_sig.impressions

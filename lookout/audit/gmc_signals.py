@@ -100,8 +100,19 @@ def _get_credentials():
     return creds
 
 
+DEFAULT_MERCHANT_ID = os.environ.get("GMC_MERCHANT_ID", "195688505")
+
+
 def _get_merchant_id(service) -> str:
-    """Auto-detect the Merchant Center account ID."""
+    """Get the Merchant Center account ID.
+
+    Uses GMC_MERCHANT_ID env var or hardcoded default. Falls back to
+    auto-detection via API if needed.
+    """
+    if DEFAULT_MERCHANT_ID:
+        logger.info("Using Merchant Center account: %s (from config)", DEFAULT_MERCHANT_ID)
+        return DEFAULT_MERCHANT_ID
+
     result = service.accounts().list(pageSize=1).execute()
     accounts = result.get("accounts", [])
     if not accounts:
@@ -109,7 +120,7 @@ def _get_merchant_id(service) -> str:
     account_name = accounts[0].get("name", "")
     # name format: "accounts/123456789"
     merchant_id = account_name.split("/")[-1]
-    logger.info("Using Merchant Center account: %s", merchant_id)
+    logger.info("Using Merchant Center account: %s (auto-detected)", merchant_id)
     return merchant_id
 
 
@@ -133,7 +144,14 @@ def fetch_gmc_performance(
 
     parent = f"accounts/{merchant_id}"
 
-    # Query product performance
+    # Map lookback to nearest GMC date literal
+    if lookback_days <= 7:
+        date_range = "LAST_7_DAYS"
+    elif lookback_days <= 14:
+        date_range = "LAST_14_DAYS"
+    else:
+        date_range = "LAST_30_DAYS"
+
     query = (
         "SELECT "
         "product_performance_view.offer_id, "
@@ -142,8 +160,8 @@ def fetch_gmc_performance(
         "product_performance_view.impressions, "
         "product_performance_view.click_through_rate, "
         "product_performance_view.conversions "
-        f"FROM product_performance_view "
-        f"WHERE date DURING LAST_{lookback_days}_DAYS"
+        "FROM product_performance_view "
+        f"WHERE date DURING {date_range}"
     )
 
     signals: dict[str, GMCSignals] = {}
@@ -214,6 +232,7 @@ def fetch_gmc_product_status(
 
     query = (
         "SELECT "
+        "product_view.id, "
         "product_view.offer_id, "
         "product_view.title, "
         "product_view.aggregated_reporting_context_status, "
