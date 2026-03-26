@@ -25,6 +25,12 @@ _NON_IMPORTABLE_EXTENSIONS = {".svg", ".ico"}
 # Query param patterns that suggest expiring/signed URLs
 _EXPIRING_URL_PARAMS = {"token", "expires", "signature", "sig", "x-amz-credential"}
 
+# Filename substrings that indicate badge / tech / swatch images (not hero-worthy)
+_BADGE_FILENAME_PATTERNS = {
+    "chromapop", "polarized", "technology", "feature", "tech-",
+    "certification", "warranty", "award", "colorswatch", "terrain-type",
+}
+
 
 def _check_image_importable(url: str) -> str | None:
     """Check if an image URL is likely importable into Shopify.
@@ -336,15 +342,33 @@ class Generator:
             else:
                 importable.append(img)
 
-        # Sort by source hint (prefer JSON-LD, then img_tag)
-        def sort_key(img: ImageInfo) -> int:
-            if img.source_hint == "json_ld":
-                return 0
-            if img.source_hint == "gallery":
-                return 1
-            return 2
+        # Sort: demote badge images, prefer name-matching URLs, then source hint
+        name_words = {
+            w.lower()
+            for w in (facts.product_name or "").split()
+            if len(w) > 2
+        }
+
+        def _is_badge(img: ImageInfo) -> bool:
+            filename = img.url.rsplit("/", 1)[-1].split("?")[0].lower()
+            return any(pat in filename for pat in _BADGE_FILENAME_PATTERNS)
+
+        def sort_key(img: ImageInfo) -> tuple[int, int, int]:
+            badge = 1 if _is_badge(img) else 0
+            # Count how many product-name words appear in the URL
+            url_lower = img.url.lower()
+            name_hits = -sum(1 for w in name_words if w in url_lower)
+            source = 0 if img.source_hint == "json_ld" else (1 if img.source_hint == "gallery" else 2)
+            return (badge, name_hits, source)
 
         importable.sort(key=sort_key)
+
+        # If position 1 is still a badge, swap with first non-badge
+        if importable and _is_badge(importable[0]):
+            for i, img in enumerate(importable[1:], 1):
+                if not _is_badge(img):
+                    importable[0], importable[i] = importable[i], importable[0]
+                    break
 
         # Create output images with positions
         for position, img in enumerate(importable[:10], start=1):
