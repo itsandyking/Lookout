@@ -74,6 +74,7 @@ class WebScraper:
         self._max_delay = max_delay_ms / 1000
         self._browser = None
         self._playwright = None
+        self._browser_lock = asyncio.Lock()
 
     async def __aenter__(self) -> "WebScraper":
         if self._client is None:
@@ -186,6 +187,15 @@ class WebScraper:
         html_lower = html.lower()
         return any(marker in html_lower for marker in markers)
 
+    @staticmethod
+    async def _has_meaningful_content(page: Any) -> bool:
+        """Check if page has meaningful product content even without selector match."""
+        return await page.evaluate(
+            "Boolean(document.querySelector('h1') "
+            "|| document.querySelector('script[type=\"application/ld+json\"]') "
+            "|| document.querySelector('[itemtype*=\"Product\"]'))"
+        )
+
     async def _scrape_dynamic(
         self,
         url: str,
@@ -202,22 +212,24 @@ class WebScraper:
             ScrapedPage with the rendered HTML content.
         """
         try:
-            # Lazy-load Playwright
+            # Lazy-load Playwright with lock to prevent race condition
             if self._playwright is None:
-                from playwright.async_api import async_playwright
+                async with self._browser_lock:
+                    if self._playwright is None:
+                        from playwright.async_api import async_playwright
 
-                self._playwright = await async_playwright().start()
-                self._browser = await self._playwright.chromium.launch(
-                    headless=True,
-                    args=[
-                        "--disable-blink-features=AutomationControlled",
-                        "--disable-dev-shm-usage",
-                        "--no-sandbox",
-                        "--disable-setuid-sandbox",
-                        "--disable-infobars",
-                        "--disable-extensions",
-                    ],
-                )
+                        self._playwright = await async_playwright().start()
+                        self._browser = await self._playwright.chromium.launch(
+                            headless=True,
+                            args=[
+                                "--disable-blink-features=AutomationControlled",
+                                "--disable-dev-shm-usage",
+                                "--no-sandbox",
+                                "--disable-setuid-sandbox",
+                                "--disable-infobars",
+                                "--disable-extensions",
+                            ],
+                        )
 
             # Create a new context and page
             context = await self._browser.new_context(
@@ -251,17 +263,35 @@ class WebScraper:
                     wait_until="domcontentloaded",
                 )
 
-                # Wait for specific selector if configured
+                # Wait for specific selector with progressive timeout
                 if config.wait_for_selector:
+                    first_timeout = 3000
                     try:
                         await page.wait_for_selector(
                             config.wait_for_selector,
-                            timeout=config.wait_timeout_ms,
+                            timeout=first_timeout,
                         )
-                    except Exception as e:
-                        logger.warning(
-                            f"Selector wait failed for {url}: {e}. Continuing with current content."
-                        )
+                    except Exception:
+                        # Selector didn't match in first attempt — check for content
+                        has_content = await self._has_meaningful_content(page)
+                        if has_content:
+                            logger.info(
+                                "Selector didn't match on %s but meaningful content found, proceeding",
+                                url,
+                            )
+                        else:
+                            # Page looks empty, retry with remaining budget
+                            remaining = max(config.wait_timeout_ms - first_timeout, 1000)
+                            try:
+                                await page.wait_for_selector(
+                                    config.wait_for_selector,
+                                    timeout=remaining,
+                                )
+                            except Exception as e:
+                                logger.warning(
+                                    f"Selector wait failed for {url}: {e}. "
+                                    "Continuing with current content."
+                                )
 
                 # Additional wait for JS rendering
                 if config.extra_wait_ms > 0:

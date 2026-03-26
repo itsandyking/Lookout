@@ -153,7 +153,7 @@ class PlaywrightConfig(BaseModel):
     """Configuration for Playwright-based scraping."""
 
     wait_for_selector: str | None = None
-    wait_timeout_ms: int = 15000
+    wait_timeout_ms: int = 5000
     extra_wait_ms: int = 0
 
 

@@ -7,7 +7,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "h1, .product-hero__title, [data-testid='product-title']"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 3000
     # Paths that should be excluded from product matching
     blocked_paths:
@@ -43,7 +43,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "#productTitle, .l-pdp"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -72,7 +72,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: ".product-detail-page, h1.product-name"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -93,7 +93,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "section.pdp, .product-main"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -127,7 +127,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "main#MainContent, product-info"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -147,7 +147,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "main.product-detail"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -166,7 +166,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "#pdp-size-finder-intro-content, main#main-content"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -187,7 +187,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "section#pdp-main-content, .product-info-container"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -205,7 +205,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "#pdp-gallery, .pdp-details"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -223,7 +223,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "section.product-overview, #product-overview"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
@@ -242,7 +242,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: ".product-data-loaded, .qa--primary-product-name"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 3000
     blocked_paths:
       - "/blog"
@@ -262,7 +262,7 @@ vendors:
     use_playwright: true
     playwright_config:
       wait_for_selector: "body.page-product, .product--medium"
-      wait_timeout_ms: 15000
+      wait_timeout_ms: 8000
       extra_wait_ms: 2000
     blocked_paths:
       - "/blog"

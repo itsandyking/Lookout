@@ -116,6 +116,6 @@ class TestVendorConfig:
 
         # Check default Playwright config
         vendor = config.vendors["TestVendor"]
-        assert vendor.playwright_config.wait_timeout_ms == 15000
+        assert vendor.playwright_config.wait_timeout_ms == 5000
         assert vendor.playwright_config.extra_wait_ms == 0
         assert vendor.playwright_config.wait_for_selector is None
