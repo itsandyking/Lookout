@@ -195,6 +195,8 @@ class PipelineConfig:
         force: bool = False,
         dry_run: bool = False,
         input_rows: list | None = None,
+        verify: bool = False,
+        only_mode: str | None = None,
     ) -> None:
         self.input_path = input_path
         self.output_dir = output_dir
@@ -206,6 +208,8 @@ class PipelineConfig:
         self.dry_run = dry_run
         # Pre-built InputRow objects (bypass CSV, carry rich variant data)
         self.input_rows = input_rows or []
+        self.verify = verify
+        self.only_mode = only_mode
 
 
 class ProductProcessor:
@@ -228,6 +232,8 @@ class ProductProcessor:
         artifacts_base: Path,
         force: bool = False,
         store: Any | None = None,
+        verify: bool = False,
+        only_mode: str | None = None,
     ) -> None:
         self.vendors_config = vendors_config
         self.http_client = http_client
@@ -235,6 +241,8 @@ class ProductProcessor:
         self.artifacts_base = artifacts_base
         self.force = force
         self.store = store  # Optional LookoutStore for catalog cross-referencing
+        self.verify = verify
+        self.only_mode = only_mode
 
         self.resolver = URLResolver(http_client=http_client)
         self.scraper = WebScraper(http_client=http_client)
@@ -270,6 +278,15 @@ class ProductProcessor:
         artifacts_dir.mkdir(parents=True, exist_ok=True)
 
         try:
+            # Apply --only filter
+            if self.only_mode:
+                if self.only_mode == "images":
+                    input_row = input_row.model_copy(update={"has_description": True, "has_variant_images": True})
+                elif self.only_mode == "description":
+                    input_row = input_row.model_copy(update={"has_image": True, "has_variant_images": True})
+                elif self.only_mode == "variant-images":
+                    input_row = input_row.model_copy(update={"has_image": True, "has_description": True})
+
             # Check if product has any gaps
             if not input_row.has_any_gap:
                 handle_log.entries.append(LogEntry(level="INFO", message="No gaps to fill"))
@@ -302,6 +319,49 @@ class ProductProcessor:
                         data={"colors_with_images": list(catalog_images.keys())},
                     )
                 )
+
+            # Early exit: catalog images cover all variants, no description needed
+            from .colors import colors_match
+
+            all_colors_covered = (
+                known_colors
+                and catalog_images
+                and all(
+                    any(colors_match(kc, cc) for cc in catalog_images)
+                    for kc in known_colors
+                )
+            )
+
+            if all_colors_covered and not input_row.needs_description:
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Catalog images cover all {len(known_colors)} colors — skipping scraping",
+                    )
+                )
+                # Build output directly from catalog data
+                from .colors import find_matching_color
+                variant_map = {}
+                for color in known_colors:
+                    match = find_matching_color(color, catalog_images)
+                    if match:
+                        variant_map[color] = catalog_images[match]
+
+                images = []
+                if input_row.needs_images:
+                    from .models import OutputImage
+                    for i, (color, url) in enumerate(variant_map.items(), 1):
+                        images.append(OutputImage(src=url, position=i, alt=f"{input_row.title} - {color}"))
+
+                merch_output = MerchOutput(
+                    handle=handle,
+                    body_html=None,
+                    images=images,
+                    variant_image_map=variant_map,
+                    confidence=90,  # High confidence — using vendor's own catalog images
+                )
+                merch_output.warnings.append("CATALOG_IMAGES_USED_DIRECTLY")
+                await self.generator.save_output(merch_output, artifacts_dir)
+                return merch_output, ProcessingStatus.UPDATED, metadata
 
             # Step 1: Resolve URL (use all available barcodes/SKUs)
             # Pick the best barcode and SKU for search (try all, use first match)
@@ -562,8 +622,8 @@ class ProductProcessor:
                         )
                     )
 
-            # Step 4d: Fact-check generated description (if LLM available)
-            if self.llm_client and merch_output.body_html:
+            # Step 4d: Fact-check generated description (opt-in via --verify)
+            if self.verify and self.llm_client and merch_output.body_html:
                 try:
                     facts_dict = {
                         "product_name": facts.product_name,
@@ -795,6 +855,8 @@ class Pipeline:
                 artifacts_base=artifacts_dir,
                 force=self.config.force,
                 store=store,
+                verify=self.config.verify,
+                only_mode=self.config.only_mode,
             )
 
             # Create semaphore for global concurrency

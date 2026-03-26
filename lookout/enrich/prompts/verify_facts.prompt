@@ -4,6 +4,12 @@ You are verifying a product description against source data. Check that every cl
 
 {facts}
 
+## ADDITIONAL VALID SOURCES
+- Variant option names and values (e.g., color names like "Polarized Gray" confirm lens type)
+- Product name itself (claims matching the product name are supported)
+
+Do NOT flag a claim as unsupported if it restates information from variant options or the product name.
+
 ## GENERATED DESCRIPTION
 
 {description}

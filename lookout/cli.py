@@ -57,8 +57,9 @@ def cli() -> None:
     "--out", "-o", "output_path", type=click.Path(path_type=Path), default=None,
     help="Export priority CSV",
 )
+@click.option("--include-house-brands", is_flag=True, help="Include house brands in audit")
 @click.option("--verbose", is_flag=True)
-def audit(vendor, output_path, verbose):
+def audit(vendor, output_path, include_house_brands, verbose):
     """Run content audit — find products with gaps."""
     setup_logging(verbose)
     from lookout.audit.auditor import ContentAuditor
@@ -70,7 +71,7 @@ def audit(vendor, output_path, verbose):
         console.print(f"[red]Error connecting to database:[/red] {e}")
         sys.exit(1)
 
-    auditor = ContentAuditor(store)
+    auditor = ContentAuditor(store, exclude_house_brands=not include_house_brands)
     result = auditor.audit(vendor=vendor)
     summary = result.summary()
 
@@ -120,8 +121,10 @@ def enrich():
 @click.option("--max-rows", "-n", type=int, default=None, help="Max rows to process")
 @click.option("--force", "-f", is_flag=True, help="Force re-processing")
 @click.option("--dry-run", is_flag=True, help="Process but don't write output")
+@click.option("--verify", is_flag=True, help="Enable LLM fact-checking of generated descriptions")
+@click.option("--only", "only_mode", type=click.Choice(["images", "description", "variant-images"]), default=None, help="Only fill this specific gap type")
 @click.option("--verbose", is_flag=True)
-def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verbose):
+def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verify, only_mode, verbose):
     """Run the enrichment pipeline."""
     setup_logging(verbose)
     from lookout.enrich.pipeline import PipelineConfig, run_pipeline
@@ -140,7 +143,7 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
         from lookout.store import LookoutStore
 
         store = LookoutStore()
-        auditor = ContentAuditor(store)
+        auditor = ContentAuditor(store, exclude_house_brands=True)
         result = auditor.audit(vendor=vendor)
 
         if not result.priority_items:
@@ -172,6 +175,8 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
         max_rows=max_rows,
         force=force,
         dry_run=dry_run,
+        verify=verify,
+        only_mode=only_mode,
     )
 
     console.print(Panel(
