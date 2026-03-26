@@ -131,10 +131,10 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
         console.print("[red]Error:[/red] vendors.yaml not found")
         sys.exit(1)
 
-    # If no input CSV, run audit internally to get priorities
+    # If no input CSV, run audit internally to get priorities with rich variant data
+    enriched_rows = None
     if input_path is None and vendor:
         console.print(f"[dim]Running internal audit for vendor: {vendor}[/dim]")
-        import tempfile
 
         from lookout.audit.auditor import ContentAuditor
         from lookout.store import LookoutStore
@@ -147,19 +147,26 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
             console.print("[yellow]No products with gaps found.[/yellow]")
             return
 
-        csv_bytes = result.to_priority_csv()
-        tmp = Path(tempfile.mktemp(suffix=".csv"))
-        tmp.write_bytes(csv_bytes)
-        input_path = tmp
-        console.print(f"[dim]Found {len(result.priority_items)} products with gaps[/dim]")
+        # Convert to InputRows with full variant data + catalog images
+        enriched_rows = result.to_input_rows(store=store, max_rows=max_rows)
+        console.print(
+            f"[dim]Found {len(result.priority_items)} products with gaps, "
+            f"enriching {len(enriched_rows)} with full variant data[/dim]"
+        )
 
-    if input_path is None:
+        # Count catalog images available
+        catalog_count = sum(1 for r in enriched_rows if r.catalog_images_by_color)
+        if catalog_count:
+            console.print(f"[dim]Catalog images available for {catalog_count} products[/dim]")
+
+    if input_path is None and enriched_rows is None:
         console.print("[red]Error:[/red] Provide --input CSV or --vendor for internal audit")
         sys.exit(1)
 
     config = PipelineConfig(
         input_path=input_path,
         output_dir=output_dir,
+        input_rows=enriched_rows or [],
         vendors_path=vendors_path,
         concurrency=concurrency,
         max_rows=max_rows,

@@ -32,6 +32,21 @@ class ProcessingStatus(str, Enum):
 # -----------------------------------------------------------------------------
 
 
+class VariantInfo(BaseModel):
+    """Rich variant data from TVR for smarter enrichment."""
+
+    variant_id: int = 0
+    sku: str = ""
+    barcode: str = ""
+    color: str = ""  # option value when option name is Color/Style
+    size: str = ""  # option value when option name is Size
+    price: float = 0.0
+    image_src: str = ""  # existing variant image (empty = needs assignment)
+    catalog_image: str = ""  # image from vendor catalog (if available)
+
+    model_config = {"populate_by_name": True}
+
+
 class InputRow(BaseModel):
     """Represents a row from the merchandising priority CSV input."""
 
@@ -50,8 +65,40 @@ class InputRow(BaseModel):
     title: str | None = Field(None, alias="Title")
     barcode: str | None = Field(None, alias="Barcode")
     sku: str | None = Field(None, alias="SKU")
+    # Rich variant data (populated when running via internal audit, not from CSV)
+    variant_data: list[VariantInfo] = Field(default_factory=list, exclude=True)
 
     model_config = {"populate_by_name": True}
+
+    @property
+    def all_barcodes(self) -> list[str]:
+        """All barcodes across variants."""
+        barcodes = [v.barcode for v in self.variant_data if v.barcode]
+        if not barcodes and self.barcode:
+            barcodes = [self.barcode]
+        return barcodes
+
+    @property
+    def all_skus(self) -> list[str]:
+        """All SKUs across variants."""
+        skus = [v.sku for v in self.variant_data if v.sku]
+        if not skus and self.sku:
+            skus = [self.sku]
+        return skus
+
+    @property
+    def known_colors(self) -> list[str]:
+        """Color option values from variant data."""
+        return list(dict.fromkeys(v.color for v in self.variant_data if v.color))
+
+    @property
+    def catalog_images_by_color(self) -> dict[str, str]:
+        """Color→catalog image mapping from vendor catalog data."""
+        return {
+            v.color: v.catalog_image
+            for v in self.variant_data
+            if v.color and v.catalog_image
+        }
 
     @field_validator(
         "has_image",

@@ -186,14 +186,15 @@ class PipelineConfig:
 
     def __init__(
         self,
-        input_path: Path,
-        output_dir: Path,
-        vendors_path: Path,
+        input_path: Path | None = None,
+        output_dir: Path = Path("./output"),
+        vendors_path: Path = Path("./vendors.yaml"),
         shopify_export_path: Path | None = None,
         concurrency: int = 5,
         max_rows: int | None = None,
         force: bool = False,
         dry_run: bool = False,
+        input_rows: list | None = None,
     ) -> None:
         self.input_path = input_path
         self.output_dir = output_dir
@@ -203,6 +204,8 @@ class PipelineConfig:
         self.max_rows = max_rows
         self.force = force
         self.dry_run = dry_run
+        # Pre-built InputRow objects (bypass CSV, carry rich variant data)
+        self.input_rows = input_rows or []
 
 
 class ProductProcessor:
@@ -289,16 +292,47 @@ class ProductProcessor:
                 handle_log.entries.append(LogEntry(level="INFO", message="Using cached artifacts"))
                 return self._load_cached_output(artifacts_dir, input_row, metadata)
 
-            # Step 1: Resolve URL
-            handle_log.entries.append(LogEntry(message="Resolving product URL"))
+            # Step 0: Check for catalog images (skip scraping if we have them all)
+            catalog_images = input_row.catalog_images_by_color
+            known_colors = input_row.known_colors
+            if catalog_images and known_colors:
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Catalog images available for {len(catalog_images)}/{len(known_colors)} colors",
+                        data={"colors_with_images": list(catalog_images.keys())},
+                    )
+                )
+
+            # Step 1: Resolve URL (use all available barcodes/SKUs)
+            # Pick the best barcode and SKU for search (try all, use first match)
+            search_barcode = input_row.barcode
+            search_sku = input_row.sku
+            # If we have variant data, try all barcodes/SKUs for better matching
+            all_barcodes = input_row.all_barcodes
+            all_skus = input_row.all_skus
+            if all_barcodes:
+                search_barcode = all_barcodes[0]  # Primary, but resolver will try title too
+            if all_skus:
+                search_sku = all_skus[0]
+
+            handle_log.entries.append(
+                LogEntry(
+                    message="Resolving product URL",
+                    data={
+                        "barcodes": len(all_barcodes),
+                        "skus": len(all_skus),
+                        "known_colors": known_colors[:5] if known_colors else [],
+                    },
+                )
+            )
             resolver_output = await self.resolver.resolve(
                 handle=handle,
                 vendor=vendor,
                 vendor_config=vendor_config,
                 hints=input_row.gaps or input_row.suggestions or "",
                 title=input_row.title,
-                barcode=input_row.barcode,
-                sku=input_row.sku,
+                barcode=search_barcode,
+                sku=search_sku,
             )
 
             # Save resolver output
@@ -400,7 +434,34 @@ class ProductProcessor:
                         f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
                     )
 
-            # Step 3c: Color-specific image search (if colors found but no variant images)
+            # Step 3c: Inject catalog images from TVR variant data
+            catalog_imgs = input_row.catalog_images_by_color
+            if catalog_imgs:
+                for color, img_url in catalog_imgs.items():
+                    if color not in facts.variant_image_candidates:
+                        facts.variant_image_candidates[color] = [img_url]
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Injected {len(catalog_imgs)} catalog images from TVR",
+                        data={"colors": list(catalog_imgs.keys())},
+                    )
+                )
+
+            # Also inject known colors from TVR if extractor didn't find them
+            if input_row.known_colors and not any(
+                v.option_name.lower() in ("color", "colour") for v in facts.variants
+            ):
+                from .models import VariantOption
+                facts.variants.append(
+                    VariantOption(option_name="Color", values=input_row.known_colors)
+                )
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Injected {len(input_row.known_colors)} known colors from TVR",
+                    )
+                )
+
+            # Step 3d: Color-specific image search (if colors found but no variant images)
             if facts.variants and not facts.variant_image_candidates:
                 color_variant = next(
                     (v for v in facts.variants if v.option_name.lower() in ("color", "colour")),
@@ -671,13 +732,22 @@ class Pipeline:
         # Initialize output builder
         output_builder = ShopifyOutputBuilder(self.config.shopify_export_path)
 
-        # Count total rows for progress tracking
-        input_rows = list(
-            parse_input_csv(
-                self.config.input_path,
-                max_rows=self.config.max_rows,
+        # Load input rows: pre-built (with variant data) or from CSV
+        if self.config.input_rows:
+            input_rows = self.config.input_rows
+            if self.config.max_rows:
+                input_rows = input_rows[: self.config.max_rows]
+            logger.info(f"Using {len(input_rows)} pre-built input rows (with variant data)")
+        elif self.config.input_path:
+            input_rows = list(
+                parse_input_csv(
+                    self.config.input_path,
+                    max_rows=self.config.max_rows,
+                )
             )
-        )
+        else:
+            logger.error("No input rows or input path provided")
+            return {}
         total_rows = len(input_rows)
 
         # Emit RUN_STARTED event

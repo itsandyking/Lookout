@@ -41,6 +41,9 @@ class ProductScore:
     barcode: str = ""
     sku: str = ""
 
+    # Raw variant dicts from store (for passing to enrichment pipeline)
+    _variants_raw: list[dict] = field(default_factory=list, repr=False)
+
     # Inventory / value
     total_inventory: int = 0
     price: float = 0.0
@@ -160,6 +163,86 @@ class AuditResult:
     @property
     def all_items(self) -> list[ProductScore]:
         return self.scores
+
+    def to_input_rows(
+        self,
+        store: object | None = None,
+        max_rows: int | None = None,
+    ) -> list:
+        """Convert priority items to InputRow objects with rich variant data.
+
+        When a LookoutStore is provided, looks up catalog images for each
+        variant barcode, giving the pipeline direct access to vendor images
+        without scraping.
+
+        Args:
+            store: Optional LookoutStore for catalog image lookups.
+            max_rows: Limit number of rows returned.
+
+        Returns:
+            List of InputRow objects with variant_data populated.
+        """
+        from lookout.enrich.models import InputRow, VariantInfo
+
+        items = self.priority_items
+        if max_rows:
+            items = items[:max_rows]
+
+        rows = []
+        for score in items:
+            # Build VariantInfo from raw variant dicts
+            variant_data = []
+            for v in score._variants_raw:
+                # Determine color and size from option names
+                color = ""
+                size = ""
+                for opt_num in [1, 2, 3]:
+                    name = v.get(f"option{opt_num}_name", "").lower()
+                    value = v.get(f"option{opt_num}_value", "")
+                    if name in ("color", "colour", "style"):
+                        color = value
+                    elif name in ("size", "length"):
+                        size = value
+
+                # Look up catalog image by barcode
+                catalog_image = ""
+                if store and v.get("barcode"):
+                    try:
+                        catalog_image = store.find_catalog_image(v["barcode"]) or ""
+                    except Exception:
+                        pass
+
+                variant_data.append(VariantInfo(
+                    variant_id=v.get("id", 0),
+                    sku=v.get("sku", ""),
+                    barcode=v.get("barcode", ""),
+                    color=color,
+                    size=size,
+                    price=v.get("price", 0.0) or 0.0,
+                    image_src=v.get("image_src", ""),
+                    catalog_image=catalog_image,
+                ))
+
+            row = InputRow(
+                product_handle=score.handle,
+                vendor=score.vendor,
+                has_image=score.has_product_image,
+                has_variant_images=score.has_all_variant_images,
+                has_description=score.has_description,
+                has_product_type=score.has_product_type,
+                has_tags=score.has_tags,
+                gaps=", ".join(score.gaps),
+                suggestions="; ".join(score.suggestions),
+                priority_score=score.priority_score,
+                title=score.title,
+                barcode=score.barcode,
+                sku=score.sku,
+                admin_link=score.admin_link,
+                variant_data=variant_data,
+            )
+            rows.append(row)
+
+        return rows
 
     def summary(self) -> dict:
         total = len(self.scores)

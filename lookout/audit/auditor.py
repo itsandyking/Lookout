@@ -103,6 +103,7 @@ class ContentAuditor:
             description_length=description_length,
             barcode=barcode,
             sku=sku,
+            _variants_raw=variants,
             total_inventory=total_inventory,
             price=avg_price,
             cost=avg_cost,
