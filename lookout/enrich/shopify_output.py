@@ -161,36 +161,63 @@ class ShopifyOutputBuilder:
             )
             return
 
-        # If we have Shopify export, we can potentially write full variant rows
-        if handle in self.shopify_export:
-            self._add_variant_rows_from_export(
-                handle,
-                merch_output.variant_image_map,
-            )
-        else:
-            # Write to variant assignments CSV
-            for option_value, image_src in merch_output.variant_image_map.items():
-                # Handle both single URL and list of URLs
-                if isinstance(image_src, list):
-                    image_src = image_src[0] if image_src else ""
+        # Handle __all__ first — expand to actual variants if export data available
+        if "__all__" in merch_output.variant_image_map:
+            hero_url = merch_output.variant_image_map["__all__"]
+            if isinstance(hero_url, list):
+                hero_url = hero_url[0] if hero_url else ""
 
-                # __all__ means "apply this image to every variant"
-                option_name = "Color"
-                warning = ""
-                if option_value == "__all__":
-                    option_name = "__all__"
-                    warning = "ASSIGN_TO_ALL_VARIANTS"
-
+            if handle in self.shopify_export:
+                # Expand to actual variant rows from export
+                for row in self.shopify_export[handle]:
+                    if row.option1_value and row.option1_value.lower() != "default title":
+                        self._variant_assignments.append(
+                            VariantImageAssignment(
+                                Handle=handle,
+                                Option_Name=row.option1_name or "Title",
+                                Option_Value=row.option1_value,
+                                Image_Src=hero_url,
+                                Confidence=merch_output.confidence,
+                                Warning="EXPANDED_FROM_ALL",
+                            )
+                        )
+            else:
+                # No export data — keep __all__ marker for manual expansion
                 self._variant_assignments.append(
                     VariantImageAssignment(
                         Handle=handle,
-                        Option_Name=option_name,
-                        Option_Value=option_value if option_value != "__all__" else "",
-                        Image_Src=image_src,
+                        Option_Name="__all__",
+                        Option_Value="",
+                        Image_Src=hero_url,
                         Confidence=merch_output.confidence,
-                        Warning=warning,
+                        Warning="ASSIGN_TO_ALL_VARIANTS",
                     )
                 )
+
+        # Process remaining non-__all__ entries
+        non_all_entries = {
+            k: v for k, v in merch_output.variant_image_map.items() if k != "__all__"
+        }
+
+        if non_all_entries:
+            if handle in self.shopify_export:
+                self._add_variant_rows_from_export(handle, non_all_entries)
+            else:
+                for option_value, image_src in non_all_entries.items():
+                    # Handle both single URL and list of URLs
+                    if isinstance(image_src, list):
+                        image_src = image_src[0] if image_src else ""
+
+                    self._variant_assignments.append(
+                        VariantImageAssignment(
+                            Handle=handle,
+                            Option_Name="Color",
+                            Option_Value=option_value,
+                            Image_Src=image_src,
+                            Confidence=merch_output.confidence,
+                            Warning="",
+                        )
+                    )
 
     def _add_variant_rows_from_export(
         self,
