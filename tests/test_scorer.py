@@ -161,6 +161,46 @@ class TestStructuralCompliance:
         # No features/specs in facts = full marks for those sections
         assert axis.score >= 20
 
+    def test_too_many_features(self):
+        html = """
+<p>Intro paragraph.</p>
+<h3>Features</h3>
+<ul>
+<li>Feature one</li>
+<li>Feature two</li>
+<li>Feature three</li>
+<li>Feature four</li>
+<li>Feature five</li>
+<li>Feature six</li>
+<li>Feature seven</li>
+<li>Feature eight</li>
+</ul>
+""".strip()
+        facts = _make_facts()
+        axis = score_structural_compliance(html, facts)
+        assert "too long (8 items" in str(axis.details)
+        # Partial credit (3) not full credit (7)
+        # Total: 8 (paragraph) + 3 (partial features) + 0 (no table) + semantic
+        assert axis.score < 20
+
+    def test_six_features_ok(self):
+        html = """
+<p>Intro paragraph.</p>
+<h3>Features</h3>
+<ul>
+<li>Feature one</li>
+<li>Feature two</li>
+<li>Feature three</li>
+<li>Feature four</li>
+<li>Feature five</li>
+<li>Feature six</li>
+</ul>
+""".strip()
+        facts = _make_facts()
+        axis = score_structural_compliance(html, facts)
+        assert "6 items" in str(axis.details)
+        assert "too long" not in str(axis.details)
+
     def test_bad_html(self):
         facts = _make_facts()
         axis = score_structural_compliance(BAD_HTML, facts)
@@ -213,6 +253,13 @@ class TestAntiHype:
         axis = score_anti_hype(html)
         assert axis.score == 10  # 15 - 5
 
+    def test_no_false_positive_on_substring(self):
+        """Words like 'imperfect' should not trigger 'perfect'."""
+        html = "<p>This jacket has imperfect stitching but ultimately works well.</p>"
+        axis = score_anti_hype(html)
+        assert axis.score == 15
+        assert "no banned words" in str(axis.details)
+
 
 # ---------------------------------------------------------------------------
 # Axis 5: Coverage
@@ -229,6 +276,15 @@ class TestCoverage:
         html = "<p>A warm jacket for cold weather.</p>"
         axis = score_coverage(html, facts)
         assert axis.score < 10
+
+    def test_materials_paraphrased(self):
+        """Materials coverage should use keyword matching, not prefix substring."""
+        facts = _make_facts(materials="Shell: 1.4-oz 22-denier ripstop recycled polyester")
+        # Output paraphrases materials but uses key words
+        html = "<p>Made with recycled polyester ripstop shell fabric.</p>"
+        axis = score_coverage(html, facts)
+        # Should find keyword matches for materials
+        assert "rich fields" in str(axis.details)
 
     def test_empty_facts_full_marks(self):
         facts = _make_facts(

@@ -178,8 +178,12 @@ def score_structural_compliance(body_html: str, facts: ExtractedFacts) -> AxisSc
     # Feature list (only penalize if facts had features)
     if facts.feature_bullets:
         if parser.has_ul:
-            axis.score += 7
-            axis.details.append("has feature list")
+            if len(parser.li_texts) <= 6:
+                axis.score += 7
+                axis.details.append(f"has feature list ({len(parser.li_texts)} items)")
+            else:
+                axis.score += 3  # partial credit: list exists but too many items
+                axis.details.append(f"feature list too long ({len(parser.li_texts)} items, max 6)")
         else:
             axis.details.append("missing feature list (facts had features)")
     else:
@@ -269,7 +273,7 @@ def score_anti_hype(body_html: str) -> AxisScore:
     text_lower = _extract_text(body_html).lower()
     found = []
     for word in BANNED_WORDS:
-        if word in text_lower:
+        if re.search(r'\b' + re.escape(word) + r'\b', text_lower):
             found.append(word)
 
     if found:
@@ -348,10 +352,14 @@ def score_coverage(body_html: str, facts: ExtractedFacts) -> AxisScore:
             )
             if spec_hits > 0:
                 used += 1
-        if facts.materials and facts.materials.lower()[:20] in text_lower:
-            used += 1
-        if facts.care and facts.care.lower()[:20] in text_lower:
-            used += 1
+        if facts.materials:
+            mat_words = [w for w in facts.materials.lower().split() if len(w) > 4]
+            if mat_words and sum(1 for w in mat_words[:10] if w in text_lower) >= min(2, len(mat_words[:10])):
+                used += 1
+        if facts.care:
+            care_words = [w for w in facts.care.lower().split() if len(w) > 4]
+            if care_words and sum(1 for w in care_words[:10] if w in text_lower) >= min(2, len(care_words[:10])):
+                used += 1
         ratio = used / len(rich_fields)
         axis.score += int(5 * ratio)
         axis.details.append(f"rich fields: {used}/{len(rich_fields)} used ({', '.join(rich_fields)})")
