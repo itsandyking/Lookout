@@ -37,8 +37,9 @@ class ProductScore:
     # Description detail
     description_length: int = 0
 
-    # First barcode (representative)
+    # First variant identifiers (representative)
     barcode: str = ""
+    sku: str = ""
 
     # Inventory / value
     total_inventory: int = 0
@@ -189,6 +190,7 @@ class AuditResult:
         "Vendor",
         "Title",
         "Barcode",
+        "SKU",
         "Has Image",
         "Has Variant Images",
         "Has Description",
@@ -216,6 +218,7 @@ class AuditResult:
                 "Vendor": s.vendor,
                 "Title": s.title,
                 "Barcode": s.barcode,
+                "SKU": s.sku,
                 "Has Image": s.has_product_image,
                 "Has Variant Images": s.has_all_variant_images,
                 "Has Description": s.has_description,

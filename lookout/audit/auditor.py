@@ -72,8 +72,9 @@ class ContentAuditor:
         has_product_type = bool((product.get("product_type", "") or "").strip())
         has_tags = bool((product.get("tags", "") or "").strip())
 
-        # First barcode (representative)
+        # First variant identifiers (representative)
         barcode = variants[0].get("barcode", "") if variants else ""
+        sku = variants[0].get("sku", "") if variants else ""
 
         # Inventory values from store
         total_inventory = inventory.get("total", 0)
@@ -101,6 +102,7 @@ class ContentAuditor:
             variants_missing_images=variants_missing,
             description_length=description_length,
             barcode=barcode,
+            sku=sku,
             total_inventory=total_inventory,
             price=avg_price,
             cost=avg_cost,

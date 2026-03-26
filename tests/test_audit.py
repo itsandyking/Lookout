@@ -145,6 +145,7 @@ def test_audit_result_to_priority_csv():
         "Vendor",
         "Title",
         "Barcode",
+        "SKU",
         "Has Image",
         "Has Variant Images",
         "Has Description",

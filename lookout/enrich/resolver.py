@@ -125,28 +125,43 @@ class URLResolver:
             if clean_title.lower().startswith(vendor_lower):
                 clean_title = clean_title[len(vendor):].strip(" -")
 
-        # Strategy 1: Barcode on vendor site (most precise)
+        # Strategy 1: Barcode on vendor site (most precise — but only if barcode appears in results)
         if barcode and barcode.strip():
-            query = f"site:{domain} {barcode.strip()}"
+            barcode_clean = barcode.strip()
+            query = f"site:{domain} {barcode_clean}"
             queries_used.append(f"barcode: {query}")
             try:
                 candidates = await self._search_candidates(query, domain, vendor_config)
                 for c in candidates:
-                    c.confidence = min(100, c.confidence + 15)
-                    c.reasoning = f"Barcode search: {c.reasoning}"
+                    # Only boost if barcode actually appears in the result
+                    if barcode_clean in c.snippet or barcode_clean in c.url or barcode_clean in c.title:
+                        c.confidence = min(100, c.confidence + 15)
+                        c.reasoning = f"Barcode MATCH: {c.reasoning}"
+                    else:
+                        # Barcode search returned results but barcode isn't in them
+                        # These are generic results, don't boost — actually penalize slightly
+                        c.confidence = max(0, c.confidence - 5)
+                        c.reasoning = f"Barcode search (no match in result): {c.reasoning}"
                 all_candidates.extend(candidates)
             except Exception as e:
                 logger.warning(f"Barcode search failed for {handle}: {e}")
 
-        # Strategy 2: SKU on vendor site (very precise)
+        # Strategy 2: SKU on vendor site (very precise — same verification logic)
         if sku and sku.strip():
-            query = f"site:{domain} {sku.strip()}"
+            sku_clean = sku.strip()
+            # Also try SKU prefix (vendor style code) which is more likely to appear on pages
+            sku_prefix = sku_clean.split("-")[0] if "-" in sku_clean else sku_clean[:8]
+            query = f"site:{domain} {sku_clean}"
             queries_used.append(f"sku: {query}")
             try:
                 candidates = await self._search_candidates(query, domain, vendor_config)
                 for c in candidates:
-                    c.confidence = min(100, c.confidence + 12)
-                    c.reasoning = f"SKU search: {c.reasoning}"
+                    if sku_clean in c.snippet or sku_clean in c.url or sku_prefix in c.url:
+                        c.confidence = min(100, c.confidence + 12)
+                        c.reasoning = f"SKU MATCH: {c.reasoning}"
+                    else:
+                        c.confidence = max(0, c.confidence - 5)
+                        c.reasoning = f"SKU search (no match in result): {c.reasoning}"
                 all_candidates.extend(candidates)
             except Exception as e:
                 logger.warning(f"SKU search failed for {handle}: {e}")
@@ -235,6 +250,26 @@ class URLResolver:
             url_key = candidate.url.lower().rstrip("/")
             if url_key not in seen_urls or candidate.confidence > seen_urls[url_key].confidence:
                 seen_urls[url_key] = candidate
+
+        # Title-match validation: if we know the product title, penalize
+        # candidates that clearly don't match (e.g., "4D MAG" vs "Shoutout Core")
+        if clean_title:
+            from difflib import SequenceMatcher
+
+            title_lower = clean_title.lower()
+            title_words = set(title_lower.split())
+
+            for candidate in seen_urls.values():
+                candidate_title = candidate.title.lower()
+                # Check word overlap between expected title and candidate title
+                candidate_words = set(candidate_title.split())
+                overlap = title_words & candidate_words
+                # If less than 30% of title words appear in candidate, penalize
+                if title_words and len(overlap) / len(title_words) < 0.3:
+                    ratio = SequenceMatcher(None, title_lower, candidate_title).ratio()
+                    if ratio < 0.3:
+                        candidate.confidence = max(0, candidate.confidence - 20)
+                        candidate.reasoning += f" -title_mismatch({ratio:.0%})"
 
         deduplicated = sorted(seen_urls.values(), key=lambda c: c.confidence, reverse=True)
 
