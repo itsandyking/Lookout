@@ -42,7 +42,7 @@ vendors:
     domain: "altrarunning.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: "[data-testid='product-details'], .product-detail"
+      wait_for_selector: "#productTitle, .l-pdp"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -71,7 +71,7 @@ vendors:
     domain: "rossignol.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: ".product-detail-page, h1.product-name"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -92,7 +92,7 @@ vendors:
     domain: "k2snow.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-container"
+      wait_for_selector: "section.pdp, .product-main"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -126,7 +126,7 @@ vendors:
     domain: "smithoptics.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: "main#MainContent, product-info"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -146,7 +146,7 @@ vendors:
     domain: "nordica.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: "main.product-detail"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -165,7 +165,7 @@ vendors:
     domain: "burton.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, [data-testid='pdp']"
+      wait_for_selector: "#pdp-size-finder-intro-content, main#main-content"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -186,7 +186,7 @@ vendors:
     domain: "black-crows.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: "section#pdp-main-content, .product-info-container"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -204,7 +204,7 @@ vendors:
     domain: "factionskis.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: "#pdp-gallery, .pdp-details"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -222,7 +222,7 @@ vendors:
     domain: "blizzard-tecnica.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: "section.product-overview, #product-overview"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
@@ -232,6 +232,7 @@ vendors:
     product_url_patterns:
       - "/products/"
       - "/p/"
+      - "/collection/"
     search:
       method: "site_search"
       query_template: "site:{domain} {query}"
@@ -240,7 +241,7 @@ vendors:
     domain: "arcteryx.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, [data-testid='pdp']"
+      wait_for_selector: ".product-data-loaded, .qa--primary-product-name"
       wait_timeout_ms: 15000
       extra_wait_ms: 3000
     blocked_paths:
@@ -260,7 +261,7 @@ vendors:
     domain: "jonessnowboards.com"
     use_playwright: true
     playwright_config:
-      wait_for_selector: ".product-detail, .pdp-main"
+      wait_for_selector: "body.page-product, .product--medium"
       wait_timeout_ms: 15000
       extra_wait_ms: 2000
     blocked_paths:
