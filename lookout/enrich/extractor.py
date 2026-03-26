@@ -489,6 +489,152 @@ class ContentExtractor:
         if sizes:
             variants.append(VariantOption(option_name="Size", values=sizes))
 
+        # Pattern 3: Shopify product JSON in script tags
+        shopify_variants, shopify_images = self._extract_shopify_product_json(soup, base_url)
+        if shopify_variants:
+            for sv in shopify_variants:
+                existing = {v.option_name.lower() for v in variants}
+                if sv.option_name.lower() not in existing:
+                    variants.append(sv)
+
+        if shopify_images:
+            for color, urls in shopify_images.items():
+                if color not in color_images:
+                    color_images[color] = urls
+                else:
+                    for url in urls:
+                        if url not in color_images[color]:
+                            color_images[color].append(url)
+
+        return variants, color_images
+
+    def _extract_shopify_product_json(
+        self, soup: BeautifulSoup, base_url: str
+    ) -> tuple[list[VariantOption], dict[str, list[str]]]:
+        """Extract variants from Shopify product JSON in script tags.
+
+        Shopify stores embed full product data in script tags, often containing
+        variant arrays with option values and featured images.
+        """
+        variants: list[VariantOption] = []
+        color_images: dict[str, list[str]] = {}
+
+        for script in soup.find_all("script"):
+            text = script.string
+            if not text or "variants" not in text:
+                continue
+
+            # Try to find product JSON — multiple patterns
+            product_data = None
+
+            # Pattern: var meta = {"product": {...}}
+            match = re.search(
+                r"var\s+meta\s*=\s*(\{[\s\S]*?\});\s*$", text, re.MULTILINE
+            )
+            if match:
+                try:
+                    meta = json.loads(match.group(1))
+                    if "product" in meta:
+                        product_data = meta["product"]
+                except (json.JSONDecodeError, KeyError):
+                    pass
+
+            # Pattern: product JSON object with variants array
+            if not product_data:
+                # Look for a JSON object containing "variants" key with array value
+                for match in re.finditer(r'\{[^{}]*"variants"\s*:\s*\[', text):
+                    start = match.start()
+                    # Try to find the complete JSON object
+                    depth = 0
+                    end = start
+                    for i, ch in enumerate(text[start:], start):
+                        if ch == "{":
+                            depth += 1
+                        elif ch == "}":
+                            depth -= 1
+                            if depth == 0:
+                                end = i + 1
+                                break
+                    if end > start:
+                        try:
+                            product_data = json.loads(text[start:end])
+                            if "variants" in product_data:
+                                break
+                        except json.JSONDecodeError:
+                            continue
+
+            if not product_data or "variants" not in product_data:
+                continue
+
+            variant_list = product_data["variants"]
+            if not isinstance(variant_list, list):
+                continue
+
+            # Determine which option is color
+            colors: list[str] = []
+            sizes: list[str] = []
+            seen_colors: set[str] = set()
+            seen_sizes: set[str] = set()
+
+            # Check product-level options for names
+            color_option_key = None
+            options = product_data.get("options", [])
+            for i, opt in enumerate(options):
+                opt_name = opt if isinstance(opt, str) else opt.get("name", "")
+                if opt_name.lower() in ("color", "colour", "style"):
+                    color_option_key = f"option{i + 1}"
+                    break
+
+            if not color_option_key:
+                # Default: assume option1 is color if it doesn't look like a size
+                color_option_key = "option1"
+
+            for v in variant_list:
+                if not isinstance(v, dict):
+                    continue
+
+                color_val = v.get(color_option_key, "")
+                if color_val and color_val not in seen_colors:
+                    seen_colors.add(color_val)
+                    colors.append(color_val)
+
+                # Get size from whichever option isn't color
+                for key in ["option1", "option2", "option3"]:
+                    if key != color_option_key:
+                        size_val = v.get(key)
+                        if size_val and size_val not in seen_sizes:
+                            seen_sizes.add(size_val)
+                            sizes.append(size_val)
+
+                # Get featured image for this color
+                if color_val:
+                    featured = v.get("featured_image")
+                    img_url = None
+                    if isinstance(featured, dict):
+                        img_url = featured.get("src")
+                    elif isinstance(featured, str):
+                        img_url = featured
+
+                    if not img_url:
+                        img_url = v.get("image")
+                        if isinstance(img_url, dict):
+                            img_url = img_url.get("src")
+
+                    if img_url:
+                        full_url = urljoin(base_url, img_url)
+                        if color_val not in color_images:
+                            color_images[color_val] = []
+                        if full_url not in color_images[color_val]:
+                            color_images[color_val].append(full_url)
+
+            if colors:
+                variants.append(VariantOption(option_name="Color", values=colors))
+            if sizes:
+                variants.append(VariantOption(option_name="Size", values=sizes))
+
+            # Found product data, no need to check more scripts
+            break
+
         return variants, color_images
 
     def _extract_canonical_url(self, soup: BeautifulSoup, base_url: str) -> str:
