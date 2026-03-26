@@ -167,8 +167,26 @@ class ShopifyOutputBuilder:
             if isinstance(hero_url, list):
                 hero_url = hero_url[0] if hero_url else ""
 
-            if handle in self.shopify_export:
-                # Expand to actual variant rows from export
+            if input_row.variant_data:
+                # Expand to per-variant rows using variant data (with SKU)
+                for variant in input_row.variant_data:
+                    option_value = variant.color or variant.size or ""
+                    if not option_value:
+                        continue
+                    self._variant_assignments.append(
+                        VariantImageAssignment(
+                            Handle=handle,
+                            Variant_SKU=variant.sku,
+                            Variant_ID=str(variant.variant_id) if variant.variant_id else "",
+                            Option_Name="Color" if variant.color else "Size",
+                            Option_Value=option_value,
+                            Variant_Image=hero_url,
+                            Confidence=merch_output.confidence,
+                            Warning="EXPANDED_FROM_ALL",
+                        )
+                    )
+            elif handle in self.shopify_export:
+                # Expand from Shopify export (no SKU data available)
                 for row in self.shopify_export[handle]:
                     if row.option1_value and row.option1_value.lower() != "default title":
                         self._variant_assignments.append(
@@ -176,19 +194,19 @@ class ShopifyOutputBuilder:
                                 Handle=handle,
                                 Option_Name=row.option1_name or "Title",
                                 Option_Value=row.option1_value,
-                                Image_Src=hero_url,
+                                Variant_Image=hero_url,
                                 Confidence=merch_output.confidence,
                                 Warning="EXPANDED_FROM_ALL",
                             )
                         )
             else:
-                # No export data — keep __all__ marker for manual expansion
+                # No variant data at all — keep __all__ marker
                 self._variant_assignments.append(
                     VariantImageAssignment(
                         Handle=handle,
                         Option_Name="__all__",
                         Option_Value="",
-                        Image_Src=hero_url,
+                        Variant_Image=hero_url,
                         Confidence=merch_output.confidence,
                         Warning="ASSIGN_TO_ALL_VARIANTS",
                     )
@@ -203,28 +221,78 @@ class ShopifyOutputBuilder:
             if handle in self.shopify_export:
                 self._add_variant_rows_from_export(handle, non_all_entries)
             else:
-                for option_value, image_src in non_all_entries.items():
-                    # Handle various types from LLM structured output
-                    if isinstance(image_src, list):
-                        image_src = image_src[0] if image_src else ""
-                    elif isinstance(image_src, dict):
-                        image_src = image_src.get("url", image_src.get("src", ""))
-                    elif not isinstance(image_src, str):
-                        image_src = str(image_src) if image_src else ""
+                # Expand color→image to per-variant rows using variant data
+                self._expand_color_to_variants(
+                    input_row, non_all_entries, merch_output.confidence
+                )
 
-                    if not image_src:
-                        continue
+    def _expand_color_to_variants(
+        self,
+        input_row: InputRow,
+        color_image_map: dict[str, str | list[str]],
+        confidence: int,
+    ) -> None:
+        """Expand color→image mappings to per-variant rows with SKU/ID.
 
+        Uses input_row.variant_data to match each variant to its color's
+        image. This produces rows that Ablestar can match by SKU.
+        """
+        from lookout.enrich.colors import colors_match
+
+        handle = input_row.product_handle
+
+        # Normalize image sources
+        resolved_map: dict[str, str] = {}
+        for color, image_src in color_image_map.items():
+            if isinstance(image_src, list):
+                image_src = image_src[0] if image_src else ""
+            elif isinstance(image_src, dict):
+                image_src = image_src.get("url", image_src.get("src", ""))
+            elif not isinstance(image_src, str):
+                image_src = str(image_src) if image_src else ""
+            if image_src:
+                resolved_map[color] = image_src
+
+        if not resolved_map:
+            return
+
+        # If we have variant data, create one row per variant
+        if input_row.variant_data:
+            for variant in input_row.variant_data:
+                if not variant.color:
+                    continue
+                # Find the matching image for this variant's color
+                matched_image = None
+                for map_color, image_url in resolved_map.items():
+                    if colors_match(variant.color, map_color):
+                        matched_image = image_url
+                        break
+                if matched_image:
                     self._variant_assignments.append(
                         VariantImageAssignment(
                             Handle=handle,
+                            Variant_SKU=variant.sku,
+                            Variant_ID=str(variant.variant_id) if variant.variant_id else "",
                             Option_Name="Color",
-                            Option_Value=option_value,
-                            Image_Src=image_src,
-                            Confidence=merch_output.confidence,
+                            Option_Value=variant.color,
+                            Variant_Image=matched_image,
+                            Confidence=confidence,
                             Warning="",
                         )
                     )
+        else:
+            # No variant data — fall back to color-level rows (no SKU)
+            for color, image_src in resolved_map.items():
+                self._variant_assignments.append(
+                    VariantImageAssignment(
+                        Handle=handle,
+                        Option_Name="Color",
+                        Option_Value=color,
+                        Variant_Image=image_src,
+                        Confidence=confidence,
+                        Warning="NO_VARIANT_DATA",
+                    )
+                )
 
     def _add_variant_rows_from_export(
         self,

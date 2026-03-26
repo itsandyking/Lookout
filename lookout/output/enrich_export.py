@@ -137,10 +137,12 @@ def merch_output_to_shopify_rows(
 # -----------------------------------------------------------------------------
 
 VARIANT_IMAGE_COLUMNS = [
+    "Variant SKU",
+    "Variant ID",
     "Handle",
     "Option Name",
     "Option Value",
-    "Image Src",
+    "Variant Image",
     "Confidence",
     "Warning",
 ]
@@ -153,9 +155,8 @@ def write_variant_image_assignments(
     """
     Write the variant image assignments CSV.
 
-    Args:
-        output_path: Path for the output CSV.
-        assignments: List of variant image assignments.
+    Format matches Ablestar/Matrixify per-variant import:
+    SKU as first column for variant-level matching.
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -167,10 +168,12 @@ def write_variant_image_assignments(
         for assignment in assignments:
             writer.writerow(
                 {
+                    "Variant SKU": assignment.Variant_SKU,
+                    "Variant ID": assignment.Variant_ID,
                     "Handle": assignment.Handle,
                     "Option Name": assignment.Option_Name,
                     "Option Value": assignment.Option_Value,
-                    "Image Src": assignment.Image_Src,
+                    "Variant Image": assignment.Variant_Image,
                     "Confidence": assignment.Confidence,
                     "Warning": assignment.Warning,
                 }

@@ -393,12 +393,15 @@ class VariantImageAssignment(BaseModel):
     A variant image assignment record.
 
     Used for variant_image_assignments.csv output.
+    Includes SKU and Variant ID for Ablestar/Matrixify per-variant matching.
     """
 
     Handle: str
-    Option_Name: str = Field(..., alias="Option Name")
-    Option_Value: str = Field(..., alias="Option Value")
-    Image_Src: str = Field(..., alias="Image Src")
+    Variant_SKU: str = Field("", alias="Variant SKU")
+    Variant_ID: str = Field("", alias="Variant ID")
+    Option_Name: str = Field("", alias="Option Name")
+    Option_Value: str = Field("", alias="Option Value")
+    Variant_Image: str = Field("", alias="Variant Image")
     Confidence: int = 0
     Warning: str = ""
 
