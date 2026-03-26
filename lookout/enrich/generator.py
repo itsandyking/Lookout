@@ -32,6 +32,34 @@ _BADGE_FILENAME_PATTERNS = {
 }
 
 
+def _detect_llm_refusal(html: str) -> str | None:
+    """Detect when the LLM produced meta-commentary instead of a real description.
+
+    Returns a reason string if refusal detected, None if the content looks real.
+    """
+    text = html.lower()
+    refusal_patterns = [
+        "does not contain sufficient",
+        "insufficient descriptive content",
+        "not contain enough",
+        "unable to create",
+        "cannot generate",
+        "no product information",
+        "appears to be navigation",
+        "placeholder rather than",
+        "provided does not include",
+        "i cannot",
+        "i'm unable",
+        "the provided product information",
+        "the available data appears",
+        "not enough information to",
+    ]
+    for pattern in refusal_patterns:
+        if pattern in text:
+            return pattern
+    return None
+
+
 def _check_image_importable(url: str) -> str | None:
     """Check if an image URL is likely importable into Shopify.
 
@@ -248,6 +276,13 @@ class Generator:
 
             if not body_html or len(body_html) < 50:
                 warnings.append("GENERATED_HTML_TOO_SHORT")
+                return self._generate_fallback_html(facts), warnings
+
+            # Reject LLM meta-commentary (the LLM explaining it can't write a description)
+            rejection = _detect_llm_refusal(body_html)
+            if rejection:
+                warnings.append(f"LLM_REFUSAL_DETECTED: {rejection}")
+                logger.warning(f"LLM produced meta-commentary instead of description: {rejection}")
                 return self._generate_fallback_html(facts), warnings
 
             return body_html, warnings
