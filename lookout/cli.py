@@ -305,6 +305,87 @@ def score(output_dir, handles, verify, json_out, verbose):
                 console.print(f"  {name}: {avg:.1f}/{max_val}")
 
 
+@enrich.command("optimize")
+@click.option(
+    "--test-dir", "-t", "test_dir", type=click.Path(exists=True, path_type=Path),
+    default=Path("./test_set/combined"), help="Test set directory with cached artifacts",
+)
+@click.option(
+    "--prompt", "-p", "prompt_path", type=click.Path(exists=True, path_type=Path),
+    default=Path("./lookout/enrich/prompts/generate_body_html.prompt"),
+    help="Prompt file to optimize",
+)
+@click.option(
+    "--log-dir", "-l", "log_dir", type=click.Path(path_type=Path),
+    default=Path("./test_set/optimize_log"), help="Directory for iteration logs",
+)
+@click.option("--max-iterations", "-n", default=5, help="Maximum optimization iterations")
+@click.option("--verbose", is_flag=True)
+def optimize(test_dir, prompt_path, log_dir, max_iterations, verbose):
+    """Run the Karpathy Loop to optimize the enrichment prompt.
+
+    Iteratively modifies the prompt, regenerates descriptions for the
+    test set using cached facts (no scraping), scores each iteration,
+    and keeps the best-performing prompt.
+    """
+    setup_logging(verbose)
+    from lookout.enrich.optimize import run_optimization_loop
+
+    console.print(Panel(
+        f"[bold]Karpathy Loop: Prompt Optimization[/bold]\n"
+        f"Test set: {test_dir}\n"
+        f"Prompt: {prompt_path}\n"
+        f"Max iterations: {max_iterations}",
+        title="Optimize",
+    ))
+
+    try:
+        history = asyncio.run(run_optimization_loop(
+            test_dir=test_dir,
+            prompt_path=prompt_path,
+            log_dir=log_dir,
+            max_iterations=max_iterations,
+        ))
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
+
+    # Display results
+    table = Table(title="Optimization History")
+    table.add_column("Iter", justify="right")
+    table.add_column("Avg Score", justify="right", style="bold")
+    table.add_column("Structure\n(0-25)", justify="right")
+    table.add_column("Length\n(0-15)", justify="right")
+    table.add_column("Anti-hype\n(0-15)", justify="right")
+    table.add_column("Coverage\n(0-15)", justify="right")
+    table.add_column("Delta", justify="right")
+
+    for i, r in enumerate(history):
+        delta = ""
+        if i > 0:
+            d = r.avg_score - history[i - 1].avg_score
+            color = "green" if d > 0 else "red" if d < 0 else "dim"
+            delta = f"[{color}]{d:+.1f}[/{color}]"
+
+        table.add_row(
+            str(r.iteration),
+            f"{r.avg_score:.1f}/70",
+            f"{r.per_axis.get('structural_compliance', 0):.1f}",
+            f"{r.per_axis.get('length_targets', 0):.1f}",
+            f"{r.per_axis.get('anti_hype', 0):.1f}",
+            f"{r.per_axis.get('coverage', 0):.1f}",
+            delta,
+        )
+
+    console.print(table)
+
+    best = max(history, key=lambda r: r.avg_score)
+    baseline = history[0].avg_score
+    console.print(f"\n[bold]Best:[/bold] iteration {best.iteration} ({best.avg_score:.1f}/70)")
+    console.print(f"[bold]Improvement:[/bold] {best.avg_score - baseline:+.1f} from baseline")
+    console.print(f"[bold]Logs:[/bold] {log_dir}")
+
+
 @enrich.command()
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
 @click.option("--verbose", is_flag=True)

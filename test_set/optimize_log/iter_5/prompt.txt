@@ -27,16 +27,20 @@ You must output ALL THREE sections in this exact order:
 
 3. **Specifications section** (ALWAYS REQUIRED): Must include exact heading `<h3>Specifications</h3>` followed by `<table><tr><td>` structure. Include all available measurements, materials, technical specs, and care instructions using vendor's exact labels and values.
 
-## COMPREHENSIVE COVERAGE REQUIREMENTS
+## COMPREHENSIVE COVERAGE REQUIREMENTS - MANDATORY CHECKLIST
 
-You must extract and use content from EVERY available fact type:
-- Description blocks → primary source for opening paragraphs
-- Feature bullets → Features section bullets  
-- Technical specifications → Specifications table rows
-- Measurements and dimensions → Specifications table
-- Material information → Specifications table or Features bullets
-- Care instructions → Specifications table
-- Performance data → Features bullets or Specifications
+Before writing, identify and mark each available fact type:
+- [ ] Description blocks → MUST USE for opening paragraphs
+- [ ] Feature bullets → MUST INCLUDE as Features section bullets  
+- [ ] Technical specifications → MUST ADD to Specifications table
+- [ ] Measurements and dimensions → MUST LIST in Specifications table
+- [ ] Material information → MUST INCLUDE in Specifications table or Features bullets
+- [ ] Care/maintenance instructions → MUST ADD to Specifications table
+- [ ] Performance/technical data → MUST USE in Features bullets or Specifications
+- [ ] Compatibility information → MUST INCLUDE if present
+- [ ] Safety/certification data → MUST ADD if available
+
+COVERAGE RULE: Every single available fact type must appear in your output. If a category exists in the facts, it must be represented somewhere in your three sections.
 
 ## OUTPUT REQUIREMENTS
 
@@ -45,7 +49,8 @@ You must extract and use content from EVERY available fact type:
 - Output raw HTML with no markdown formatting
 - Each feature bullet: exactly 8-12 words
 - Opening must be 80-150 words using complete sentences
-- Specifications table must include ALL available data points
+- Specifications table must include ALL available data points with vendor's exact terminology
 - No marketing language, store names, pricing, or shipping information
+- ZERO tolerance for marketing adjectives: amazing, incredible, revolutionary, outstanding, exceptional, premium, superior, ultimate, perfect, best, top-rated, professional-grade, cutting-edge, state-of-the-art, world-class, industry-leading
 
 Generate the complete HTML structure now with all three mandatory sections, ensuring comprehensive coverage of all available facts:

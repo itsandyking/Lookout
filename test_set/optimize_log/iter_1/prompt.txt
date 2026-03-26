@@ -1,0 +1,48 @@
+You are formatting a product description for a Shopify store. Your job is to organize the vendor's own product information into clean HTML — not to write original copy.
+
+## RULES
+
+1. **Use the vendor's own words.** Pull directly from the description blocks, feature bullets, and specs provided. Rephrase only for formatting (e.g., turning a paragraph into bullets), not for style.
+
+2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler.
+
+3. **Don't remove important details.** Keep material names, tech specs, measurements, and certifications exactly as the vendor states them.
+
+4. **Clean up, don't rewrite.** Fix obvious formatting issues (all caps, broken sentences, duplicate content), but preserve the vendor's terminology and phrasing.
+
+## PRODUCT FACTS
+
+Handle: {handle}
+Vendor: {vendor}
+
+{facts}
+
+## REQUIRED STRUCTURE
+
+You must output ALL sections that have available data:
+
+1. **Opening paragraph(s)** (required): Start with `<p>` tags. Extract 1-3 informative sentences from description blocks. Target 50-150 words total for opening content.
+
+2. **Features section** (if feature bullets available): Must include `<h3>Features</h3>` followed by `<ul><li>` list. Each bullet should be 6-12 words. Maximum 6 features.
+
+3. **Specifications section** (if specs/measurements available): Must include `<h3>Specifications</h3>` followed by `<table>` with vendor's exact spec labels and values.
+
+## COVERAGE CHECKLIST
+
+Extract content from ALL available fact types:
+- Description blocks (primary source for opening paragraphs)
+- Feature bullets (for Features section)
+- Technical specifications and measurements (for Specifications table)
+- Material information (integrate into appropriate sections)
+- Care instructions (add to Specifications if present)
+
+## OUTPUT REQUIREMENTS
+
+- Target total length: 100-400 words
+- Use semantic HTML only: p, h3, ul, li, table, tr, td, th
+- Output raw HTML with no markdown code blocks
+- No store names, pricing, shipping, or return information
+- Each feature bullet: 6-12 words maximum
+- Each opening paragraph: complete sentences using vendor's exact terminology
+
+Generate the complete HTML structure now, ensuring all available fact types are represented:

@@ -1,0 +1,38 @@
+You are formatting a product description for a Shopify store. Your job is to organize the vendor's own product information into clean HTML — not to write original copy.
+
+## RULES
+
+1. **Use the vendor's own words.** Pull directly from the description blocks, feature bullets, and specs provided. Rephrase only for formatting (e.g., turning a paragraph into bullets), not for style.
+
+2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler.
+
+3. **Don't remove important details.** Keep material names, tech specs, measurements, and certifications exactly as the vendor states them.
+
+4. **Clean up, don't rewrite.** Fix obvious formatting issues (all caps, broken sentences, duplicate content), but preserve the vendor's terminology and phrasing.
+
+## PRODUCT FACTS
+
+Handle: {handle}
+Vendor: {vendor}
+
+{facts}
+
+## OUTPUT FORMAT
+
+Generate valid HTML. Structure:
+
+1. **Description** (1-3 sentences): Pull the most informative sentence(s) from the description blocks. Keep the vendor's wording.
+
+2. **Features** (if available): `<h3>Features</h3>` with `<ul>`. Use the vendor's feature bullets directly. Clean up formatting, deduplicate, but don't rephrase.
+
+3. **Specs** (if available): `<h3>Specifications</h3>` with an HTML `<table>`. Use the vendor's spec labels and values exactly.
+
+## OUTPUT
+
+- If a section has no data, skip it.
+- Minimum output: one paragraph from the description blocks.
+- Use semantic HTML (p, h3, ul, li, table).
+- Output only HTML — no commentary, no markdown code blocks.
+- Do not include store name, pricing, shipping, or return info.
+
+Generate the HTML body now:

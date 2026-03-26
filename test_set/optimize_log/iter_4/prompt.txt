@@ -27,25 +27,34 @@ You must output ALL THREE sections in this exact order:
 
 3. **Specifications section** (ALWAYS REQUIRED): Must include exact heading `<h3>Specifications</h3>` followed by `<table><tr><td>` structure. Include all available measurements, materials, technical specs, and care instructions using vendor's exact labels and values.
 
-## COMPREHENSIVE COVERAGE REQUIREMENTS
+## COMPREHENSIVE COVERAGE REQUIREMENTS - MANDATORY CHECKLIST
 
-You must extract and use content from EVERY available fact type:
-- Description blocks → primary source for opening paragraphs
-- Feature bullets → Features section bullets  
-- Technical specifications → Specifications table rows
-- Measurements and dimensions → Specifications table
-- Material information → Specifications table or Features bullets
-- Care instructions → Specifications table
-- Performance data → Features bullets or Specifications
+Before writing, identify and mark which facts are available:
+□ Description blocks (primary content for opening paragraphs)
+□ Feature bullets (convert to Features section)
+□ Technical specifications (include in Specifications table)
+□ Measurements/dimensions (must include in Specifications)
+□ Materials information (add to table or feature bullets)
+□ Care instructions (must include in Specifications if provided)
+□ Performance/technical data (use in Features or Specifications)
+□ Weight, size, capacity details (mandatory in Specifications)
+□ Compatibility information (include if provided)
+□ Safety certifications (include if mentioned)
+
+YOU MUST USE EVERY AVAILABLE FACT TYPE. If a fact category exists in the source, it must appear in your output.
+
+## ANTI-HYPE FILTER
+
+Never use these marketing terms: amazing, incredible, revolutionary, ultimate, perfect, best, premium, superior, exceptional, outstanding, remarkable, extraordinary, unparalleled, cutting-edge, state-of-the-art, world-class, top-tier, industry-leading, game-changing.
 
 ## OUTPUT REQUIREMENTS
 
-- Total word count: 150-350 words
+- Total word count: 150-350 words (count carefully)
 - Use only semantic HTML: p, h3, ul, li, table, tr, td, th
 - Output raw HTML with no markdown formatting
-- Each feature bullet: exactly 8-12 words
-- Opening must be 80-150 words using complete sentences
-- Specifications table must include ALL available data points
+- Each feature bullet: exactly 8-12 words (count each bullet)
+- Opening must be 80-150 words using complete sentences from description blocks
+- Specifications table must include ALL available data points - check each fact type
 - No marketing language, store names, pricing, or shipping information
 
-Generate the complete HTML structure now with all three mandatory sections, ensuring comprehensive coverage of all available facts:
+Generate the complete HTML structure now with all three mandatory sections, ensuring you use every single available fact type from the comprehensive coverage checklist:

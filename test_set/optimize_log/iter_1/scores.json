@@ -1,0 +1,206 @@
+{
+  "iteration": 1,
+  "timestamp": "2026-03-26T14:41:45.256114+00:00",
+  "prompt_path": "lookout/enrich/prompts/generate_body_html.prompt",
+  "avg_score": 52.7,
+  "max_score": 60,
+  "per_axis": {
+    "structural_compliance": 19.2,
+    "length_targets": 12.7,
+    "anti_hype": 13.7,
+    "coverage": 7.1
+  },
+  "per_product": [
+    {
+      "handle": "mens-reserve-2l-insulated-jacket",
+      "score": 60,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "preview-goggles-3",
+      "score": 60,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "strand-sunglasses",
+      "score": 60,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "prodigy-3",
+      "score": 57,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 12,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "mind-expander-snowboard-2025",
+      "score": 56,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "102502",
+      "score": 55,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "i-o-mag",
+      "score": 55,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "i-o-mag-xl",
+      "score": 55,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "womens-protect-rainforests-easy-cut-t-shirt",
+      "score": 54,
+      "axes": {
+        "structural_compliance": 14,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "bwii-10-5mm-200-static-rope",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "faction-x-vuarnet-artic-jacket-3l",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 10,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "kids-reverb-ski-boot-2026",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 10,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "mens-kyanite-lightweight-jacket",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "octo-skis-2025",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "sato-birdie-skis-2026",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 5
+      }
+    },
+    {
+      "handle": "womens-mtn-surf-bib",
+      "score": 51,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 10,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "mens-shralpinist-stretch-jacket",
+      "score": 46,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 5,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "womens-mtn-surf-insulated-parka",
+      "score": 46,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 5,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "3mm-niteline",
+      "score": 41,
+      "axes": {
+        "structural_compliance": 16,
+        "length_targets": 10,
+        "anti_hype": 10,
+        "coverage": 5
+      }
+    }
+  ],
+  "prompt_diff": "See prompt_iter_1.prompt"
+}
