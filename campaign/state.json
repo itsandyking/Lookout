@@ -66,5 +66,45 @@
   "api_usage": {
     "brave_queries": 14,
     "llm_calls": 6
+  },
+  "costs": {
+    "brave_queries": 14,
+    "brave_cost": 0.07,
+    "llm_calls": 6,
+    "llm_cost": 0.036,
+    "total_cost": 0.106,
+    "cost_per_product": 0.0151,
+    "avg_confidence": 93.2,
+    "efficiency_score": 61.7
+  },
+  "vendor_stats": {
+    "Faction": {
+      "processed": 3,
+      "updated": 2,
+      "avg_confidence": 90,
+      "avg_cost": 0.014,
+      "efficiency_score": 64.3
+    },
+    "Black Crows": {
+      "processed": 1,
+      "updated": 1,
+      "avg_confidence": 95,
+      "avg_cost": 0.016,
+      "efficiency_score": 59.4
+    },
+    "Smith Optics": {
+      "processed": 2,
+      "updated": 2,
+      "avg_confidence": 100,
+      "avg_cost": 0.016,
+      "efficiency_score": 62.5
+    },
+    "Jones Snowboards": {
+      "processed": 1,
+      "updated": 1,
+      "avg_confidence": 85,
+      "avg_cost": 0.016,
+      "efficiency_score": 53.1
+    }
   }
 }
