@@ -454,11 +454,11 @@ def score_quality(
 
 
 def load_artifacts(output_dir: Path, handle: str) -> tuple[MerchOutput | None, ExtractedFacts | None]:
-    """Load merch_output.json and facts.json for a product handle."""
+    """Load merch_output.json and extracted_facts.json for a product handle."""
     handle_dir = output_dir / handle
 
     merch_path = handle_dir / "merch_output.json"
-    facts_path = handle_dir / "facts.json"
+    facts_path = handle_dir / "extracted_facts.json"
 
     merch_output = None
     facts = None

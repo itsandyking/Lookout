@@ -348,7 +348,7 @@ class TestScoreOutputDir:
         facts = _make_facts()
         merch = MerchOutput(handle=handle, body_html=GOOD_HTML, confidence=80)
 
-        (handle_dir / "facts.json").write_text(facts.model_dump_json())
+        (handle_dir / "extracted_facts.json").write_text(facts.model_dump_json())
         (handle_dir / "merch_output.json").write_text(merch.model_dump_json())
 
         scores = score_output_dir(tmp_path)
@@ -372,7 +372,7 @@ class TestScoreOutputDir:
             d.mkdir()
             facts = _make_facts()
             merch = MerchOutput(handle=name, body_html=GOOD_HTML, confidence=80)
-            (d / "facts.json").write_text(facts.model_dump_json())
+            (d / "extracted_facts.json").write_text(facts.model_dump_json())
             (d / "merch_output.json").write_text(merch.model_dump_json())
 
         scores = score_output_dir(tmp_path, handles=["product-a"])
