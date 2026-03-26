@@ -61,8 +61,10 @@ def cli() -> None:
     help="Export priority CSV",
 )
 @click.option("--include-house-brands", is_flag=True, help="Include house brands in audit")
+@click.option("--online/--no-online", default=False, help="Enrich with online opportunity signals (sessions, conversion)")
+@click.option("--lookback", default=90, help="Days to look back for online signals (default 90)")
 @click.option("--verbose", is_flag=True)
-def audit(vendor, output_path, include_house_brands, verbose):
+def audit(vendor, output_path, include_house_brands, online, lookback, verbose):
     """Run content audit — find products with gaps."""
     setup_logging(verbose)
     from lookout.audit.auditor import ContentAuditor
@@ -74,7 +76,34 @@ def audit(vendor, output_path, include_house_brands, verbose):
         console.print(f"[red]Error connecting to database:[/red] {e}")
         sys.exit(1)
 
-    auditor = ContentAuditor(store, exclude_house_brands=not include_house_brands)
+    online_signals = {}
+    if online:
+        console.print("[dim]Fetching online signals from Shopify analytics...[/dim]")
+        try:
+            from tvr.mcp_report.shopify_api import ShopifyQLClient
+            from lookout.audit.online_signals import fetch_online_signals
+
+            # Build title→handle mapping for joining session data
+            all_products = store.list_products(status="active")
+            title_to_handle = {
+                p.get("title", ""): p.get("handle", "")
+                for p in all_products if p.get("title") and p.get("handle")
+            }
+
+            client = ShopifyQLClient.from_config()
+            online_signals = asyncio.run(fetch_online_signals(
+                client, title_to_handle=title_to_handle, lookback_days=lookback,
+            ))
+            console.print(f"[dim]Got signals for {len(online_signals)} products[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch online signals: {e}[/yellow]")
+            console.print("[dim]Falling back to inventory-only priority scoring[/dim]")
+
+    auditor = ContentAuditor(
+        store,
+        exclude_house_brands=not include_house_brands,
+        online_signals=online_signals,
+    )
     result = auditor.audit(vendor=vendor)
     summary = result.summary()
 

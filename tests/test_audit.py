@@ -154,6 +154,10 @@ def test_audit_result_to_priority_csv():
         "Gaps",
         "Suggestions",
         "Priority Score",
+        "Sessions",
+        "Conversion Rate",
+        "Online Revenue",
+        "Opportunity Gap",
         "Admin Link",
     }
     assert expected_columns == set(reader.fieldnames)

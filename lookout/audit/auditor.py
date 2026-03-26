@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from lookout.audit.models import MIN_DESCRIPTION_LENGTH, AuditResult, ProductScore
+from lookout.audit.online_signals import OnlineSignals
 from lookout.store import LookoutStore
 from lookout.taxonomy.mappings import EXCLUDED_VENDORS
 
@@ -25,6 +26,9 @@ class ContentAuditor:
     - Product type
     - Tags
 
+    When online signals are provided, products with high sessions but low
+    conversion get boosted priority (content opportunity signal).
+
     Returns an AuditResult with per-product scores and priority ranking.
     """
 
@@ -33,10 +37,12 @@ class ContentAuditor:
         store: LookoutStore,
         min_description_length: int = MIN_DESCRIPTION_LENGTH,
         exclude_house_brands: bool = True,
+        online_signals: dict[str, OnlineSignals] | None = None,
     ) -> None:
         self.store = store
         self.min_description_length = min_description_length
         self.exclude_house_brands = exclude_house_brands
+        self.online_signals = online_signals or {}
 
     def audit(self, vendor: str | None = None) -> AuditResult:
         """Run content audit on all active products (or filtered by vendor)."""
@@ -47,6 +53,17 @@ class ContentAuditor:
 
         for product in products:
             score = self._score_product(product)
+            # Enrich with online signals if available (matched by title)
+            title = product.get("title", "")
+            if title in self.online_signals:
+                sig = self.online_signals[title]
+                score.online_sessions = sig.sessions
+                score.online_conversion_rate = sig.conversion_rate
+                score.online_revenue = sig.online_revenue
+                score.online_orders = sig.orders
+                score.opportunity_gap = sig.opportunity_gap
+                # Recalculate priority with online data
+                score.calculate_gaps()
             scores.append(score)
 
         return AuditResult(scores=scores, vendor=vendor or "")

@@ -51,6 +51,13 @@ class ProductScore:
     inventory_value: float = 0.0  # cost * quantity
     full_price_inventory_value: float = 0.0  # value of variants NOT on sale
 
+    # Online signals (populated when available)
+    online_sessions: int = 0
+    online_conversion_rate: float = 0.0
+    online_revenue: float = 0.0
+    online_orders: int = 0
+    opportunity_gap: float = 0.0  # high sessions + low conversion
+
     # Computed
     gap_count: float = 0.0
     gaps: list[str] = field(default_factory=list)
@@ -111,14 +118,27 @@ class ProductScore:
             self.gaps.append("No tags")
             self.suggestions.append("Add relevant tags for search and filtering")
 
-        # Priority score: inventory_value * gap_count * multiplier
+        # Priority score
         if self.full_price_inventory_value > 0 and self.inventory_value > 0:
             full_price_ratio = self.full_price_inventory_value / self.inventory_value
-            priority_multiplier = 1 + full_price_ratio  # 1x to 2x
+            price_multiplier = 1 + full_price_ratio  # 1x to 2x
         else:
-            priority_multiplier = 1.0
+            price_multiplier = 1.0
 
-        self.priority_score = self.inventory_value * self.gap_count * priority_multiplier
+        base_score = self.inventory_value * self.gap_count * price_multiplier
+
+        # When online signals are available, boost products with high
+        # sessions + low conversion (content opportunity) and dampen
+        # products with no online traffic.
+        if self.online_sessions > 0:
+            # opportunity_gap: 0-1, higher = more untapped potential
+            # session_weight: log-scale boost for traffic volume
+            import math
+            session_weight = math.log1p(self.online_sessions) / math.log1p(100)
+            opportunity_boost = 1.0 + (self.opportunity_gap * session_weight)
+            self.priority_score = base_score * opportunity_boost
+        else:
+            self.priority_score = base_score
 
     @property
     def completeness_percent(self) -> float:
@@ -282,6 +302,10 @@ class AuditResult:
         "Gaps",
         "Suggestions",
         "Priority Score",
+        "Sessions",
+        "Conversion Rate",
+        "Online Revenue",
+        "Opportunity Gap",
         "Admin Link",
     ]
 
@@ -310,6 +334,10 @@ class AuditResult:
                 "Gaps": ", ".join(s.gaps),
                 "Suggestions": "; ".join(s.suggestions),
                 "Priority Score": round(s.priority_score, 2),
+                "Sessions": s.online_sessions or "",
+                "Conversion Rate": f"{s.online_conversion_rate:.1%}" if s.online_sessions else "",
+                "Online Revenue": f"${s.online_revenue:.2f}" if s.online_revenue else "",
+                "Opportunity Gap": round(s.opportunity_gap, 3) if s.online_sessions else "",
                 "Admin Link": s.admin_link,
             }
             for s in self.priority_items
