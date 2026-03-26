@@ -1,0 +1,51 @@
+{
+  "handle": "strand-sunglasses",
+  "started_at": "2026-03-26T14:20:19.561375",
+  "completed_at": "2026-03-26T14:20:33.828452Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-26T14:20:19.561456",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {
+        "barcodes": 1,
+        "skus": 1,
+        "known_colors": []
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:25.804820",
+      "level": "INFO",
+      "message": "Scraping https://www.smithoptics.com/en-us/products/guides-choice",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:30.970519",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:20:31.267884",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:20:33.828435",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 0,
+        "variant_mappings": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

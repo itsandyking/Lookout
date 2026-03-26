@@ -1,0 +1,429 @@
+{
+  "visible_text_blocks": [
+    "Open media 1 in modal",
+    "Open media 2 in modal",
+    "Open media 3 in modal",
+    "Open media 4 in modal",
+    "Open media 5 in modal",
+    "Open media 6 in modal",
+    "Open media 7 in modal",
+    "Open media 8 in modal",
+    "Open media 9 in modal",
+    "Open media 10 in modal",
+    "Open media 11 in modal",
+    "Open media 12 in modal",
+    "Open media 13 in modal",
+    "Open media 14 in modal",
+    "Open media 15 in modal",
+    "Open media 16 in modal",
+    "Open media 17 in modal",
+    "Open media 18 in modal",
+    "Open media 19 in modal",
+    "Open media 20 in modal"
+  ],
+  "bullet_lists": [
+    [
+      "New Arrivals",
+      "Best Sellers",
+      "Gift Cards",
+      "60 Years of SMITH"
+    ],
+    [
+      "4D MAG Series",
+      "Guide's Choice",
+      "Lowdown Collection",
+      "Core Collection"
+    ],
+    [
+      "ChromaPop\u2122 Glacier PhotoChromic",
+      "ChromaPop\u2122 Pro PhotoChromic",
+      "ChromaPop\u2122 Glass PolarChromic",
+      "ChromaPop\u2122",
+      "PhotoChromic"
+    ],
+    [
+      "Best Selling Sunglasses",
+      "Sport & Performance",
+      "Lifestyle",
+      "PhotoChromic",
+      "Backcountry Sunglasses",
+      "Protective Eyewear",
+      "Replacement Lenses",
+      "Shop All Sunglasses"
+    ],
+    [
+      "Prescription Sunglasses",
+      "Prescription Glasses",
+      "Blue Light Glasses",
+      "Rx Sport Adapters",
+      "How it Works",
+      "Shop All Prescription"
+    ],
+    [
+      "BirdsEye Vision",
+      "Smith MAG",
+      "Photochromic Goggles",
+      "XL Goggles",
+      "Over the Glasses (OTG)",
+      "Custom Imprint 3D Collection",
+      "Replacement Lenses",
+      "Shop All Snow Goggles"
+    ],
+    [
+      "Downhill Goggles",
+      "Replacement Lenses",
+      "Shop All Bike Goggles"
+    ],
+    [
+      "All Mountain",
+      "Freestyle",
+      "Alpine Racing",
+      "Kids' Snow Helmets",
+      "Shop All Snow Helmets"
+    ],
+    [
+      "Mountain Biking",
+      "Road & Gravel",
+      "Kids Helmets",
+      "Shop All Bike Helmets"
+    ],
+    [
+      "Cleaning KitCleaning KitRegular price$21.00Regular price$21.00 USDSale price$21.00 USD",
+      "RiptideRiptideRegular priceStarting at \n$217.00Regular price$277.00 USDSale price$277.00 USD",
+      "HooksetHooksetRegular priceStarting at \n$237.00Regular price$297.00 USDSale price$297.00 USD",
+      "Lowdown 2Lowdown 2Regular priceStarting at \n$187.00Regular price$277.00 USDSale price$277.00 USD",
+      "Guide's Choice XLGuide's Choice XLRegular priceStarting at \n$237.00Regular price$237.00 USDSale price$237.00 USD",
+      "Guide's Choice Sunglass Replacement LensGuide's Choice Sunglass Replacement LensRegular price$88.00Regular price$88.00 USDSale price$88.00 USD",
+      "Redding 2Redding 2Regular priceStarting at \n$237.00Regular price$237.00 USDSale price$237.00 USD"
+    ]
+  ],
+  "spec_tables": [],
+  "json_ld_products": [
+    {
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "207.00",
+        "highPrice": "327.00",
+        "priceCurrency": "USD",
+        "offerCount": "18",
+        "availability": "https://schema.org/InStock",
+        "url": "https://www.smithoptics.com/en-us/products/guides-choice"
+      },
+      "@context": "http://schema.org/",
+      "@id": "/en-us/products/guides-choice#product",
+      "@type": "ProductGroup",
+      "brand": {
+        "@type": "Brand",
+        "name": "Smith Optics"
+      },
+      "category": "Sunglasses",
+      "description": "\n\nDescription\nThe Guide's Choice has been reimagined to exceed the needs of our most demanding customers. Incorporating our most advanced eyewear technologies, this style boasts wide temples and an aggressive wrap for superior light protection. Add to that premium Italian spring hinges, megol nose and temple pads, a detachable sunglass leash, and optional premium 8 base ChromaPop lenses, the Guide's Choice is engineered for those that truly believe in the life outside walls.\n\n\n\n\n\n\nProduct Details\n\n\nVision\n\nChromaPop\u2122 lenses enhance contrast and natural color to make the details pop\nChromaPop\u2122 Glass polarized lenses cut glare and enhance color and contrast, and are highly scratch-resistant\nChromaPop\u2122 Glass Polarchromic lenses combine the glare-free benefits of advanced polarization with UV-sensitive, self-tint-adjusting to bring you lenses that adapt to changing light conditions, so you always have the perfect tint for the amount of light\nSmudge and moisture resistant coating for easy cleaning and clear optics\nAnti-reflective coating improves clarity and reduces eye strain\n100% UV protection\n\nFit / Integration\n\nMedium-large fit, medium-large coverage\n8-base lens curvature offers a wraparound fit\nMegol temple and nose pads provide non-slip grip so glasses stay put\nSpring hinges self adjust to your face for a snug, comfortable fit\n\n\n\n\n\n\n\n\nWhat's Included\n\n\nIntegrated, detachable sunglass leash\nHard case\nMicrofiber bag\n\n\n\n",
+      "hasVariant": [
+        {
+          "@id": "/en-us/products/guides-choice?variant=47042031976686#variant",
+          "@type": "Product",
+          "gtin": "197737222390",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteBlack-cpGlassPolarchromicRoseBlueMirror_3Q.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black | ChromaPop Glass Polarchromic Rose Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=47042031976686#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "327.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=47042031976686"
+          },
+          "sku": "204947003627V"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811586286#variant",
+          "@type": "Product",
+          "gtin": "197737016128",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteTortoise_204947N9P6278_3Q.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Tortoise | ChromaPop Glass Polarchromic Brown Green Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811586286#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "327.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811586286"
+          },
+          "sku": "204947N9P6278"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=47557517246702#variant",
+          "@type": "Product",
+          "gtin": "197737331627",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteGravy-cpPolarizedBronzeMirror_3Q.png?v=1773162372&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Gravy | ChromaPop Polarized Bronze Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=47557517246702#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "237.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=47557517246702"
+          },
+          "sku": "2049474JC62QE"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=47557517279470#variant",
+          "@type": "Product",
+          "gtin": "197737331641",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteFathom-cpPolarizedBlack_3Q.png?v=1773162372&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Fathom | ChromaPop Polarized Black",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=47557517279470#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "237.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=47557517279470"
+          },
+          "sku": "204947DKH626N"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811487982#variant",
+          "@type": "Product",
+          "gtin": "827886639526",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpPolarizedBlueMirror_01_517994a0-46af-4a21-8cc6-c30addecea42.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Polarized Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811487982#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "237.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811487982"
+          },
+          "sku": "20494712462QG"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811258606#variant",
+          "@type": "Product",
+          "gtin": "827886639359",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpGlassPolarizedLowLightYellow_01.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Glass Polarized Low Light Yellow",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811258606#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811258606"
+          },
+          "sku": "20494700362L5"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811225838#variant",
+          "@type": "Product",
+          "gtin": "827886639311",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpGlassPolarizedGray_01.png?v=1758724648&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Glass Polarized  Black",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811225838#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811225838"
+          },
+          "sku": "204947003626N"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811291374#variant",
+          "@type": "Product",
+          "gtin": "827886639366",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpPolarizedGrayGreen_01_6238c622-c8e1-45cc-a2ac-74a5dc25f9ec.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Polarized Gray Green",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811291374#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "237.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811291374"
+          },
+          "sku": "20494700362L7"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811324142#variant",
+          "@type": "Product",
+          "gtin": "827886639373",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpGlassPolarizedBronzeMirror_01.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Glass Polarized Bronze Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811324142#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811324142"
+          },
+          "sku": "20494700362QE"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811356910#variant",
+          "@type": "Product",
+          "gtin": "827886639380",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpGlassPolarizedBlueMirror_01_ee896732-9947-4952-b58f-be8781480163.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Glass Polarized Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811356910#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811356910"
+          },
+          "sku": "20494700362QG"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811389678#variant",
+          "@type": "Product",
+          "gtin": "827886639427",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpGlassPolarizedGreenMirror_01_b88461a7-06e4-42ec-a5ae-4ca7627bcff0.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black  | ChromaPop Glass Polarized Green Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811389678#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811389678"
+          },
+          "sku": "20494700362UI"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811422446#variant",
+          "@type": "Product",
+          "gtin": "197737016104",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteBlack_20494701T62QG_3Q.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Black | ChromaPop Glass Polarchromic Yellow Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811422446#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "327.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811422446"
+          },
+          "sku": "20494701T62QG"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811455214#variant",
+          "@type": "Product",
+          "gtin": "827886639472",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpPolarizedGreenMirror_01_ea64f945-1c81-4119-8164-48db58dc3b2b.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Tortoise  | ChromaPop Glass Polarized Green Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811455214#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811455214"
+          },
+          "sku": "20494708662UI"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811553518#variant",
+          "@type": "Product",
+          "gtin": "827886639540",
+          "image": "https://www.smithoptics.com/cdn/shop/files/201563N9P62L5_01.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Tortoise  | ChromaPop Glass Polarized Brown",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811553518#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811553518"
+          },
+          "sku": "204947HGC62L5"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811619054#variant",
+          "@type": "Product",
+          "gtin": "827886639588",
+          "image": "https://www.smithoptics.com/cdn/shop/files/cpPolarizedBrown_01_a4600595-4578-4d6a-ab80-68c951fe331a.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Tortoise  | ChromaPop Polarized Brown",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811619054#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "237.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811619054"
+          },
+          "sku": "204947N9P62L5"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=46923811651822#variant",
+          "@type": "Product",
+          "gtin": "197737174460",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteAshMarble-cpGlassPolarizedOpalMirror_3Q.png?v=1770850890&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Ash Marble | ChromaPop Glass Polarized Opal Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=46923811651822#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=46923811651822"
+          },
+          "sku": "204947UHX62QG"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=47557517312238#variant",
+          "@type": "Product",
+          "gtin": "197737331634",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteMeteoriteCrystal-cpLowLightRoseBlueMirror_3Q.png?v=1773162372&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Meteorite Crystal | ChromaPop Low Light Rose Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=47557517312238#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "207.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=47557517312238"
+          },
+          "sku": "2049474QI62G0"
+        },
+        {
+          "@id": "/en-us/products/guides-choice?variant=47557517345006#variant",
+          "@type": "Product",
+          "gtin": "197737331658",
+          "image": "https://www.smithoptics.com/cdn/shop/files/guides-choice-sunglasses_matteFlintTarmacTortoise-cpGlassPolarizedDarkBlueMirror_3Q.png?v=1773162372&width=1920",
+          "name": "Guide's Choice - Sunglasses / Matte Flint / Tarmac Tortoise | ChromaPop Glass Polarized Dark Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/guides-choice?variant=47557517345006#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "297.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/guides-choice?variant=47557517345006"
+          },
+          "sku": "204947U1F624J"
+        }
+      ],
+      "name": "Guide's Choice",
+      "productGroupID": "8939133534446",
+      "url": "https://www.smithoptics.com/en-us/products/guides-choice"
+    },
+    {
+      "@context": "https://schema.org/",
+      "@type": "Product",
+      "@id": "https://www.smithoptics.com/en-us/products/guides-choice",
+      "name": "Guide's Choice",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.6",
+        "reviewCount": "428"
+      }
+    }
+  ],
+  "meta_description": "Guide's Choice sunglasses feature wide temples and an aggressive wrap for superior light protection, and lens options to suit every angler.",
+  "page_title": "Guide's Choice | Sunglass | Smith Optics"
+}

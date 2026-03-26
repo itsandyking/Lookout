@@ -1,0 +1,46 @@
+{
+  "handle": "womens-protect-rainforests-easy-cut-t-shirt",
+  "vendor": "Patagonia",
+  "query_used": "barcode: site:patagonia.com 198077718918 | sku: site:patagonia.com 37867-THI-S | title: site:patagonia.com Women's Protect Rainforests Easy Cut T-Shirt | handle: site:patagonia.com womens protect rainforests easy cut t shirt | broad: Patagonia Women's Protect Rainforests Easy Cut T-Shirt",
+  "candidates": [
+    {
+      "url": "https://www.patagonia.com/shop/womens/tops/t-shirts",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women's T-Shirts by Patagonia",
+      "snippet": "W&#x27;s Daily Easy-Cut T-Shirt \u00b7 $49 \u00b7 Rating: 5.0 / 5 (3 Reviews) Compare \u00b7 Quick Add \u00b7 Viewed \u00b7 % Off \u00b7 W&#x27;s Long-Sleeved Capilene\u00ae Cool Trail Shirt - Stratapeaks \u00b7 $65 \u00b7 quick-drying \u00b7 moisture-wicking \u00b7 breathable \u00b7 Compare \u00b7 Quick Add \u00b7 Viewed \u00b7 % Off \u00b7 W&#x27;s Protect Rainforests Easy-Cut T-Shirt \u00b7"
+    },
+    {
+      "url": "https://www.patagonia.com/shop/womens/tops/organic-cotton",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women's Organic Cotton Tops by Patagonia",
+      "snippet": "W&#x27;s Long-Sleeved &#x27;73 Text Logo Easy-Cut Organic T-Shirt \u00b7 $55 $32.99 \u00b7 Rating: 5.0 / 5 (1 Reviews) Compare \u00b7 Quick Add \u00b7 Viewed \u00b7 % Off \u00b7 New \u00b7 W&#x27;s Protect Rainforests Easy-Cut T-Shirt \u00b7 $49 \u00b7 Compare \u00b7 Quick Add \u00b7 Viewed \u00b7 40% Off \u00b7 W&#x27;s Long-Sleeved &#x27;73 Skyline Easy-Cut Organic T-Shirt \u00b7"
+    },
+    {
+      "url": "https://www.patagonia.com/shop/womens/tops/short-sleeve",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women's Short Sleeve Tops by Patagonia",
+      "snippet": "W&#x27;s Unity Fitz Easy-Cut Responsibili-Tee\u00ae \u00b7 $45 $30.99 \u00b7 Rating: 5.0 / 5 (3 Reviews) Compare \u00b7 Quick Add \u00b7 Viewed \u00b7 % Off \u00b7 New \u00b7 W&#x27;s Capilene\u00ae Cool Daily Shirt - Trailcheck \u00b7 $59 \u00b7 quick-drying \u00b7 moisture-wicking \u00b7 breathable \u00b7 Compare \u00b7 Quick Add \u00b7 Viewed \u00b7 % Off \u00b7 New \u00b7 W&#x27;s Protect Rainforests Easy-Cut T-Shirt \u00b7"
+    },
+    {
+      "url": "https://www.patagonia.com/product/womens-unity-fitz-easy-cut-responsibili-tee/37769.html",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Patagonia Women's Unity Fitz Easy-Cut Responsibili-Tee\u00ae",
+      "snippet": "<strong>Made with 100% recycled fabric, our Patagonia\u00ae Women&#x27;s Unity Fitz Easy-Cut Responsibili-Tee\u00ae features Earth with the message &quot;we&#x27;re all on this together.&quot;</strong>"
+    },
+    {
+      "url": "https://www.patagonia.com/product/womens-long-sleeved-applied-imagination-easy-cut-organic-pocket-t-shirt/37810.html",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Patagonia Women's Long-Sleeved Applied Imagination Easy-Cut Organic Pocket T-Shirt",
+      "snippet": "Our Patagonia\u00ae Women&#x27;s Long-Sleeved Applied Imagination Easy-Cut Organic Pocket T-Shirt is <strong>an everyday-weight, long-sleeved tee made of 100% organic cotton</strong>."
+    }
+  ],
+  "selected_url": "https://www.patagonia.com/shop/womens/tops/t-shirts",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:20:02.261396"
+}

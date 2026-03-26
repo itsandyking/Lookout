@@ -1,0 +1,267 @@
+{
+  "visible_text_blocks": [
+    "Virtual Try-OnSkip to product informationOpen media 1 in modalOpen media 2 in modalOpen media 3 in modalOpen media 4 in modalOpen media 5 in modalOpen media 6 in modalOpen media 7 in modalOpen media 8 in modalOpen media 9 in modalOpen media 10 in modalOpen media 11 in modalOpen media 12 in modalOpen media 13 in modalOpen media 14 in modalOpen media 15 in modalOpen media 16 in modalOpen media 17 in modalOpen media 18 in modalOpen media 19 in modalOpen media 20 in modalOpen media 21 in modalOpen media 22 in modalOpen media 23 in modalOpen media 24 in modalOpen media 25 in modalOpen media 26 in modalOpen media 27 in modalOpen media 28 in modalOpen media 29 in modalOpen media 30 in modalOpen media 31 in modalOpen media 32 in modalOpen media 33 in modalOpen media 34 in modalOpen media 35 in modalOpen media 36 in modalOpen media 37 in modalOpen media 38 in modalOpen media 39 in modalOpen media 40 in modalOpen media 41 in modalOpen media 42 in modalOpen media 43 in modalOpen media 44 in modalOpen media 45 in modalOpen media 46 in modalOpen media 47 in modalOpen media 48 in modalOpen media 49 in modalOpen media 50 in modalOpen media 51 in modalOpen media 52 in modalOpen media 53 in modalOpen media 54 in modalOpen media 55 in modalOpen media 56 in modalOpen media 57 in modalOpen media 58 in modalOpen media 59 in modalOpen media 60 in modalOpen media 61 in modalOpen media 62 in modalOpen media 63 in modalOpen media 64 in modalOpen media 65 in modalOpen media 66 in modalOpen media 67 in modalOpen media 68 in modalPlay video1/of35",
+    "Open media 1 in modal",
+    "Open media 2 in modal",
+    "Open media 3 in modal",
+    "Open media 4 in modal",
+    "Open media 5 in modal",
+    "Open media 6 in modal",
+    "Open media 7 in modal",
+    "Open media 8 in modal",
+    "Open media 9 in modal",
+    "Open media 10 in modal",
+    "Open media 11 in modal",
+    "Open media 12 in modal",
+    "Open media 13 in modal",
+    "Open media 14 in modal",
+    "Open media 15 in modal",
+    "Open media 16 in modal",
+    "Open media 17 in modal",
+    "Open media 18 in modal",
+    "Open media 19 in modal"
+  ],
+  "bullet_lists": [
+    [
+      "New Arrivals",
+      "Best Sellers",
+      "Gift Cards",
+      "60 Years of SMITH"
+    ],
+    [
+      "4D MAG Series",
+      "Guide's Choice",
+      "Lowdown Collection",
+      "Core Collection"
+    ],
+    [
+      "ChromaPop\u2122 Glacier PhotoChromic",
+      "ChromaPop\u2122 Pro PhotoChromic",
+      "ChromaPop\u2122 Glass PolarChromic",
+      "ChromaPop\u2122",
+      "PhotoChromic"
+    ],
+    [
+      "Best Selling Sunglasses",
+      "Sport & Performance",
+      "Lifestyle",
+      "PhotoChromic",
+      "Backcountry Sunglasses",
+      "Protective Eyewear",
+      "Replacement Lenses",
+      "Shop All Sunglasses"
+    ],
+    [
+      "Prescription Sunglasses",
+      "Prescription Glasses",
+      "Blue Light Glasses",
+      "Rx Sport Adapters",
+      "How it Works",
+      "Shop All Prescription"
+    ],
+    [
+      "BirdsEye Vision",
+      "Smith MAG",
+      "Photochromic Goggles",
+      "XL Goggles",
+      "Over the Glasses (OTG)",
+      "Custom Imprint 3D Collection",
+      "Replacement Lenses",
+      "Shop All Snow Goggles"
+    ],
+    [
+      "Downhill Goggles",
+      "Replacement Lenses",
+      "Shop All Bike Goggles"
+    ],
+    [
+      "All Mountain",
+      "Freestyle",
+      "Alpine Racing",
+      "Kids' Snow Helmets",
+      "Shop All Snow Helmets"
+    ],
+    [
+      "Mountain Biking",
+      "Road & Gravel",
+      "Kids Helmets",
+      "Shop All Bike Helmets"
+    ],
+    [
+      "I/O MAG XL Replacement LensI/O MAG XL Replacement LensRegular priceStarting at \n$50.00Regular price$110.00 USDSale price$110.00 USD",
+      "Reason OTGReason OTGRegular priceStarting at \n$78.00Regular price$98.00 USDSale price$98.00 USD",
+      "Level Mips\u00aeLevel Mips\u00aeRegular price$250.00Regular price$250.00 USDSale price$250.00 USD",
+      "BlazerBlazerRegular price$98.00Regular price$98.00 USDSale price$98.00 USD",
+      "GromGromRegular priceStarting at \n$78.00Regular price$98.00 USDSale price$98.00 USD"
+    ]
+  ],
+  "spec_tables": [],
+  "json_ld_products": [
+    {
+      "offers": {
+        "@type": "AggregateOffer",
+        "lowPrice": "283.00",
+        "highPrice": "313.00",
+        "priceCurrency": "USD",
+        "offerCount": "8",
+        "availability": "https://schema.org/InStock",
+        "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl"
+      },
+      "@context": "http://schema.org/",
+      "@id": "/en-us/products/i-o-mag-xl#product",
+      "@type": "ProductGroup",
+      "brand": {
+        "@type": "Brand",
+        "name": "Smith Optics"
+      },
+      "category": "Ski & Snowboard Goggles",
+      "description": "\n\nDescription\nYou can only scope your line if you can see where you're going. Putting on the Smith I/O MAG XL goggles is like flipping the switch from regular to extra-widescreen. Our ChromaPop\u2122 lens tech boosts color and contrast, so you get the clearest picture of the terrain ahead. Our highest level of anti-fog treatment and air flow keep the view sharp. Whether the day dawns clear or stormy, lens swaps are a snap thanks to our quick-swap MAG lens system. Because no two faces are the same, the XL model expands on the standard size for those looking for the largest possible lens.Fine tune your kit with additional or replacement goggle lenses for sunny conditions, variable conditions, and cloudy conditions. Expand your view here.\n\n\n\n\n\n\n\n\n\nProduct Details\n\n\nVision\n\nSpherical Carbonic-x lens for distortion-free optics and impact resistance\nChromaPop\u2122 lenses enhance contrast and natural color to make the details pop\n5X anti-fog inner lens for advanced fog-free performance\nSmith MAG lens change system uses magnets for quick, easy lens changes\nFits over the glasses (OTG ) and is compatible with our optical docking system (ODS) prescription lens insert\nProvides 100% protection against UVA / UVB\n\nFit / Integration\n\nDesigned for ultimate integration with Smith helmets for maximum comfort, venting and fog-free performance\nQuickFit strap adjustment system lets you find the right fit fast\nUltra-wide, silicone-backed strap stays put\nThree-layer DriWix face foam wicks moisture for a fog-free fit\nResponsive Fit frame adjusts to your face for a precise, comfortable fit\nLarge fit; Available in Low Bridge Fit for faces with a lower nose bridge and/or a wide or high cheekbone shape\n\n\n\n\n\n\n\n\nWhat's Included\n\n\nIncludes two lenses: ChromaPop lens for bright light (installed) and bonus ChromaPop lens for low light conditions\nMicrofiber goggle bag with replacement lens sleeve\n\n\n\n",
+      "hasVariant": [
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910570103022#variant",
+          "@type": "Product",
+          "gtin": "197737135713",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_whiteFadeOut-cpSunChromaPopSunBlack_3Q.png?v=1763744879&width=1920",
+          "name": "I/O MAG XL - White Fade Out | ChromaPop Sun Black",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910570103022#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910570103022"
+          },
+          "sku": "M007133PS994Y"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910569906414#variant",
+          "@type": "Product",
+          "gtin": "716736731445",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpSunRedMirror_3Q.png?v=1763687198&width=1920",
+          "name": "I/O MAG XL - Black | ChromaPop Sun Red Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910569906414#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/OutOfStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910569906414"
+          },
+          "sku": "M007130JX996K"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910569873646#variant",
+          "@type": "Product",
+          "gtin": "716736731452",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpSunGreenMirror_3Q.png?v=1758223086&width=1920",
+          "name": "I/O MAG XL - Black | ChromaPop Sun Green Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910569873646#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910569873646"
+          },
+          "sku": "M007130JX99MK"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910569939182#variant",
+          "@type": "Product",
+          "gtin": "716736731469",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpEverydayRedMirror_3Q.png?v=1763687198&width=1920",
+          "name": "I/O MAG XL - Black | ChromaPop Everyday Red Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910569939182#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910569939182"
+          },
+          "sku": "M007130JX99MP"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910569971950#variant",
+          "@type": "Product",
+          "gtin": "716736731476",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpEverydayGreenMirror_3Q.png?v=1763687198&width=1920",
+          "name": "I/O MAG XL - Black | ChromaPop Everyday Green Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910569971950#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910569971950"
+          },
+          "sku": "M007130JX99XP"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910570004718#variant",
+          "@type": "Product",
+          "gtin": "197737004859",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpPhotochromicCopperGoldMirror_3Q.png?v=1763687198&width=1920",
+          "name": "I/O MAG XL - Black | ChromaPop Pro Photochromic Gold Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910570004718#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/OutOfStock",
+            "price": "313.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910570004718"
+          },
+          "sku": "M007130JX994O"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910570037486#variant",
+          "@type": "Product",
+          "gtin": "197737004842",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpEverydayBlueMirror_3Q.png?v=1763687198&width=1920",
+          "name": "I/O MAG XL - Black | ChromaPop Everyday Blue Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910570037486#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910570037486"
+          },
+          "sku": "M007130JX994B"
+        },
+        {
+          "@id": "/en-us/products/i-o-mag-xl?variant=46910570070254#variant",
+          "@type": "Product",
+          "gtin": "716736828091",
+          "image": "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_Slate_M007130NT99MP_3Q.png?v=1763744879&width=1920",
+          "name": "I/O MAG XL - Slate | ChromaPop Everyday Red Mirror",
+          "offers": {
+            "@id": "/en-us/products/i-o-mag-xl?variant=46910570070254#offer",
+            "@type": "Offer",
+            "availability": "http://schema.org/InStock",
+            "price": "283.00",
+            "priceCurrency": "USD",
+            "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl?variant=46910570070254"
+          },
+          "sku": "M007130NT99MP"
+        }
+      ],
+      "name": "I/O MAG XL",
+      "productGroupID": "8934696976622",
+      "url": "https://www.smithoptics.com/en-us/products/i-o-mag-xl"
+    },
+    {
+      "@context": "https://schema.org/",
+      "@type": "Product",
+      "@id": "https://www.smithoptics.com/en-us/products/i-o-mag-xl",
+      "name": "I/O MAG XL",
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.2",
+        "reviewCount": "63"
+      }
+    }
+  ],
+  "meta_description": "Meet the I/O MAG XL snow goggles. We took our best-selling I/O MAG goggles and made them bigger to fit more faces.",
+  "page_title": "I/O MAG XL | Goggles | Smith Optics"
+}

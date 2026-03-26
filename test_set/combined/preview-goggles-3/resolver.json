@@ -1,0 +1,46 @@
+{
+  "handle": "preview-goggles-3",
+  "vendor": "Smith Optics",
+  "query_used": "barcode: site:smithoptics.com TMA012926003 | sku: site:smithoptics.com TMA012926003 | title: site:smithoptics.com Preview Goggles 3 | handle: site:smithoptics.com preview goggles 3 | broad: Smith Optics Preview Goggles 3",
+  "candidates": [
+    {
+      "url": "https://www.smithoptics.com/en-us/products/preview",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Preview | Goggles",
+      "snippet": "Description More is better when it comes to your view, and the Smith Preview Goggles deliver with our BirdsEye Vision\u2122 technology. Paired with the large coverage you know and love, plus view-boosting ChromaPop\u2122 lens technology, the Preview sets you up to carve, slash and explore with a ..."
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/preview-low-bridge-fit",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Preview Low Bridge Fit | Goggle | Smith Optics",
+      "snippet": "Description More is better when it comes to your view, and the Smith Preview Goggles deliver with our BirdsEye Vision\u2122 technology. Paired with the large coverage you know and love, plus view-boosting ChromaPop\u2122 lens technology, the Preview sets you up to carve, slash and explore with a ..."
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/preview-sale",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Preview - Sale | Goggles | Smith Optics",
+      "snippet": "Description More is better when it comes to your view, and the Smith Preview Goggles deliver with our BirdsEye Vision\u2122 technology. Paired with the large coverage you know and love, plus view-boosting ChromaPop\u2122 lens technology, the Preview sets you up to carve, slash and explore with a ..."
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/preview-replacement-lens",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Preview Replacement Lens | Lens | Smith Optics",
+      "snippet": "Dial in your vision for any forecast. Shop replacement goggle lenses and stay ready for changing light."
+    },
+    {
+      "url": "https://www.smithoptics.com/en_US/p/goggle/IO-MAG-IMPRINT-3D-GOGGLES.html",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "I/O MAG Imprint 3D | Goggle | Smith Optics",
+      "snippet": "<strong>A spherical goggle with interchangeable MAG\u2122 lenses</strong>, it gets our highest level of anti-fog treatment and integrates with our helmets for airflow. ... ChromaPop\u2122 lens technology delivers enhanced color, clarity, and definition."
+    }
+  ],
+  "selected_url": "https://www.smithoptics.com/en-us/products/preview",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:20:26.284832"
+}

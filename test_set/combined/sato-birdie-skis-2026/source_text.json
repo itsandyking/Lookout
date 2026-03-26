@@ -1,0 +1,165 @@
+{
+  "visible_text_blocks": [
+    "3D galleryCarousel Button PrevCarousel Button Next",
+    "Carousel Button PrevCarousel Button Next",
+    "Sato Birdie$739$0sold out",
+    "Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.",
+    "Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.",
+    "Your ExpertVoice deal.",
+    "$[Deal Price]$[Original Price]Discount applied at checkout.",
+    "Discount applied at checkout.",
+    "On sale now \u2014 lower than your ExpertVoice discount.",
+    "Not eligible for ExpertVoice discount.",
+    "You\u2019ll see your ExpertVoice discount at checkout.",
+    "A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between runs. A crystal-clear ski, a joyful ski, a blackcrows ski. Future resort star, the new Sato is a ski full of momentum that will delight those who like to spin along the slopes and roam the domains. With its median flex, it is playful and adapts easily to everyone's style, but it's also edge-holding and incisive for carving at speed. Its reasonable but consistent width makes it an all-terrain ski that can tame wild snow. A freedom-loving ski to ignite your sensual curves.",
+    "motto:let's stop overthinkingwidth:88 mmgender:women'smen'ssize:155.2 cm161.2 cm167.2 cmOnly 47 in stockski findersize guideselect a sizeOnly 47 in stockadd your bindingsbindings added(+ undefined)(+ undefined)+-use: undefinedremoveSalomon Strive 12 GW White Black 90mm$267.00use: ALPINEDIN:4 - 12,weight:920gADD BINDINGMarker Griffon 13 ID White 90mm$345.00use: ALPINEweight:1030gADD BINDINGout of stockMarker Squire 11 White 90mm$287.00use: ALPINEDIN:3 - 10,weight:820gprevnext",
+    "motto:let's stop overthinkingwidth:88 mmgender:women'smen's",
+    "let's stop overthinking",
+    "size:155.2 cm161.2 cm167.2 cmOnly 47 in stockski findersize guide",
+    "155.2 cm161.2 cm167.2 cm",
+    "Only 47 in stockski findersize guide",
+    "add your bindingsbindings added(+ undefined)(+ undefined)+-use: undefinedremoveSalomon Strive 12 GW White Black 90mm$267.00use: ALPINEDIN:4 - 12,weight:920gADD BINDINGMarker Griffon 13 ID White 90mm$345.00use: ALPINEweight:1030gADD BINDINGout of stockMarker Squire 11 White 90mm$287.00use: ALPINEDIN:3 - 10,weight:820gprevnext",
+    "add your bindingsbindings added(+ undefined)(+ undefined)+-"
+  ],
+  "bullet_lists": [
+    [
+      "25% off full price apparel sets",
+      "up to 40% off this season's collection"
+    ],
+    [
+      "25% off full price apparel sets",
+      "up to 40% off this season's collection"
+    ],
+    [
+      "25% off full price apparel sets",
+      "up to 40% off this season's collection"
+    ],
+    [
+      "apparel",
+      "equipment",
+      "collections"
+    ],
+    [
+      "search",
+      "account"
+    ],
+    [
+      "big mountain",
+      "all terrain",
+      "resort",
+      "mountain touring",
+      "women's",
+      "junior"
+    ],
+    [
+      "women's",
+      "accessories",
+      "lifestyle"
+    ],
+    [
+      "ski bags",
+      "spare parts"
+    ],
+    [
+      "vena cor",
+      "powder hunter",
+      "new apparel",
+      "new ski",
+      "mountain touring"
+    ],
+    [
+      "our story",
+      "ski sauvage",
+      "blackmail",
+      "ambassadors",
+      "club de ski",
+      "our technologies",
+      "careers"
+    ]
+  ],
+  "spec_tables": [
+    {
+      "SKI SIZE": "TIP",
+      "155.2 cm": "4.9\"",
+      "161.2 cm": "5\"",
+      "167.2 cm": "5\""
+    },
+    {
+      "SKIER HEIGHT": "RELAXED",
+      "155 - 160cm | 5' - 5'3\"": "155cm",
+      "160 - 165cm | 5'3\" - 5'5\"": "155cm",
+      "165 - 170cm | 5'5\" - 5'7\"": "161cm",
+      "170 - 175cm | 5'7\" - 5'9\"": "167cm"
+    }
+  ],
+  "json_ld_products": [
+    {
+      "@context": "http://schema.org/",
+      "@type": "Product",
+      "name": "Sato Birdie",
+      "url": "https://www.black-crows.com/products/102382",
+      "sku": "102382-155",
+      "gtin13": "0887445477785",
+      "productID": "10015970427159",
+      "brand": {
+        "@type": "Thing",
+        "name": "blackcrows"
+      },
+      "description": "A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between runs. A crystal-clear ski, a joyful ski, a blackcrows ski. Future resort star, the new Sato is a ski full of momentum that will delight those who like to spin along the slopes and roam the domains. With its median flex, it is playful and adapts easily to everyone's style, but it's also edge-holding and incisive for carving at speed. Its reasonable but consistent width makes it an all-terrain ski that can tame wild snow. A freedom-loving ski to ignite your sensual curves.",
+      "image": "https://www.black-crows.com/cdn/shop/files/102382-126-F_grande.jpg?v=1755856069",
+      "offers": [
+        {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "739.00",
+          "itemCondition": "http://schema.org/NewCondition",
+          "availability": "http://schema.org/InStock",
+          "url": "https://www.black-crows.com/products/102382?variant=50745582027031",
+          "image": "https://www.black-crows.com/cdn/shop/files/102382-126-F_grande.jpg?v=1755856069",
+          "name": "Sato Birdie - 155.2 cm / deeppurple",
+          "gtin13": "0887445477785",
+          "sku": "102382-155",
+          "description": "A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between runs. A crystal-clear ski, a joyful ski, a blackcrows ski. Future resort star, the new Sato is a ski full of momentum that will delight those who like to spin along the slopes and roam the domains. With its median flex, it is playful and adapts easily to everyone's style, but it's also edge-holding and incisive for carving at speed. Its reasonable but consistent width makes it an all-terrain ski that can tame wild snow. A freedom-loving ski to ignite your sensual curves.",
+          "priceValidUntil": "2027-03-26"
+        },
+        {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "739.00",
+          "itemCondition": "http://schema.org/NewCondition",
+          "availability": "http://schema.org/InStock",
+          "url": "https://www.black-crows.com/products/102382?variant=50745582059799",
+          "image": "https://www.black-crows.com/cdn/shop/files/102382-126-F_grande.jpg?v=1755856069",
+          "name": "Sato Birdie - 161.2 cm / deeppurple",
+          "gtin13": "0887445477822",
+          "sku": "102382-161",
+          "description": "A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between runs. A crystal-clear ski, a joyful ski, a blackcrows ski. Future resort star, the new Sato is a ski full of momentum that will delight those who like to spin along the slopes and roam the domains. With its median flex, it is playful and adapts easily to everyone's style, but it's also edge-holding and incisive for carving at speed. Its reasonable but consistent width makes it an all-terrain ski that can tame wild snow. A freedom-loving ski to ignite your sensual curves.",
+          "priceValidUntil": "2027-03-26"
+        },
+        {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "739.00",
+          "itemCondition": "http://schema.org/NewCondition",
+          "availability": "http://schema.org/InStock",
+          "url": "https://www.black-crows.com/products/102382?variant=50745582092567",
+          "image": "https://www.black-crows.com/cdn/shop/files/102382-126-F_grande.jpg?v=1755856069",
+          "name": "Sato Birdie - 167.2 cm / deeppurple",
+          "gtin13": "0887445477792",
+          "sku": "102382-167",
+          "description": "A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between runs. A crystal-clear ski, a joyful ski, a blackcrows ski. Future resort star, the new Sato is a ski full of momentum that will delight those who like to spin along the slopes and roam the domains. With its median flex, it is playful and adapts easily to everyone's style, but it's also edge-holding and incisive for carving at speed. Its reasonable but consistent width makes it an all-terrain ski that can tame wild snow. A freedom-loving ski to ignite your sensual curves.",
+          "priceValidUntil": "2027-03-26"
+        }
+      ],
+      "additionalProperty": [
+        {
+          "@type": "PropertyValue",
+          "propertyID": "item_group_id",
+          "value": "10015970427159"
+        }
+      ]
+    }
+  ],
+  "meta_description": "A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between runs. A crystal-clear ski, a joyful ski, a blackcrows ski. Future resort ",
+  "page_title": "Sato Birdie\n  \n \u2013 blackcrows"
+}

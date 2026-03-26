@@ -1,0 +1,46 @@
+{
+  "handle": "bwii-10-5mm-200-static-rope",
+  "vendor": "BlueWater",
+  "query_used": "barcode: site:bluewaterropes.com 732670032929 | sku: site:bluewaterropes.com 501620P | title: site:bluewaterropes.com BWII 10.5mm 200' Static Rope | handle: site:bluewaterropes.com bwii 10 5mm 200 static rope | broad: BlueWater BWII 10.5mm 200' Static Rope",
+  "candidates": [
+    {
+      "url": "https://www.bluewaterropes.com/product/10-5mm-protac/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "10.5mm Protac - Rope",
+      "snippet": "This rope is <strong>manufactured from solution dyed polyester for excellent durability</strong>. The 32 carrier sheath is designed to hold its cross section to prevent flattening and to run smoothly in descent devices."
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/10-5mm-spec-static/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "10.5mm Spec-Static - Rope",
+      "snippet": "The 10.5 mm Spec-Static is <strong>designed especially for use in mechanical descent devices for rope access professionals</strong>. LEP should not be used as a belay/safety line in Technical Rescue Operations."
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/10-5mm-2764-bwii/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "10.5mm (27/64\") BWII+ - Rope",
+      "snippet": "BlueWater Ropes 10.5mm (27/64&quot;) BlueWater II+ Static Rope. The rope that made us famous, BlueWater II+ is <strong>the standard for use in caving, rappelling, and rescue applications</strong>. Its design of double twist cabled sheath strands and double twist ..."
+    },
+    {
+      "url": "https://staging.bluewaterropes.com/product/10-5mm-armortech/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "10.5MM ARMORTECH\u00ae - BlueWater Ropes | BlueWater Ropes",
+      "snippet": "Slag actually bounces off this rope. Custom length swaged end termination lanyards with or without hardware are available upon request. Elongation: @300 lbf = 3.2% @ 600 lbf = 6.4% @ 1000 lbf = 8.9% Diameter: 10.5mm Grams Per Meter: 76 Tensile Strength: 8,000 lbf (35.5 kN) Sheath Mass: 48%"
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/10mm-armortech/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "10MM ARMORTECH - Rope",
+      "snippet": "BWII \u00b7 ASSAULTLINE \u00b7 SAFELINE ... and durability. The 10mm ArmorTech\u00ae is a <strong>double sheath rope with a 100% Technora aramid fiber sheath for maximum heat and cut resistance</strong>...."
+    }
+  ],
+  "selected_url": "https://www.bluewaterropes.com/product/10-5mm-protac/",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:20:23.989794"
+}

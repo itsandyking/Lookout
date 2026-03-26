@@ -1,0 +1,46 @@
+{
+  "handle": "octo-skis-2025",
+  "vendor": "Black Crows",
+  "query_used": "barcode: site:black-crows.com 0887445421368 | sku: site:black-crows.com 0887445421368 | title: site:black-crows.com Octo Skis 2025 | handle: site:black-crows.com octo skis 2025 | broad: Black Crows Octo Skis 2025",
+  "candidates": [
+    {
+      "url": "https://www.black-crows.com/products/102357",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Octo \u2013 blackcrows",
+      "snippet": "Sharp and wild yet light and comfortable, the new Octo is <strong>designed to satisfy alpine skiing aesthetes</strong>. Carving purists will find an engaging and high-performing corduroy eater. While its short radius and sporty flex may evoke a slalom ski, the ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102358",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Octo Birdie \u2013 blackcrows",
+      "snippet": "<strong>Octo Birdie!</strong> Here&#x27;s a brand new all-terrain ski, a young cousin inspired by the Mirus, UFO ski and considerable success at blackcrows over the last two years. With the Octo Birdie, we want to take our exploration of on-piste and piste-side skiing ..."
+    },
+    {
+      "url": "https://www.black-crows.com/us/en/p/octo/102137-185.html",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Octo \u2022 all terrain | Black Crows",
+      "snippet": "While its <strong>short radius and sporty ... transitioning from short to medium-range turns\u2014or even skids if that&#x27;s your preference</strong>. The construction, which combines poplar wood and fiberglass, gives the Octo a solid and confidence-inspiring feel ..."
+    },
+    {
+      "url": "https://www.black-crows.com/us/en/p/octo-birdie/102152-173.html",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Octo Birdie \u2022 all terrain | Black Crows",
+      "snippet": "<strong>Octo Birdie!</strong> Here&#x27;s a brand new all-terrain ski, a young cousin inspired by the Mirus, UFO ski and considerable success at blackcrows over the last two years. With the Octo Birdie, we want to take our exploration of on-piste and piste-side skiing ..."
+    },
+    {
+      "url": "https://www.black-crows.com/us/en/p/octo-birdie/102152-161.html",
+      "confidence": 65,
+      "reasoning": "Handle search: Brave search: score=75 -no_broad_validation",
+      "title": "Octo Birdie \u2022 all terrain | Black Crows",
+      "snippet": "<strong>Octo Birdie! Here&#x27;s a brand new all-terrain ski, a young cousin inspired by the Mirus, UFO ski and considerable success at blackcrows over the last two years</strong>. With the Octo Birdie, we want to take our exploration of on-piste and piste-side skiing ..."
+    }
+  ],
+  "selected_url": "https://www.black-crows.com/products/102357",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:20:35.596537"
+}

@@ -1,0 +1,48 @@
+{
+  "handle": "mens-shralpinist-stretch-jacket",
+  "vendor": "Jones Snowboards",
+  "query_used": "barcode: site:jonessnowboards.com 7630949117236 | sku: site:jonessnowboards.com J.26.JKM.STR.BK.3M.1 | title: site:jonessnowboards.com Men's Shralpinist Stretch Jacket | handle: site:jonessnowboards.com mens shralpinist stretch jacket | broad: Jones Snowboards Men's Shralpinist Stretch Jacket",
+  "candidates": [
+    {
+      "url": "https://www.jonessnowboards.com/products/quick-tension-tail-clip-2025",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Title match + URL structure scoring = 85 -no_broad_validation",
+      "title": "Quick Tension Tail Clip 2025 | Jones",
+      "snippet": ""
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/women-dream-weaver-2-0-snowboard-2026?variant=46716313075864",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Title match + URL structure scoring = 85 -no_broad_validation",
+      "title": "Women's Dream Weaver 2.0 Snowboard | Jones",
+      "snippet": ""
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/right-asym-flax-carbon-wide-back-2022",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Title match + URL structure scoring = 85 -no_broad_validation",
+      "title": "JONES SPR APOLLO FLAX 2.0 HB RIGHT BLACK | Jones",
+      "snippet": ""
+    },
+    {
+      "url": "https://ca.jonessnowboards.com/products/mountain-snowskate-2026?variant=43065863045162",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Title match + URL structure scoring = 85 -no_broad_validation",
+      "title": "Mountain Snowskate - Jones",
+      "snippet": ""
+    },
+    {
+      "url": "https://eu.jonessnowboards.com/products/meteorite-surf-series-snowboard-binding-2026",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Title match + URL structure scoring = 85 -no_broad_validation",
+      "title": "Meteorite Surf Series Snowboard Binding | Jones",
+      "snippet": ""
+    }
+  ],
+  "selected_url": "https://www.jonessnowboards.com/products/quick-tension-tail-clip-2025",
+  "selected_confidence": 70,
+  "warnings": [
+    "MODERATE_MATCH_CONFIDENCE"
+  ],
+  "timestamp": "2026-03-26T14:19:12.225928"
+}

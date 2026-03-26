@@ -1,0 +1,46 @@
+{
+  "handle": "womens-mtn-surf-bib",
+  "vendor": "Jones Snowboards",
+  "query_used": "barcode: site:jonessnowboards.com 7630949119407 | sku: site:jonessnowboards.com J.26.PTW.WBB.BU.2S.1 | title: site:jonessnowboards.com Women's MTN Surf Bib | handle: site:jonessnowboards.com womens mtn surf bib | broad: Jones Snowboards Women's MTN Surf Bib",
+  "candidates": [
+    {
+      "url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-pants-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women\u2019s MTN Surf Recycled Pants | Jones",
+      "snippet": "I love a pant that I don&#x27;t have to wear long layers underneath and these are it! I am on the larger size and the women&#x27;s L had more than enough room to be comfortable. Really nice for deep winter days and even held up in the Tahoe rain."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-bibs-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women's MTN Surf Recycled Bibs",
+      "snippet": "High-performance snowboards, splitboards, bindings, and outerwear crafted through innovation and made with premium, responsible materials."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-jacket-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women\u2019s MTN Surf Recycled Jacket",
+      "snippet": "This is just picky me but If I had the option, it would also be nice if you could have the choice to remove the powder skirt. Because I wear the bibs I feel like the pow skit is just extra fabric I don&#x27;t want."
+    },
+    {
+      "url": "https://eu.jonessnowboards.com/products/women-s-mtn-surf-recycled-anorak-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women\u2019s MTN Surf Recycled Anorak | Jones",
+      "snippet": "<strong>Redesigned for 2026, the MTN Surf Recycled Anorak balances stormproof performance with the unique look and functionality of a pull over</strong>."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/men-frontier-2-0-snowboard-2026",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Brave search: score=85 -no_broad_validation",
+      "title": "Men's Frontier 2.0 Snowboard | Jones",
+      "snippet": "The redesigned <strong>Frontier 2.0</strong> is an all-terrain, shred anything board with a tapered directional shape and a friendly flex that charges in all-conditions."
+    }
+  ],
+  "selected_url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-pants-2026",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:27:59.553746"
+}

@@ -1,0 +1,48 @@
+{
+  "handle": "mens-reserve-2l-insulated-jacket",
+  "vendor": "Burton",
+  "query_used": "barcode: site:burton.com 197183054859 | sku: site:burton.com 197183054859 | title: site:burton.com Men's Reserve 2L Insulated Jacket | handle: site:burton.com mens reserve 2l insulated jacket | broad: Burton Men's Reserve 2L Insulated Jacket",
+  "candidates": [
+    {
+      "url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Men's Burton Reserve 2L Insulated Jacket",
+      "snippet": "Burton Snowboards brings the spirit of riding to you wherever you are. Break free, choose your line, and enjoy the ride."
+    },
+    {
+      "url": "https://www.burton.com/us/en/p/mens-burton-reserve-gore-tex-2l-insulated-jacket/W26-304111.html",
+      "confidence": 65,
+      "reasoning": "Title search: Brave search: score=65 -no_broad_validation",
+      "title": "Men's Burton Reserve GORE-TEX 2L Insulated Jacket | Burton.com Winter 2026 US",
+      "snippet": "Shop the Men&#x27;s Reserve GORE-TEX 2L Insulated Jacket and other winter jackets, coats, and outerwear from Burton."
+    },
+    {
+      "url": "https://www.burton.com/gb/en/p/mens-burton-reserve-2l-insulated-jacket/W26-302531.html",
+      "confidence": 65,
+      "reasoning": "Title search: Brave search: score=65 -no_broad_validation",
+      "title": "Men's Burton Reserve 2L Insulated Jacket | Burton.com Winter 2026 GB",
+      "snippet": "Shop the <strong>Men&#x27;s Reserve 2L Insulated Jacket</strong> and other winter jackets, coats, and outerwear from Burton. Fast shipping."
+    },
+    {
+      "url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-302531.html",
+      "confidence": 65,
+      "reasoning": "Title search: Brave search: score=65 -no_broad_validation",
+      "title": "Men's Burton Reserve 2L Insulated Jacket | Burton.com Winter 2026 US",
+      "snippet": "Shop the <strong>Men&#x27;s Reserve 2L Insulated Jacket</strong> and other winter jackets, coats, and outerwear from Burton. Fast shipping."
+    },
+    {
+      "url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-jacket/W26-302551.html",
+      "confidence": 65,
+      "reasoning": "Title search: Brave search: score=65 -no_broad_validation",
+      "title": "Men's Burton Reserve 2L Jacket | Winter Outerwear | Burton.com Winter 2026 US",
+      "snippet": "Shop the Men&#x27;s Reserve 2L Jacket and other winter jackets, coats, and outerwear from Burton. Fast shipping."
+    }
+  ],
+  "selected_url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html",
+  "selected_confidence": 75,
+  "warnings": [
+    "MODERATE_MATCH_CONFIDENCE"
+  ],
+  "timestamp": "2026-03-26T14:20:37.694100"
+}

@@ -1,0 +1,46 @@
+{
+  "handle": "womens-mtn-surf-insulated-parka",
+  "vendor": "Jones Snowboards",
+  "query_used": "barcode: site:jonessnowboards.com 7630949118059 | sku: site:jonessnowboards.com J.26.JKW.MTS.GY.3M.1 | title: site:jonessnowboards.com Women's MTN Surf Insulated Parka | handle: site:jonessnowboards.com womens mtn surf insulated parka | broad: Jones Snowboards Women's MTN Surf Insulated Parka",
+  "candidates": [
+    {
+      "url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-jacket-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women\u2019s MTN Surf Recycled Jacket",
+      "snippet": "<strong>Extremely comfortable and durable jacket</strong>. More insulated then expected yet lightweight. Perfect resort jacket that can also deliver on the skin track. Extremely water resistant and easy to move in."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/men-s-mtn-surf-recycled-insulated-parka-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Men\u2019s MTN Surf Recycled Insulated Parka | Jones",
+      "snippet": "Fabric is <strong>100% recycled 20K waterproof 20K breathable four-way stretch two-layer laminate shell made without PFAS</strong>. Lined with 100% recycled polyester and insulated with 100% recycled PrimaLoft PURE insulation."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-pants-2026",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Women\u2019s MTN Surf Recycled Pants | Jones",
+      "snippet": "I love a pant that I don&#x27;t have to wear long layers underneath and these are it! I am on the larger size and the women&#x27;s L had more than enough room to be comfortable. Really nice for deep winter days and even held up in the Tahoe rain."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/men-stratos-snowboard-2026",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Brave search: score=85 -no_broad_validation",
+      "title": "Men's Stratos Snowboard | Jones",
+      "snippet": "<strong>The Stratos</strong> is a hybrid all-mountain board that&#x27;s built for creative all-terrain freeriding."
+    },
+    {
+      "url": "https://www.jonessnowboards.com/products/men-mountain-twin-snowboard-2026",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Brave search: score=85 -no_broad_validation",
+      "title": "Men's Mountain Twin Snowboard | Jones",
+      "snippet": "<strong>The Mountain Twin</strong> is a versatile and capable directional twin made for riders who want a playful all-mountain board that excels in any snow condition."
+    }
+  ],
+  "selected_url": "https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-jacket-2026",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:27:14.393421"
+}

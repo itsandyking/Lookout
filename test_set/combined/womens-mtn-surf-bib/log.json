@@ -1,0 +1,51 @@
+{
+  "handle": "womens-mtn-surf-bib",
+  "started_at": "2026-03-26T14:27:51.958865",
+  "completed_at": "2026-03-26T14:28:08.604538Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-26T14:27:51.959065",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {
+        "barcodes": 1,
+        "skus": 1,
+        "known_colors": []
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:27:59.554029",
+      "level": "INFO",
+      "message": "Scraping https://www.jonessnowboards.com/products/women-s-mtn-surf-recycled-pants-2026",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:28:04.964788",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:28:05.142246",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:28:08.604520",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 0,
+        "variant_mappings": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

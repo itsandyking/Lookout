@@ -1,0 +1,51 @@
+{
+  "handle": "mens-shralpinist-stretch-jacket",
+  "started_at": "2026-03-26T14:19:07.119511",
+  "completed_at": "2026-03-26T14:19:18.132973Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-26T14:19:07.119566",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {
+        "barcodes": 1,
+        "skus": 1,
+        "known_colors": []
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:19:12.226647",
+      "level": "INFO",
+      "message": "Scraping https://www.jonessnowboards.com/products/quick-tension-tail-clip-2025",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:19:17.993407",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:19:18.109709",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:19:18.132955",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 0,
+        "variant_mappings": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

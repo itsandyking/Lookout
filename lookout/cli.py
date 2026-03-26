@@ -6,6 +6,9 @@ import sys
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
+
+load_dotenv()
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel

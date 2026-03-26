@@ -1,0 +1,48 @@
+{
+  "handle": "kids-reverb-ski-boot-2026",
+  "vendor": "K2 Sports",
+  "query_used": "barcode: site:k2snow.com 196222929530 | sku: site:k2snow.com KS251200001 | title: site:k2snow.com Kids' Reverb Ski Boot 2026 | handle: site:k2snow.com kids reverb ski boot 2026 | broad: K2 Sports Kids' Reverb Ski Boot 2026",
+  "candidates": [
+    {
+      "url": "https://k2snow.com/en-us/p/reverb-youth-ski-boots-2026",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "K2 Reverb Youth Ski Boots 2026 | K2 Skis and K2 Snowboarding",
+      "snippet": "The convex shape and ribbed tread of the rubber add a lot of walking comfort and provide a much better grip. Still, integrated pads made of stiff and rigid materials, enable great power transmission and more precise release function of the binding. GripWalk soles are the perfect tuning parts designed for selected premium ski boots and bindings."
+    },
+    {
+      "url": "https://k2snow.com/en-us/p/evolver-youth-ski-boots-2026",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "K2 Evolver Youth Ski Boots 2026 | K2 Skis and K2 Snowboarding",
+      "snippet": "<strong>The Dream Chaser</strong>. Designed for the youngest ripper in the family featuring a Fully Heat Moldable Revolver Shell Intuition Tongue and Alpine soles."
+    },
+    {
+      "url": "https://k2snow.com/en-us/p/revolve-ski-boots-2026",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "K2 Revolve Ski Boots 2026 | K2 Skis and K2 Snowboarding",
+      "snippet": "Revolve Shell, <strong>offers the same fit and feel as the Raichle boots of years past, updated to withstand the rigors of today</strong>."
+    },
+    {
+      "url": "https://k2snow.com/en-us/p/revolve-kf-mens-ski-boots-2026",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "K2 Revolve Kf Men's Ski Boots 2026 | K2 Skis and K2 Snowboarding",
+      "snippet": "Removable and interchangeable ISO 23223 alpine rockered soles collaboratively designed to work with Marker\u2019s Grip Walk binding system for better grip and added comfort when walking and standing in boots, but doesn\u2019t compromise the power transmission and release function between the boot and binding when skiing."
+    },
+    {
+      "url": "https://k2snow.com/en-us/p/mindbender-juvy-boa-ski-boots-2026",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "K2 Mindbender Juvy BOA\u00ae Ski Boots 2026 | K2 Skis and K2 Snowboarding",
+      "snippet": "The <strong>Mindbender Juvy BOA\u00ae</strong> has everything a budding freerider needs to take their skills from the resort to the backcountry and back again ... Designed for junior touring boots, the Lux Fit Tour Jr liner delivers lightweight comfort and warmth ..."
+    }
+  ],
+  "selected_url": "https://k2snow.com/en-us/p/reverb-youth-ski-boots-2026",
+  "selected_confidence": 75,
+  "warnings": [
+    "MODERATE_MATCH_CONFIDENCE"
+  ],
+  "timestamp": "2026-03-26T14:20:08.294223"
+}

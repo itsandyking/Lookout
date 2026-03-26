@@ -1,0 +1,51 @@
+{
+  "handle": "mens-kyanite-lightweight-jacket",
+  "started_at": "2026-03-26T14:27:51.959202",
+  "completed_at": "2026-03-26T14:28:06.423381Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-26T14:27:51.959255",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {
+        "barcodes": 1,
+        "skus": 1,
+        "known_colors": []
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:27:59.425776",
+      "level": "INFO",
+      "message": "Scraping https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:28:04.339628",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:28:04.522867",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:28:06.423358",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 0,
+        "variant_mappings": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

@@ -1,0 +1,46 @@
+{
+  "handle": "sato-birdie-skis-2026",
+  "vendor": "Black Crows",
+  "query_used": "barcode: site:black-crows.com 0887445477785 | sku: site:black-crows.com 102382-155 | title: site:black-crows.com Sato Birdie Skis 2026 | handle: site:black-crows.com sato birdie skis 2026 | broad: Black Crows Sato Birdie Skis 2026",
+  "candidates": [
+    {
+      "url": "https://www.black-crows.com/products/102382",
+      "confidence": 87,
+      "reasoning": "SKU MATCH: Brave search: score=85 -no_broad_validation",
+      "title": "Sato Birdie \u2013 blackcrows",
+      "snippet": "<strong>A refined new model designed for the piste and its surroundings; the Sato is a ski bursting with joy</strong>. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102358",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Octo Birdie \u2013 blackcrows",
+      "snippet": "<strong>Octo Birdie</strong>! Here&#x27;s a brand new all-terrain ski, a young cousin inspired by the Mirus, UFO ski and considerable success at blackcrows over the last two years. With the <strong>Octo Birdie</strong>, we want to take our exploration of on-piste and piste-side skiing ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102381",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Sato \u2013 blackcrows",
+      "snippet": "<strong>A refined new model designed for the piste and its surroundings</strong>; the Sato is a ski bursting with joy. Precise, playful and eye-catching, this small ski loves to carve on immaculate slopes, have fun with the terrain or offer a few sessions between ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102369",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Captis Birdie \u2013 blackcrows",
+      "snippet": "<strong>A very popular ski, accessible and more sensual than consensual</strong>. The Captis freestyle heritage and reasonable yet substantial width make for a great all-terrain ski that holds its edge well for carvers, and is easy to steer, suiting many different ..."
+    },
+    {
+      "url": "https://www.black-crows.com/products/102384",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "Atris Birdie \u2013 blackcrows",
+      "snippet": "<strong>It performs exceptionally well in the backcountry, on big mountain lines, regardless of the snow conditions</strong>. I feel the most confident out of any other ski because I know it&#x27;s going to adapt to my desires."
+    }
+  ],
+  "selected_url": "https://www.black-crows.com/products/102382",
+  "selected_confidence": 87,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:20:40.479882"
+}

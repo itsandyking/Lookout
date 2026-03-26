@@ -1,0 +1,46 @@
+{
+  "handle": "3mm-niteline",
+  "vendor": "BlueWater",
+  "query_used": "barcode: site:bluewaterropes.com 500310OR | sku: site:bluewaterropes.com 500310OR | title: site:bluewaterropes.com 3mm Niteline | handle: site:bluewaterropes.com 3mm niteline | broad: BlueWater 3mm Niteline",
+  "candidates": [
+    {
+      "url": "https://www.bluewaterropes.com/product/3mm-niteline-reflective-cord/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "3mm Niteline\u2122 Reflective Cord - BlueWater Ropes | BlueWater Ropes",
+      "snippet": "<strong>Nylon core strands with solution dyed polyester sheath encompasses a single retroreflective strand for superior visibility in low light or night applications</strong>. Perfect for lightweight uses, stringing tarps, trail or hazard ..."
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/3mm-accessory-cord/",
+      "confidence": 85,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation",
+      "title": "3MM Accessory Cord - BlueWater Ropes | BlueWater Ropes",
+      "snippet": "<strong>A nylon sheath with a nylon core accessory cord for a multitude of applications limited only by the imagination</strong>. Large color selection in patterns and solids. Available in: 50FT lengths in Red Mix or Camo 100M Length Patterns: Camo, Red Mix, ..."
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/13mm-titan-slings/",
+      "confidence": 70,
+      "reasoning": "Barcode search (no match in result): Brave search: score=85 -no_broad_validation",
+      "title": "13mm Titan\u2122 Sling - BlueWater Ropes | BlueWater Ropes",
+      "snippet": "BlueWater developed the first <strong>Titan Dyneema sling</strong> nearly thirty years ago. Widely copied but never equaled; and our Titan slings continue to have the highest strength rating in the market."
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/niteline-reflective-cord/",
+      "confidence": 65,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation -title_mismatch(29%)",
+      "title": "4mm Niteline\u2122 Reflective Cord - BlueWater Ropes | BlueWater Ropes",
+      "snippet": "Originally developed by BlueWater over four decades ago, <strong>Reflective Niteline accessory cord features a reflective filament strand in the sheath for added safety and convenience for a multitude of applications</strong>."
+    },
+    {
+      "url": "https://www.bluewaterropes.com/product/bw-r3-river-rescue-rope/",
+      "confidence": 65,
+      "reasoning": "Title search: Brave search: score=85 -no_broad_validation -title_mismatch(19%)",
+      "title": "BW-R3\u2122 River Rescue Rope - BlueWater Ropes | BlueWater Ropes",
+      "snippet": "Niteline Reflective Cord \u00b7 Webbing \u00b7 Sewn Products \u00b7 Hardware \u00b7 Accessories \u00b7 Rope Bags \u00b7 <strong>Manufactured from 100% polypropylene for maximum buoyancy</strong>, this rope will float high in the water unlike blended ropes."
+    }
+  ],
+  "selected_url": "https://www.bluewaterropes.com/product/3mm-niteline-reflective-cord/",
+  "selected_confidence": 85,
+  "warnings": [],
+  "timestamp": "2026-03-26T14:20:24.409909"
+}

@@ -1,0 +1,48 @@
+{
+  "handle": "mens-kyanite-lightweight-jacket",
+  "vendor": "Arc'teryx",
+  "query_used": "barcode: site:arcteryx.com 623555804666 | sku: site:arcteryx.com X000009640057 | title: site:arcteryx.com Men's Kyanite Lightweight Jacket | handle: site:arcteryx.com mens kyanite lightweight jacket type tags | broad: Arc'teryx Men's Kyanite Lightweight Jacket",
+  "candidates": [
+    {
+      "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Kyanite Lightweight Jacket Men's | Arc'teryx United States",
+      "snippet": "<strong>Light, versatile stretch fleece jacket with exceptional next-to-skin comfort</strong>. ... This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite ..."
+    },
+    {
+      "url": "https://arcteryx.com/us/en/shop/mens/kyanite-jacket-8447",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Kyanite Jacket Men's | Arc'teryx United States",
+      "snippet": "<strong>Warm, versatile stretch fleece jacket that wears as a midlayer or on its own</strong>. ... A go-to fleece, the highly versatile Kyanite performs as a midlayer or standalone across a range of activities \u2013 trail, rock, snow, and camp."
+    },
+    {
+      "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-hoody-9641",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Kyanite Lightweight Hoody Men's | Arc'teryx United States",
+      "snippet": "Light, breathable, comfortable \u2013 the Kyanite Lightweight Hoody <strong>provides measured warmth for hikes, ski tours, and hanging out at camp</strong>. The Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom."
+    },
+    {
+      "url": "https://arcteryx.com/us/en/shop/mens/kyanite-hoody-8446",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Kyanite Hoody Men's | Arc'teryx United States",
+      "snippet": "Seriously versatile, the Kyanite is <strong>the fleece you grab for quick climbs, ski days, cold hikes, and to cut the chill when you roll out of bed</strong>. Worn as a midlayer or standalone, it delivers warmth with freedom of movement and soft comfort."
+    },
+    {
+      "url": "https://outlet.arcteryx.com/us/en/shop/mens/kyanite-lt-jacket",
+      "confidence": 75,
+      "reasoning": "Title search: Brave search: score=75 -no_broad_validation",
+      "title": "Kyanite LT Jacket Men's | Arc'teryx Outlet",
+      "snippet": "| LT: Lightweight. ... <strong>Versatile high performance designs for diverse activities and conditions</strong>. High performance, minimalist design that is durable for its weight. Spring and summer \u2013 when the mountains open up and the trails clear \u2013 present ..."
+    }
+  ],
+  "selected_url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640",
+  "selected_confidence": 75,
+  "warnings": [
+    "MODERATE_MATCH_CONFIDENCE"
+  ],
+  "timestamp": "2026-03-26T14:27:59.425423"
+}

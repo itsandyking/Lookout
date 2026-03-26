@@ -1,0 +1,51 @@
+{
+  "handle": "mens-reserve-2l-insulated-jacket",
+  "started_at": "2026-03-26T14:20:30.484568",
+  "completed_at": "2026-03-26T14:20:55.297322Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-26T14:20:30.484658",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {
+        "barcodes": 1,
+        "skus": 1,
+        "known_colors": []
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:37.694713",
+      "level": "INFO",
+      "message": "Scraping https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:45.726658",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:20:45.851813",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:20:55.297308",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 0,
+        "variant_mappings": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

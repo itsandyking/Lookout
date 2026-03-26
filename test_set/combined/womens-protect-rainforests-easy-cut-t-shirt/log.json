@@ -1,0 +1,61 @@
+{
+  "handle": "womens-protect-rainforests-easy-cut-t-shirt",
+  "started_at": "2026-03-26T14:19:54.855028",
+  "completed_at": "2026-03-26T14:20:29.298957Z",
+  "status": "UPDATED",
+  "entries": [
+    {
+      "timestamp": "2026-03-26T14:19:54.855242",
+      "level": "INFO",
+      "message": "Resolving product URL",
+      "data": {
+        "barcodes": 1,
+        "skus": 1,
+        "known_colors": []
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:02.262028",
+      "level": "INFO",
+      "message": "Scraping https://www.patagonia.com/shop/womens/tops/t-shirts",
+      "data": {
+        "use_playwright": true
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:27.552740",
+      "level": "INFO",
+      "message": "Extracting content",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:20:27.564647",
+      "level": "WARNING",
+      "message": "Low quality extraction: no product name; no images; bot-protection detected: 'sit tight'",
+      "data": {
+        "usable": false,
+        "score": 0,
+        "reason": "no product name; no images; bot-protection detected: 'sit tight'"
+      }
+    },
+    {
+      "timestamp": "2026-03-26T14:20:27.564662",
+      "level": "INFO",
+      "message": "Generating merchandising output",
+      "data": {}
+    },
+    {
+      "timestamp": "2026-03-26T14:20:29.298943",
+      "level": "INFO",
+      "message": "Processing complete",
+      "data": {
+        "has_body": true,
+        "image_count": 0,
+        "variant_mappings": 0
+      }
+    }
+  ],
+  "warnings": [],
+  "errors": [],
+  "confidence": 0
+}

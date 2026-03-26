@@ -1,0 +1,61 @@
+{
+  "handle": "mind-expander-snowboard-2025",
+  "body_html": "<p>Friendly surf slasher, easy-to-turn, floaty snowboard designed with purpose and engineered to last.</p>\n\n<h3>Specifications</h3>\n<table>\n<tr><td>Board size (cm)</td><td>142</td></tr>\n<tr><td>Board weight</td><td>2.4kg / 5.3lbs</td></tr>\n<tr><td>Surface area (dm2)</td><td>35.3</td></tr>\n<tr><td>Contact length (cm)</td><td>84.4</td></tr>\n<tr><td>Effective edge length (cm)</td><td>103</td></tr>\n<tr><td>Tip length (cm)</td><td>38.8</td></tr>\n<tr><td>Tail length (cm)</td><td>18.8</td></tr>\n<tr><td>Waist width (cm)</td><td>24.0</td></tr>\n<tr><td>Underfoot width - front foot (cm)</td><td>26.5</td></tr>\n<tr><td>Underfoot width - back foot (cm)</td><td>24.3</td></tr>\n</table>",
+  "images": [
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990076__0__ahKssrlS__original__original.jpg?auto=format&w=480",
+      "position": 1,
+      "alt": "I love it"
+    },
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990053__0__TGsQy_TD__original__original.jpg?auto=format&w=480",
+      "position": 2,
+      "alt": "Will never look back"
+    },
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990053__0__PKY8-0qZ__original__original.jpg?auto=format&w=480",
+      "position": 3,
+      "alt": "Snow weapon of choice!"
+    },
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990077__0__wbCwkcFW__original__original.jpg?auto=format&w=480",
+      "position": 4,
+      "alt": "Planche tr\u00e8s maniable et tr\u00e8s"
+    },
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990090__0__ALoj1aP8__original__original.jpg?auto=format&w=480",
+      "position": 5,
+      "alt": "Planche tr\u00c3\u00a8s maniable et tr\u00c3\u00a8s"
+    },
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990080__0__ICwg9D5N__original__original.jpg?auto=format&w=480",
+      "position": 6,
+      "alt": "Stormchaser, it&#39;s the only way"
+    },
+    {
+      "src": "https://judgeme.imgix.net/jones-snowboards-us/1754990081__1___FhHxdi9__original__original.jpg?auto=format&w=480",
+      "position": 7,
+      "alt": "Stormchaser, it&#39;s the only way"
+    }
+  ],
+  "variant_image_map": {
+    "__all__": "https://judgeme.imgix.net/jones-snowboards-us/1754990076__0__ahKssrlS__original__original.jpg?auto=format&w=480"
+  },
+  "warnings": [
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-1.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-2.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-3.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-4.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-5.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-6.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-7.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-9.webp?v=176",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-10.webp?v=17",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-11.webp?v=17",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-12.webp?v=17",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://www.jonessnowboards.com/cdn/shop/files/J.25.SNU.MEX-gallery-13.webp?v=17",
+    "IMAGE_SKIPPED: unsupported format: .webp \u2014 https://files.plytix.com/api/v1.1/file/public_files/pim/assets/df/f5/94/66/6694f"
+  ],
+  "confidence": 71,
+  "generated_at": "2026-03-25T23:53:23.351751"
+}

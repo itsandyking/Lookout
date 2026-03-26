@@ -1,0 +1,48 @@
+{
+  "handle": "strand-sunglasses",
+  "vendor": "Smith Optics",
+  "query_used": "barcode: site:smithoptics.com 197737329426 | sku: site:smithoptics.com 208898IPR54E3 | title: site:smithoptics.com Strand Sunglasses | handle: site:smithoptics.com strand sunglasses type tags | broad: Smith Optics Strand Sunglasses",
+  "candidates": [
+    {
+      "url": "https://www.smithoptics.com/en-us/products/guides-choice",
+      "confidence": 75,
+      "reasoning": "Handle search: Brave search: score=85 -no_broad_validation",
+      "title": "Guide's Choice Performance Sunglasses | Smith Optics",
+      "snippet": "Select Type: SunglassesVariant sold out or unavailable PrescriptionVariant sold out or unavailable"
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/guides-choice-rx",
+      "confidence": 75,
+      "reasoning": "Handle search: Brave search: score=85 -no_broad_validation",
+      "title": "Guide's Choice Prescription Sunglasses | Smith Optics",
+      "snippet": "Select Type: SunglassesVariant sold out or unavailable PrescriptionVariant sold out or unavailable"
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/i-o-mag",
+      "confidence": 70,
+      "reasoning": "SKU search (no match in result): Brave search: score=85 -no_broad_validation",
+      "title": "I/O MAG Snow Goggles | Smith Optics",
+      "snippet": "I/O MAG is a <strong>spherical snow goggle with interchangeable MAG lenses</strong>. It gets our highest level of anti-fog treatment and integrates seamlessly with our helmets."
+    },
+    {
+      "url": "https://www.smithoptics.com/en-us/products/venture",
+      "confidence": 70,
+      "reasoning": "SKU search (no match in result): Brave search: score=85 -no_broad_validation",
+      "title": "Venture Performance Sunglasses | Smith Optics",
+      "snippet": "The <strong>Venture sunglasses</strong> are our take on glacier glasses, with removable side shields, ChromaPop\u2122 lens technology, and autolock hinges for easy on and off."
+    },
+    {
+      "url": "https://www.smithoptics.com/en_US/c/sunglasses-activity-everyday/",
+      "confidence": 70,
+      "reasoning": "Title search: Brave search: score=70 -no_broad_validation",
+      "title": "Best Beach Sunglasses | Smith Optics",
+      "snippet": "Shop for the best beach sunglasses on the official Smith Optics online store - free shipping and easy returns"
+    }
+  ],
+  "selected_url": "https://www.smithoptics.com/en-us/products/guides-choice",
+  "selected_confidence": 75,
+  "warnings": [
+    "MODERATE_MATCH_CONFIDENCE"
+  ],
+  "timestamp": "2026-03-26T14:20:25.804380"
+}

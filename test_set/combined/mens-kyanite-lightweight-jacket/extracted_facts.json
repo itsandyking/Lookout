@@ -1,0 +1,639 @@
+{
+  "canonical_url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640",
+  "product_name": "Kyanite Lightweight Jacket Men's",
+  "brand": "Arc'teryx",
+  "description_blocks": [
+    "Kyanite Lightweight Jacket Men's$140.00Shop now",
+    "Kyanite Lightweight Jacket Men's$140.00",
+    "You are here:Arc'teryxMen'sFleeceKyanite Lightweight Jacket",
+    "Kyanite Lightweight Jacket",
+    "Ewan is 6'0\", wearing size MKyanite Lightweight Jacket Fluidity Front ViewKyanite Lightweight Jacket Fluidity HoverKyanite Lightweight Jacket Fluidity Back ViewKyanite Lightweight Jacket Fluidity Side ViewKyanite Lightweight Jacket Fluidity Full BodyKyanite Lightweight Jacket Fluidity",
+    "Ewan is 6'0\", wearing size MKyanite Lightweight Jacket Fluidity Front View",
+    "Ewan is 6'0\", wearing size M",
+    "Kyanite Lightweight Jacket Fluidity Hover",
+    "Kyanite Lightweight Jacket Fluidity Back View",
+    "Kyanite Lightweight Jacket Fluidity Side View"
+  ],
+  "feature_bullets": [
+    "Australia",
+    "Austria",
+    "Belgium",
+    "Canada",
+    "Czech Republic",
+    "Denmark",
+    "Finland",
+    "France",
+    "Germany",
+    "Ireland",
+    "South Korea",
+    "New Zealand",
+    "Norway",
+    "Poland",
+    "Sweden"
+  ],
+  "specs": {},
+  "materials": "",
+  "care": "",
+  "fit_dimensions": "",
+  "images": [
+    {
+      "url": "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg?auto=format&q=70&fit=crop&fill=white&max-w=1350&max-h=1710&ixlib=react-9.10.0&w=8192",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Kyanite Lightweight Jacket Fluidity Front View",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Hover.jpg?auto=format&q=70&fit=crop&fill=white&max-w=1350&max-h=1710&ixlib=react-9.10.0&w=8192",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Kyanite Lightweight Jacket Fluidity Hover",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Back-View.jpg?auto=format&q=70&fit=crop&fill=white&max-w=1350&max-h=1710&ixlib=react-9.10.0&w=8192",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Kyanite Lightweight Jacket Fluidity Back View",
+      "width": null,
+      "height": null
+    },
+    {
+      "url": "https://images-dynamic-arcteryx.imgix.net/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Side-View.jpg?auto=format&q=70&fit=crop&fill=white&max-w=1350&max-h=1710&ixlib=react-9.10.0&w=8192",
+      "inferred_view": null,
+      "source_hint": "img_tag",
+      "alt_text": "Kyanite Lightweight Jacket Fluidity Side View",
+      "width": null,
+      "height": null
+    }
+  ],
+  "variants": [],
+  "variant_image_candidates": {},
+  "json_ld_data": {
+    "@context": "https://schema.org/",
+    "@type": "ProductGroup",
+    "@id": "ProductGroup",
+    "name": "Kyanite Lightweight Jacket Men's",
+    "description": "Light, versatile stretch fleece\u00a0jacket\u00a0with exceptional next-to-skin comfort.",
+    "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640",
+    "category": "Fleece",
+    "releaseDate": "2023",
+    "brand": {
+      "@type": "Brand",
+      "name": "Arc'teryx"
+    },
+    "audience": {
+      "@type": "PeopleAudience",
+      "suggestedGender": "men"
+    },
+    "productGroupID": "X000009640",
+    "material": "Body:  Torrent\u2122 - Jersey knit peached face with brushed back, 185gsm - 84% Polyester, 16% Elastane, Origin of fabric: TAIWAN, CHINA, Origin of dyeing: TAIWAN, CHINA, Origin of Manufacture: VIETNAM, May release plastic microfibres into the environment when washing",
+    "variesBy": [
+      "https://schema.org/color",
+      "https://schema.org/size"
+    ],
+    "hasVariant": [
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Fluidity, Size S",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640044",
+        "mpn": "X000009640044",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804536",
+        "color": "Fluidity",
+        "size": "S"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black Sapphire, Size M",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640009",
+        "mpn": "X000009640009",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Sapphire-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585268",
+        "color": "Black Sapphire",
+        "size": "M"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Tatsu, Size L",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640058",
+        "mpn": "X000009640058",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Tatsu-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804673",
+        "color": "Tatsu",
+        "size": "L"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Tatsu, Size XS",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640055",
+        "mpn": "X000009640055",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Tatsu-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/LimitedAvailability",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804642",
+        "color": "Tatsu",
+        "size": "XS"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Fluidity, Size XXL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640048",
+        "mpn": "X000009640048",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804574",
+        "color": "Fluidity",
+        "size": "XXL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black, Size L",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640004",
+        "mpn": "X000009640004",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585213",
+        "color": "Black",
+        "size": "L"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Fluidity, Size XL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640047",
+        "mpn": "X000009640047",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804567",
+        "color": "Fluidity",
+        "size": "XL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Fluidity, Size M",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640045",
+        "mpn": "X000009640045",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804543",
+        "color": "Fluidity",
+        "size": "M"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black, Size XS",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640001",
+        "mpn": "X000009640001",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585183",
+        "color": "Black",
+        "size": "XS"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black Sapphire, Size L",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640010",
+        "mpn": "X000009640010",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Sapphire-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585275",
+        "color": "Black Sapphire",
+        "size": "L"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black Sapphire, Size XL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640011",
+        "mpn": "X000009640011",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Sapphire-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585282",
+        "color": "Black Sapphire",
+        "size": "XL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black, Size S",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640002",
+        "mpn": "X000009640002",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585190",
+        "color": "Black",
+        "size": "S"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black Sapphire, Size XS",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640007",
+        "mpn": "X000009640007",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Sapphire-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/LimitedAvailability",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585244",
+        "color": "Black Sapphire",
+        "size": "XS"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Fluidity, Size L",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640046",
+        "mpn": "X000009640046",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804550",
+        "color": "Fluidity",
+        "size": "L"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Fluidity, Size XS",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640043",
+        "mpn": "X000009640043",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Fluidity-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/LimitedAvailability",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804529",
+        "color": "Fluidity",
+        "size": "XS"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black, Size XL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640005",
+        "mpn": "X000009640005",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585220",
+        "color": "Black",
+        "size": "XL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black, Size M",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640003",
+        "mpn": "X000009640003",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585206",
+        "color": "Black",
+        "size": "M"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Tatsu, Size XXL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640060",
+        "mpn": "X000009640060",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Tatsu-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804697",
+        "color": "Tatsu",
+        "size": "XXL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Tatsu, Size S",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640056",
+        "mpn": "X000009640056",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Tatsu-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804659",
+        "color": "Tatsu",
+        "size": "S"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black Sapphire, Size S",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640008",
+        "mpn": "X000009640008",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Sapphire-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585251",
+        "color": "Black Sapphire",
+        "size": "S"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Tatsu, Size M",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640057",
+        "mpn": "X000009640057",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Tatsu-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/OutOfStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804666",
+        "color": "Tatsu",
+        "size": "M"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black Sapphire, Size XXL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640012",
+        "mpn": "X000009640012",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Sapphire-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585299",
+        "color": "Black Sapphire",
+        "size": "XXL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Black, Size XXL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640006",
+        "mpn": "X000009640006",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Black-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/InStock",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555585237",
+        "color": "Black",
+        "size": "XXL"
+      },
+      {
+        "@type": "Product",
+        "name": "Kyanite Lightweight Jacket Men's, Tatsu, Size XL",
+        "description": "This is one you pack for everything. Perfect for cutting the chill in cool conditions \u2013 or high output in colder weather \u2013 the packable, comfortable, Kyanite Lightweight Jacket provides measured warmth for a range of activities and adventures. Light, breathable, and incredibly soft, the Torrent\u2122 fleece manages moisture and stretches for unrestricted freedom. An anti-odour finish keeps it fresh on long trips. The fit is streamlined, and the minimalist design is clean and focused.",
+        "sku": "X000009640059",
+        "mpn": "X000009640059",
+        "image": "https://images.arcteryx.com/details/1350x1710/S26-X000009640-Kyanite-Lightweight-Jacket-Tatsu-Front-View.jpg",
+        "offers": {
+          "@type": "Offer",
+          "priceCurrency": "USD",
+          "price": "140",
+          "itemCondition": "https://schema.org/NewCondition",
+          "availability": "https://schema.org/LimitedAvailability",
+          "hasMerchantReturnPolicy": {
+            "@id": "#return_policy"
+          },
+          "url": "https://arcteryx.com/us/en/shop/mens/kyanite-lightweight-jacket-9640"
+        },
+        "gtin14": "00623555804680",
+        "color": "Tatsu",
+        "size": "XL"
+      }
+    ],
+    "hasMerchantReturnPolicy": {
+      "@type": "MerchantReturnPolicy",
+      "@id": "#return_policy",
+      "applicableCountry": "US",
+      "merchantReturnDays": "30",
+      "returnFees": "https://schema.org/FreeReturn",
+      "returnMethod": "https://schema.org/ReturnByMail",
+      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow"
+    }
+  },
+  "evidence_snippets": {},
+  "extraction_warnings": []
+}
