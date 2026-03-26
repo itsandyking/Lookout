@@ -435,10 +435,17 @@ class ProductProcessor:
                     )
 
             # Step 3c: Inject catalog images from TVR variant data
+            from .colors import deduplicate_color_images, find_matching_color
+
             catalog_imgs = input_row.catalog_images_by_color
             if catalog_imgs:
                 for color, img_url in catalog_imgs.items():
-                    if color not in facts.variant_image_candidates:
+                    # Check if this color already exists under a different name
+                    existing_key = find_matching_color(color, facts.variant_image_candidates)
+                    if existing_key:
+                        if img_url not in facts.variant_image_candidates[existing_key]:
+                            facts.variant_image_candidates[existing_key].append(img_url)
+                    else:
                         facts.variant_image_candidates[color] = [img_url]
                 handle_log.entries.append(
                     LogEntry(
@@ -446,6 +453,20 @@ class ProductProcessor:
                         data={"colors": list(catalog_imgs.keys())},
                     )
                 )
+
+            # Deduplicate color entries (e.g., "Black / Gray" and "Black | Gray")
+            if facts.variant_image_candidates:
+                before_count = len(facts.variant_image_candidates)
+                facts.variant_image_candidates = deduplicate_color_images(
+                    facts.variant_image_candidates
+                )
+                after_count = len(facts.variant_image_candidates)
+                if before_count != after_count:
+                    handle_log.entries.append(
+                        LogEntry(
+                            message=f"Deduplicated colors: {before_count} → {after_count}",
+                        )
+                    )
 
             # Also inject known colors from TVR if extractor didn't find them
             if input_row.known_colors and not any(
