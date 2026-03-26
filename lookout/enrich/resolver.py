@@ -639,6 +639,45 @@ class URLResolver:
         # Ensure score is in valid range
         return max(0, min(100, score))
 
+    async def search_color_images(
+        self,
+        vendor_config: VendorConfig,
+        product_name: str,
+        colors: list[str],
+        domain: str | None = None,
+    ) -> dict[str, list[str]]:
+        """Search for color-specific product images on the vendor site.
+
+        For each color, searches "{product_name} {color}" on the vendor domain
+        and extracts image URLs from results that match the color.
+
+        Args:
+            vendor_config: Vendor configuration.
+            product_name: Product name (e.g., "Nano Puff Jacket").
+            colors: List of color names to search for.
+            domain: Override domain (defaults to vendor_config.domain).
+
+        Returns:
+            Dict mapping color name to list of image URLs found.
+        """
+        domain = domain or vendor_config.domain
+        color_images: dict[str, list[str]] = {}
+
+        for color in colors[:5]:  # Limit to 5 colors to control API costs
+            query = f"site:{domain} {product_name} {color}"
+            try:
+                candidates = await self._search_candidates(query, domain, vendor_config)
+                # Extract image-like URLs from snippets/results
+                for candidate in candidates[:2]:
+                    # The candidate URL itself might be a color-specific product page
+                    if color.lower().replace(" ", "-") in candidate.url.lower():
+                        if candidate.url not in color_images.get(color, []):
+                            color_images.setdefault(color, []).append(candidate.url)
+            except Exception as e:
+                logger.debug(f"Color search failed for {color}: {e}")
+
+        return color_images
+
     async def save_output(
         self,
         output: ResolverOutput,

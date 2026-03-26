@@ -400,6 +400,30 @@ class ProductProcessor:
                         f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
                     )
 
+            # Step 3c: Color-specific image search (if colors found but no variant images)
+            if facts.variants and not facts.variant_image_candidates:
+                color_variant = next(
+                    (v for v in facts.variants if v.option_name.lower() in ("color", "colour")),
+                    None,
+                )
+                if color_variant and color_variant.values:
+                    handle_log.entries.append(
+                        LogEntry(message=f"Searching for {len(color_variant.values)} color-specific images")
+                    )
+                    color_imgs = await self.resolver.search_color_images(
+                        vendor_config=vendor_config,
+                        product_name=facts.product_name,
+                        colors=color_variant.values,
+                    )
+                    if color_imgs:
+                        facts.variant_image_candidates = color_imgs
+                        handle_log.entries.append(
+                            LogEntry(
+                                message=f"Found color images for {len(color_imgs)} colors",
+                                data={"colors": list(color_imgs.keys())},
+                            )
+                        )
+
             # Step 4: Generate merchandising output
             handle_log.entries.append(LogEntry(message="Generating merchandising output"))
 
