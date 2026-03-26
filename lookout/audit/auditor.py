@@ -11,6 +11,7 @@ import re
 
 from lookout.audit.models import MIN_DESCRIPTION_LENGTH, AuditResult, ProductScore
 from lookout.store import LookoutStore
+from lookout.taxonomy.mappings import EXCLUDED_VENDORS
 
 
 class ContentAuditor:
@@ -28,14 +29,20 @@ class ContentAuditor:
     """
 
     def __init__(
-        self, store: LookoutStore, min_description_length: int = MIN_DESCRIPTION_LENGTH
+        self,
+        store: LookoutStore,
+        min_description_length: int = MIN_DESCRIPTION_LENGTH,
+        exclude_house_brands: bool = True,
     ) -> None:
         self.store = store
         self.min_description_length = min_description_length
+        self.exclude_house_brands = exclude_house_brands
 
     def audit(self, vendor: str | None = None) -> AuditResult:
         """Run content audit on all active products (or filtered by vendor)."""
         products = self.store.list_products(vendor=vendor, status="active")
+        if self.exclude_house_brands:
+            products = [p for p in products if p.get("vendor", "") not in EXCLUDED_VENDORS]
         scores: list[ProductScore] = []
 
         for product in products:

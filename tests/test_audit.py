@@ -237,3 +237,82 @@ def test_content_auditor_vendor_filter():
     auditor.audit(vendor="Burton")
 
     store.list_products.assert_called_once_with(vendor="Burton", status="active")
+
+
+def test_content_auditor_excludes_house_brands_by_default():
+    """House brands are excluded from audit by default."""
+    from lookout.taxonomy.mappings import EXCLUDED_VENDORS
+
+    house_brand = EXCLUDED_VENDORS[0]
+    products = [
+        {
+            "id": 20,
+            "handle": "house-product",
+            "title": "House Product",
+            "body_html": "",
+            "vendor": house_brand,
+            "product_type": "",
+            "tags": "",
+            "status": "active",
+            "created_at": None,
+        },
+        {
+            "id": 21,
+            "handle": "vendor-product",
+            "title": "Vendor Product",
+            "body_html": "",
+            "vendor": "Patagonia",
+            "product_type": "",
+            "tags": "",
+            "status": "active",
+            "created_at": None,
+        },
+    ]
+    variants = {
+        20: [{"id": 200, "product_id": 20, "sku": "", "barcode": "", "price": 0, "compare_at_price": None, "cost": 0, "image_src": "", "option1_name": "", "option1_value": "", "option2_name": "", "option2_value": "", "option3_name": "", "option3_value": "", "position": 1}],
+        21: [{"id": 210, "product_id": 21, "sku": "", "barcode": "", "price": 0, "compare_at_price": None, "cost": 0, "image_src": "", "option1_name": "", "option1_value": "", "option2_name": "", "option2_value": "", "option3_name": "", "option3_value": "", "position": 1}],
+    }
+    inventory = {
+        20: {"total": 0, "value": 0.0, "full_price_value": 0.0, "by_location": {}},
+        21: {"total": 0, "value": 0.0, "full_price_value": 0.0, "by_location": {}},
+    }
+
+    store = _make_mock_store(products, variants, inventory)
+    auditor = ContentAuditor(store)
+    result = auditor.audit()
+
+    assert len(result.scores) == 1
+    assert result.scores[0].handle == "vendor-product"
+
+
+def test_content_auditor_include_house_brands():
+    """House brands are included when exclude_house_brands=False."""
+    from lookout.taxonomy.mappings import EXCLUDED_VENDORS
+
+    house_brand = EXCLUDED_VENDORS[0]
+    products = [
+        {
+            "id": 30,
+            "handle": "house-product",
+            "title": "House Product",
+            "body_html": "",
+            "vendor": house_brand,
+            "product_type": "",
+            "tags": "",
+            "status": "active",
+            "created_at": None,
+        },
+    ]
+    variants = {
+        30: [{"id": 300, "product_id": 30, "sku": "", "barcode": "", "price": 0, "compare_at_price": None, "cost": 0, "image_src": "", "option1_name": "", "option1_value": "", "option2_name": "", "option2_value": "", "option3_name": "", "option3_value": "", "position": 1}],
+    }
+    inventory = {
+        30: {"total": 0, "value": 0.0, "full_price_value": 0.0, "by_location": {}},
+    }
+
+    store = _make_mock_store(products, variants, inventory)
+    auditor = ContentAuditor(store, exclude_house_brands=False)
+    result = auditor.audit()
+
+    assert len(result.scores) == 1
+    assert result.scores[0].handle == "house-product"

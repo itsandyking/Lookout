@@ -20,6 +20,7 @@ def test_audit_help():
     assert result.exit_code == 0
     assert "--vendor" in result.output
     assert "--out" in result.output
+    assert "--include-house-brands" in result.output
 
 
 def test_enrich_help():
@@ -35,6 +36,7 @@ def test_enrich_run_help():
     assert "--vendor" in result.output
     assert "--max-rows" in result.output
     assert "-i" in result.output
+    assert "--verify" in result.output
 
 
 def test_rank_help():
