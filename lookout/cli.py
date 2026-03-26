@@ -139,6 +139,141 @@ def audit(vendor, output_path, include_house_brands, online, gmc, lookback, verb
         console.print(f"\nPriority CSV written to [green]{output_path}[/green]")
 
 
+@cli.command("audit-snapshot")
+@click.option("--online/--no-online", default=True, help="Enrich with online opportunity signals")
+@click.option("--gmc/--no-gmc", default=False, help="Enrich with Google Merchant Center signals")
+@click.option("--lookback", default=90, help="Days to look back for online/GMC signals")
+@click.option("--out", "-o", required=True, type=click.Path(path_type=Path), help="Output snapshot JSON path")
+@click.option("--include-house-brands", is_flag=True, help="Include house brands in audit")
+@click.option("--verbose", is_flag=True)
+def audit_snapshot(online, gmc, lookback, out, include_house_brands, verbose):
+    """Run content audit and save a snapshot for weight optimization."""
+    setup_logging(verbose)
+    from lookout.audit.auditor import ContentAuditor
+    from lookout.audit.weight_optimizer import save_snapshot
+    from lookout.store import LookoutStore
+
+    try:
+        store = LookoutStore()
+    except Exception as e:
+        console.print(f"[red]Error connecting to database:[/red] {e}")
+        sys.exit(1)
+
+    online_signals = {}
+    if online:
+        console.print("[dim]Fetching online signals from Shopify analytics...[/dim]")
+        try:
+            from tvr.mcp_report.shopify_api import ShopifyQLClient
+            from lookout.audit.online_signals import fetch_online_signals
+
+            all_products = store.list_products(status="active")
+            title_to_handle = {
+                p.get("title", ""): p.get("handle", "")
+                for p in all_products if p.get("title") and p.get("handle")
+            }
+
+            client = ShopifyQLClient.from_config()
+            online_signals = asyncio.run(fetch_online_signals(
+                client, title_to_handle=title_to_handle, lookback_days=lookback,
+            ))
+            console.print(f"[dim]Got signals for {len(online_signals)} products[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch online signals: {e}[/yellow]")
+
+    gmc_signals = {}
+    if gmc:
+        console.print("[dim]Fetching Google Merchant Center signals...[/dim]")
+        try:
+            from lookout.audit.gmc_signals import fetch_all_gmc_signals
+
+            gmc_signals = fetch_all_gmc_signals(lookback_days=lookback)
+            console.print(f"[dim]Got GMC signals for {len(gmc_signals)} products[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch GMC signals: {e}[/yellow]")
+
+    auditor = ContentAuditor(
+        store,
+        exclude_house_brands=not include_house_brands,
+        online_signals=online_signals,
+        gmc_signals=gmc_signals,
+    )
+    result = auditor.audit()
+    summary = result.summary()
+
+    console.print(f"Audited {summary['total_products']} products, {summary['products_with_gaps']} with gaps")
+
+    save_snapshot(result.scores, Path(out))
+    console.print(f"Snapshot saved to [green]{out}[/green]")
+
+
+@cli.command("audit-optimize")
+@click.option("--snapshot", "-s", required=True, type=click.Path(exists=True, path_type=Path), help="Snapshot JSON from audit-snapshot")
+@click.option("--ranking", "-r", required=True, type=click.Path(exists=True, path_type=Path), help="Expert ranking file (one handle per line)")
+@click.option("--log-dir", "-l", default=Path("./audit_optimize_log"), type=click.Path(path_type=Path), help="Directory for optimization logs")
+@click.option("--max-iterations", "-n", default=200, help="Max iterations per restart")
+@click.option("--verbose", is_flag=True)
+def audit_optimize(snapshot, ranking, log_dir, max_iterations, verbose):
+    """Optimize audit priority weights against an expert ranking."""
+    setup_logging(verbose)
+    from lookout.audit.weight_config import PriorityWeights
+    from lookout.audit.weight_optimizer import (
+        load_expert_ranking,
+        load_snapshot,
+        run_weight_optimization,
+    )
+
+    scores = load_snapshot(Path(snapshot))
+    expert_handles = load_expert_ranking(Path(ranking))
+
+    console.print(Panel(
+        f"[bold]Audit Weight Optimization[/bold]\n"
+        f"Snapshot: {snapshot} ({len(scores)} products)\n"
+        f"Expert ranking: {ranking} ({len(expert_handles)} handles)\n"
+        f"Max iterations: {max_iterations}",
+        title="Optimize",
+    ))
+
+    result = run_weight_optimization(
+        scores=scores,
+        expert_handles=expert_handles,
+        log_dir=Path(log_dir),
+        max_iterations=max_iterations,
+    )
+
+    # Compare default vs optimized
+    default = PriorityWeights()
+    best: PriorityWeights = result["best_weights"]
+
+    table = Table(title="Weight Comparison: Default vs Optimized")
+    table.add_column("Parameter", style="cyan")
+    table.add_column("Default", justify="right")
+    table.add_column("Optimized", justify="right", style="green")
+    table.add_column("Change", justify="right")
+
+    for key in default.to_dict():
+        d_val = getattr(default, key)
+        b_val = getattr(best, key)
+        if isinstance(d_val, float):
+            change = b_val - d_val
+            color = "green" if change > 0 else "red" if change < 0 else "dim"
+            table.add_row(key, f"{d_val:.3f}", f"{b_val:.3f}", f"[{color}]{change:+.3f}[/{color}]")
+        else:
+            changed = " *" if d_val != b_val else ""
+            table.add_row(key, str(d_val), str(b_val), changed)
+
+    console.print(table)
+    console.print(
+        f"\n[bold]Baseline Spearman:[/bold] {result['baseline_correlation']:.4f}"
+    )
+    console.print(
+        f"[bold]Best Spearman:[/bold] {result['best_correlation']:.4f}"
+    )
+    console.print(
+        f"[bold]Improvement:[/bold] {result['best_correlation'] - result['baseline_correlation']:+.4f}"
+    )
+    console.print(f"[bold]Logs:[/bold] {log_dir}")
+
+
 @cli.command("shipping")
 @click.option(
     "--out", "-o", "output_path", type=click.Path(path_type=Path), default=None,
@@ -424,6 +559,71 @@ def score(output_dir, handles, verify, json_out, verbose):
     if verbose:
         console.print("\n[bold]Per-axis averages:[/bold]")
         axis_names = ["factual_fidelity", "structural_compliance", "length_targets", "anti_hype", "coverage"]
+        for name in axis_names:
+            vals = [s.axes[name].score for s in scores if name in s.axes]
+            maxes = [s.axes[name].max_score for s in scores if name in s.axes]
+            if vals:
+                avg = sum(vals) / len(vals)
+                max_val = maxes[0]
+                console.print(f"  {name}: {avg:.1f}/{max_val}")
+
+
+@enrich.command("score-facts")
+@click.option(
+    "--test-dir", "-t", type=click.Path(exists=True, path_type=Path),
+    default=Path("./test_set/combined"), help="Directory with extracted facts",
+)
+@click.option("--verbose", is_flag=True)
+def score_facts_cmd(test_dir, verbose):
+    """Score extracted fact quality across 4 axes.
+
+    Reads extracted_facts.json from each handle subdirectory and
+    computes a composite quality score (0-100) measuring how useful
+    the raw facts are before any LLM generation.
+
+    Axes: content signal, field completeness, specificity, deduplication.
+    """
+    setup_logging(verbose)
+    from lookout.enrich.fact_scorer import AxisScore, score_facts_dir
+
+    scores = score_facts_dir(test_dir)
+
+    if not scores:
+        console.print("[yellow]No scoreable facts found in directory.[/yellow]")
+        return
+
+    # Summary table
+    table = Table(title="Extracted Facts Quality Scores")
+    table.add_column("Handle", style="cyan", max_width=40)
+    table.add_column("Total", style="bold green", justify="right")
+    table.add_column("Signal\n(0-30)", justify="right")
+    table.add_column("Complete\n(0-25)", justify="right")
+    table.add_column("Specific\n(0-25)", justify="right")
+    table.add_column("Dedup\n(0-20)", justify="right")
+
+    for s in sorted(scores, key=lambda x: x.total, reverse=True):
+        a = s.axes
+        table.add_row(
+            s.handle,
+            f"{s.total}/{s.max_total}",
+            str(a.get("content_signal", AxisScore("", 0, 30)).score),
+            str(a.get("field_completeness", AxisScore("", 0, 25)).score),
+            str(a.get("specificity", AxisScore("", 0, 25)).score),
+            str(a.get("deduplication", AxisScore("", 0, 20)).score),
+        )
+
+    console.print(table)
+
+    # Aggregate stats
+    avg_total = sum(s.total for s in scores) / len(scores)
+    avg_pct = sum(s.pct for s in scores) / len(scores)
+    console.print(f"\n[bold]Average:[/bold] {avg_total:.1f}/{scores[0].max_total} ({avg_pct:.1f}%)")
+    console.print(f"[bold]Products scored:[/bold] {len(scores)}")
+
+    # Per-axis averages
+    if verbose:
+        console.print("\n[bold]Per-axis averages:[/bold]")
+        axis_names = ["content_signal", "field_completeness", "specificity", "deduplication"]
         for name in axis_names:
             vals = [s.axes[name].score for s in scores if name in s.axes]
             maxes = [s.axes[name].max_score for s in scores if name in s.axes]
