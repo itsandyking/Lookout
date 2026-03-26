@@ -1,19 +1,18 @@
 """
 LLM client wrapper for provider-agnostic LLM access.
 
-Currently implements Anthropic Claude, but structured to allow
-adding other providers (OpenAI, Google) in the future.
+Currently implements Anthropic Claude with native structured output
+via tool use for JSON responses.
 """
 
 import json
 import logging
 import os
-import re
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, TypeVar
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -37,59 +36,46 @@ class LLMProvider(ABC):
         max_tokens: int = 4096,
         temperature: float = 0.0,
     ) -> str:
-        """
-        Generate a completion from the LLM.
-
-        Args:
-            prompt: The user prompt.
-            system: Optional system prompt.
-            max_tokens: Maximum tokens in response.
-            temperature: Sampling temperature.
-
-        Returns:
-            The generated text response.
-        """
+        """Generate a text completion."""
         pass
 
     @abstractmethod
-    async def complete_json(
+    async def complete_structured(
         self,
         prompt: str,
-        schema: type[T],
+        output_schema: dict[str, Any],
+        tool_name: str = "structured_output",
+        tool_description: str = "Output structured data",
         system: str | None = None,
         max_tokens: int = 4096,
-    ) -> T:
-        """
-        Generate a JSON response matching a Pydantic schema.
+    ) -> dict[str, Any]:
+        """Generate a structured JSON response matching a schema.
+
+        Uses the provider's native structured output mechanism
+        (e.g., tool use for Anthropic) instead of text parsing.
 
         Args:
             prompt: The user prompt.
-            schema: Pydantic model class for validation.
+            output_schema: JSON Schema dict for the response.
+            tool_name: Name for the structured output tool.
+            tool_description: Description of what the output represents.
             system: Optional system prompt.
             max_tokens: Maximum tokens in response.
 
         Returns:
-            Validated Pydantic model instance.
+            Parsed dict matching the schema.
         """
         pass
 
 
 class AnthropicProvider(LLMProvider):
-    """Anthropic Claude LLM provider."""
+    """Anthropic Claude LLM provider with native structured output."""
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str = "claude-sonnet-4-20250514",
     ) -> None:
-        """
-        Initialize the Anthropic provider.
-
-        Args:
-            api_key: Anthropic API key. If not provided, reads from
-                    ANTHROPIC_API_KEY environment variable.
-            model: Model name to use.
-        """
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError(
@@ -119,7 +105,7 @@ class AnthropicProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.0,
     ) -> str:
-        """Generate a completion from Claude."""
+        """Generate a text completion from Claude."""
         client = await self._get_client()
 
         kwargs: dict[str, Any] = {
@@ -137,67 +123,74 @@ class AnthropicProvider(LLMProvider):
         response = await client.messages.create(**kwargs)
         return response.content[0].text
 
-    async def complete_json(
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type(Exception),
+    )
+    async def complete_structured(
         self,
         prompt: str,
-        schema: type[T],
+        output_schema: dict[str, Any],
+        tool_name: str = "structured_output",
+        tool_description: str = "Output structured data",
         system: str | None = None,
         max_tokens: int = 4096,
-    ) -> T:
-        """Generate a JSON response matching a Pydantic schema."""
-        # Add JSON instruction to system prompt
-        json_system = (system or "") + (
-            "\n\nYou must respond with valid JSON that matches the requested schema. "
-            "Do not include any text before or after the JSON object. "
-            "Do not use markdown code blocks."
-        )
+    ) -> dict[str, Any]:
+        """Generate structured output using Claude's tool use.
 
-        # Add schema to prompt
-        schema_json = json.dumps(schema.model_json_schema(), indent=2)
-        json_prompt = f"{prompt}\n\nRespond with JSON matching this schema:\n{schema_json}"
+        Defines a single tool with the desired schema and forces Claude
+        to call it, producing guaranteed valid JSON without regex parsing.
+        """
+        client = await self._get_client()
 
-        # First attempt
-        response = await self.complete(json_prompt, json_system, max_tokens)
+        tool = {
+            "name": tool_name,
+            "description": tool_description,
+            "input_schema": output_schema,
+        }
 
-        # Try to parse JSON
-        try:
-            parsed = self._extract_and_parse_json(response)
-            return schema.model_validate(parsed)
-        except (json.JSONDecodeError, ValidationError) as e:
-            parse_error = e
-            logger.warning(f"First JSON parse attempt failed: {e}. Retrying...")
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}],
+            "tools": [tool],
+            "tool_choice": {"type": "tool", "name": tool_name},
+        }
 
-        # Retry with fix instruction
-        fix_prompt = (
-            f"The previous response was not valid JSON or didn't match the schema.\n"
-            f"Error: {parse_error}\n\n"
-            f"Original response:\n{response}\n\n"
-            f"Please fix the JSON to match this schema:\n{schema_json}\n\n"
-            f"Respond ONLY with the corrected JSON, no other text."
-        )
+        if system:
+            kwargs["system"] = system
 
-        response = await self.complete(fix_prompt, json_system, max_tokens)
+        response = await client.messages.create(**kwargs)
 
-        # Parse again
-        parsed = self._extract_and_parse_json(response)
-        return schema.model_validate(parsed)
+        # Extract the tool use result
+        for block in response.content:
+            if block.type == "tool_use":
+                return block.input
 
-    def _extract_and_parse_json(self, text: str) -> dict[str, Any]:
-        """Extract JSON from text that might have surrounding content."""
+        # Shouldn't reach here with forced tool_choice, but fallback
+        logger.warning("No tool_use block in response, falling back to text parsing")
+        for block in response.content:
+            if block.type == "text":
+                return self._extract_and_parse_json(block.text)
+
+        return {}
+
+    @staticmethod
+    def _extract_and_parse_json(text: str) -> dict[str, Any]:
+        """Fallback: extract JSON from text (used only if tool_use fails)."""
+        import re
+
         text = text.strip()
-
-        # Remove markdown code blocks if present
         if text.startswith("```"):
             text = re.sub(r"^```(?:json)?\s*", "", text)
             text = re.sub(r"\s*```$", "", text)
 
-        # Try direct parse first
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
 
-        # Try to find JSON object in text
         match = re.search(r"\{[\s\S]*\}", text)
         if match:
             return json.loads(match.group())
@@ -206,42 +199,19 @@ class AnthropicProvider(LLMProvider):
 
 
 class LLMClient:
-    """
-    High-level LLM client with prompt template support.
-
-    Provides a clean interface for LLM operations with:
-    - Provider abstraction
-    - Prompt template loading
-    - JSON schema validation
-    - Automatic retries
-    """
+    """High-level LLM client with prompt template support and structured output."""
 
     def __init__(
         self,
         provider: LLMProvider | None = None,
         prompts_dir: Path | None = None,
     ) -> None:
-        """
-        Initialize the LLM client.
-
-        Args:
-            provider: LLM provider to use. Defaults to Anthropic.
-            prompts_dir: Directory containing prompt templates.
-        """
         self.provider = provider or AnthropicProvider()
         self.prompts_dir = prompts_dir or (Path(__file__).parent / "prompts")
         self._prompt_cache: dict[str, str] = {}
 
     def load_prompt(self, name: str) -> str:
-        """
-        Load a prompt template by name.
-
-        Args:
-            name: Prompt name (without .prompt extension).
-
-        Returns:
-            The prompt template text.
-        """
+        """Load a prompt template by name."""
         if name in self._prompt_cache:
             return self._prompt_cache[name]
 
@@ -260,16 +230,7 @@ class LLMClient:
         source_text: dict[str, Any],
         raw_facts: dict[str, Any],
     ) -> dict[str, Any]:
-        """
-        Use LLM to structure extracted facts.
-
-        Args:
-            source_text: Raw extracted source text.
-            raw_facts: Deterministically extracted facts.
-
-        Returns:
-            Structured facts dictionary.
-        """
+        """Use LLM to structure extracted facts via structured output."""
         prompt_template = self.load_prompt("extract_facts")
 
         prompt = prompt_template.format(
@@ -282,16 +243,30 @@ class LLMClient:
             "structure product information from web page content. "
             "IMPORTANT: You must NEVER invent or fabricate information. "
             "If information is not present in the source, leave the field empty "
-            "or return an empty list. Always cite evidence from the source text."
+            "or return an empty list."
         )
 
-        response = await self.provider.complete(prompt, system)
-
-        # Parse response as JSON
         try:
-            return self.provider._extract_and_parse_json(response)
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse LLM facts response as JSON")
+            return await self.provider.complete_structured(
+                prompt,
+                output_schema={
+                    "type": "object",
+                    "properties": {
+                        "product_name": {"type": "string"},
+                        "brand": {"type": "string"},
+                        "description": {"type": "string"},
+                        "features": {"type": "array", "items": {"type": "string"}},
+                        "specs": {"type": "object", "additionalProperties": {"type": "string"}},
+                        "materials": {"type": "string"},
+                        "care": {"type": "string"},
+                    },
+                },
+                tool_name="extract_product_facts",
+                tool_description="Extract structured product facts from source data",
+                system=system,
+            )
+        except Exception:
+            logger.warning("Structured fact extraction failed, returning raw facts")
             return raw_facts
 
     async def generate_body_html(
@@ -300,16 +275,10 @@ class LLMClient:
         handle: str,
         vendor: str,
     ) -> str:
-        """
-        Generate Shopify Body HTML from extracted facts.
+        """Generate Shopify Body HTML from extracted facts.
 
-        Args:
-            facts: Extracted product facts.
-            handle: Product handle.
-            vendor: Vendor name.
-
-        Returns:
-            Generated HTML body.
+        This uses plain text completion (not structured output) since
+        the output is HTML, not JSON.
         """
         prompt_template = self.load_prompt("generate_body_html")
 
@@ -334,16 +303,7 @@ class LLMClient:
         facts: dict[str, Any],
         available_images: list[dict[str, Any]],
     ) -> dict[str, str]:
-        """
-        Select variant images based on extracted data.
-
-        Args:
-            facts: Extracted product facts.
-            available_images: List of available image info.
-
-        Returns:
-            Mapping of variant option value to image URL.
-        """
+        """Select variant images using structured output."""
         prompt_template = self.load_prompt("select_variant_images")
 
         prompt = prompt_template.format(
@@ -352,19 +312,26 @@ class LLMClient:
         )
 
         system = (
-            "You are a product data assistant. Your task is to match variant "
-            "options (like colors) to their corresponding product images. "
-            "IMPORTANT: Only make assignments when there is clear evidence. "
-            "If you cannot confidently match a color to an image, skip it. "
-            "It's better to have missing assignments than wrong ones."
+            "You are a product data assistant. Match variant options (like colors) "
+            "to their corresponding product images. Only make assignments when "
+            "there is clear evidence. It's better to skip uncertain matches."
         )
 
-        response = await self.provider.complete(prompt, system)
-
         try:
-            return self.provider._extract_and_parse_json(response)
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse variant image response as JSON")
+            result = await self.provider.complete_structured(
+                prompt,
+                output_schema={
+                    "type": "object",
+                    "description": "Mapping of color/variant name to image URL",
+                    "additionalProperties": {"type": "string"},
+                },
+                tool_name="assign_variant_images",
+                tool_description="Map each color variant to its best matching product image URL",
+                system=system,
+            )
+            return result
+        except Exception:
+            logger.warning("Structured variant image selection failed")
             return {}
 
     async def verify_description(
@@ -372,21 +339,7 @@ class LLMClient:
         facts: dict[str, Any],
         description: str,
     ) -> dict[str, Any]:
-        """
-        Verify a generated description against source facts.
-
-        Checks that every claim in the description is supported by the
-        extracted facts. Returns a verdict with supported, unsupported,
-        and embellished claims.
-
-        Args:
-            facts: Extracted product facts (source of truth).
-            description: Generated HTML description to verify.
-
-        Returns:
-            Dict with 'supported', 'unsupported', 'embellished' lists
-            and 'verdict' ("PASS" or "FAIL").
-        """
+        """Verify a generated description against source facts using structured output."""
         prompt_template = self.load_prompt("verify_facts")
 
         prompt = prompt_template.format(
@@ -395,21 +348,47 @@ class LLMClient:
         )
 
         system = (
-            "You are a fact-checker for product descriptions. Your job is to "
-            "verify that every claim in the description is directly supported "
-            "by the source facts. Be strict — if a fact is not explicitly "
-            "stated in the source, mark it as unsupported. Respond with JSON only."
+            "You are a fact-checker for product descriptions. Verify that every "
+            "claim in the description is directly supported by the source facts. "
+            "Be strict — if a fact is not explicitly stated, mark it as unsupported."
         )
 
-        response = await self.provider.complete(prompt, system, max_tokens=2048)
-
         try:
-            result = self.provider._extract_and_parse_json(response)
-            if "verdict" not in result:
-                result["verdict"] = "UNKNOWN"
+            result = await self.provider.complete_structured(
+                prompt,
+                output_schema={
+                    "type": "object",
+                    "properties": {
+                        "supported": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Claims backed by source facts (include the supporting evidence)",
+                        },
+                        "unsupported": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Claims not found in the source facts",
+                        },
+                        "embellished": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Claims that exaggerate or stretch what the facts say",
+                        },
+                        "verdict": {
+                            "type": "string",
+                            "enum": ["PASS", "FAIL"],
+                            "description": "PASS if no unsupported or embellished claims, FAIL otherwise",
+                        },
+                    },
+                    "required": ["supported", "unsupported", "embellished", "verdict"],
+                },
+                tool_name="fact_check_result",
+                tool_description="Report fact-checking results for a product description",
+                system=system,
+            )
             return result
-        except json.JSONDecodeError:
-            logger.warning("Failed to parse fact-check response as JSON")
+        except Exception:
+            logger.warning("Structured fact-check failed")
             return {
                 "supported": [],
                 "unsupported": [],
@@ -423,16 +402,6 @@ def get_llm_client(
     model: str = "claude-sonnet-4-20250514",
     prompts_dir: Path | None = None,
 ) -> LLMClient:
-    """
-    Create an LLM client with default configuration.
-
-    Args:
-        api_key: Optional API key (uses env var if not provided).
-        model: Model name to use.
-        prompts_dir: Optional prompts directory.
-
-    Returns:
-        Configured LLMClient instance.
-    """
+    """Create an LLM client with default configuration."""
     provider = AnthropicProvider(api_key=api_key, model=model)
     return LLMClient(provider=provider, prompts_dir=prompts_dir)
