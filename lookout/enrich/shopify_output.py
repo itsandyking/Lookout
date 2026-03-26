@@ -204,9 +204,16 @@ class ShopifyOutputBuilder:
                 self._add_variant_rows_from_export(handle, non_all_entries)
             else:
                 for option_value, image_src in non_all_entries.items():
-                    # Handle both single URL and list of URLs
+                    # Handle various types from LLM structured output
                     if isinstance(image_src, list):
                         image_src = image_src[0] if image_src else ""
+                    elif isinstance(image_src, dict):
+                        image_src = image_src.get("url", image_src.get("src", ""))
+                    elif not isinstance(image_src, str):
+                        image_src = str(image_src) if image_src else ""
+
+                    if not image_src:
+                        continue
 
                     self._variant_assignments.append(
                         VariantImageAssignment(
