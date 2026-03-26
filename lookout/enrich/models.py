@@ -173,6 +173,7 @@ class SelectorsConfig(BaseModel):
     specs: str | None = None
     images: str | None = None
     price: str | None = None
+    content_area: str | None = None
 
 
 class VendorConfig(BaseModel):

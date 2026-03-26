@@ -147,3 +147,94 @@ class TestContentExtractor:
 
         # Should not crash, might extract some text
         assert isinstance(source_text.visible_text_blocks, list)
+
+    def test_modal_opener_filtered(self):
+        """Test that modal-opener custom elements are filtered out."""
+        html = """
+        <html><body><main>
+            <modal-opener><p>Open media 1 in modal for full gallery view</p></modal-opener>
+            <p>This jacket features premium waterproof construction and breathable fabric.</p>
+        </main></body></html>
+        """
+        extractor = ContentExtractor()
+        source_text = extractor.extract_source_text(html, "https://example.com")
+        for block in source_text.visible_text_blocks:
+            assert "Open media 1 in modal" not in block
+
+    def test_mega_menu_filtered(self):
+        """Test that mega-menu navigation lists are filtered out."""
+        html = """
+        <html><body><main>
+            <nav><ul class="mega-menu__list"><li>New Arrivals</li><li>Sale</li></ul></nav>
+            <p>This product is built with durable materials for all-season use.</p>
+        </main></body></html>
+        """
+        extractor = ContentExtractor()
+        source_text = extractor.extract_source_text(html, "https://example.com")
+        for block in source_text.visible_text_blocks:
+            assert "New Arrivals" not in block
+
+    def test_pricing_blocks_filtered(self):
+        """Test that pricing blocks are filtered from text output."""
+        html = """
+        <html><body><main>
+            <div class="price__regular">Regular price $283.00 USD</div>
+            <p>Designed for cold weather performance with insulated lining throughout.</p>
+        </main></body></html>
+        """
+        extractor = ContentExtractor()
+        source_text = extractor.extract_source_text(html, "https://example.com")
+        for block in source_text.visible_text_blocks:
+            assert "$283.00" not in block
+
+    def test_noscript_filtered(self):
+        """Test that noscript content is filtered out."""
+        html = """
+        <html><body><main>
+            <noscript><p>Javascript is required to view this page properly</p></noscript>
+            <p>This versatile mid-layer works great under a shell or on its own.</p>
+        </main></body></html>
+        """
+        extractor = ContentExtractor()
+        source_text = extractor.extract_source_text(html, "https://example.com")
+        for block in source_text.visible_text_blocks:
+            assert "Javascript" not in block
+
+    def test_skip_to_links_filtered(self):
+        """Test that skip-to-content links are filtered out."""
+        html = """
+        <html><body><main>
+            <a class="skip-to-content-link">Skip to content is available for accessibility</a>
+            <p>Premium goose down insulation provides outstanding warmth-to-weight ratio.</p>
+        </main></body></html>
+        """
+        extractor = ContentExtractor()
+        source_text = extractor.extract_source_text(html, "https://example.com")
+        for block in source_text.visible_text_blocks:
+            assert "Skip to content" not in block
+
+    def test_boilerplate_block_with_real_content(self):
+        """Test that real content survives while boilerplate is removed."""
+        html = """
+        <html><body><main>
+            <div class="product-description">
+                <p>The Alpine Pro jacket combines lightweight construction with maximum weather protection for backcountry adventures.</p>
+            </div>
+            <div class="price__container"><span>Regular price $349.99 USD</span></div>
+            <modal-opener><p>Open media 3 in modal for gallery view details</p></modal-opener>
+            <div class="announcement-bar"><p>Free shipping on orders over fifty dollars today</p></div>
+            <div class="product-features">
+                <p>Built with three-layer Gore-Tex fabric and fully taped seams for reliable waterproof protection.</p>
+            </div>
+        </main></body></html>
+        """
+        extractor = ContentExtractor()
+        source_text = extractor.extract_source_text(html, "https://example.com")
+        texts = " ".join(source_text.visible_text_blocks)
+        # Real content should be present
+        assert "Alpine Pro jacket" in texts
+        assert "Gore-Tex" in texts
+        # Boilerplate should not be present
+        assert "$349.99" not in texts
+        assert "Open media 3 in modal" not in texts
+        assert "Free shipping" not in texts

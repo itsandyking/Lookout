@@ -37,6 +37,18 @@ SKIP_TAGS = {
     "canvas",
     "meta",
     "link",
+    # Shopify custom elements
+    "modal-opener",
+    "media-gallery",
+    "announcement-bar",
+    "slideshow-component",
+    "product-recommendations",
+    "cart-notification",
+    "cart-drawer",
+    "predictive-search",
+    "localization-form",
+    "pickup-availability",
+    "deferred-media",
 }
 
 # Common class/id patterns for navigation/footer (case-insensitive)
@@ -56,7 +68,23 @@ NAV_FOOTER_PATTERNS = [
     r"share",
     r"cart",
     r"wishlist",
+    r"mega-menu",
+    r"announcement.?bar",
+    r"utility.?bar",
+    r"header.?group",
+    r"related.?product",
+    r"product.?recommendation",
+    r"recently.?view",
+    r"skip.?to",
+    r"login",
+    r"account",
+    r"no.?script",
+    r"\bprice\b",
 ]
+
+# Compiled regex constants for boilerplate detection
+PRICE_PATTERN = re.compile(r"(regular price|sale price|starting at|\$\d+\.\d{2})", re.I)
+MODAL_PATTERN = re.compile(r"Open media \d+ in modal", re.I)
 
 
 class ContentExtractor:
@@ -194,10 +222,16 @@ class ContentExtractor:
                 continue
 
             text = elem.get_text(strip=True)
-            if text and len(text) > 20 and len(text) < 2000:
-                # Avoid duplicates
-                if text not in blocks:
-                    blocks.append(text)
+            if not text or len(text) <= 20 or len(text) >= 2000:
+                continue
+            if self._is_boilerplate_block(text):
+                continue
+            if text in blocks:
+                continue
+            # Near-duplicate check for short blocks
+            if len(text) < 200 and any(text in b or b in text for b in blocks):
+                continue
+            blocks.append(text)
 
         return blocks[:20]  # Limit to top 20 blocks
 
@@ -213,9 +247,13 @@ class ContentExtractor:
             for li in ul.find_all("li", recursive=False):
                 text = li.get_text(strip=True)
                 if text and len(text) > 5 and len(text) < 500:
-                    items.append(text)
+                    if not self._is_boilerplate_block(text):
+                        items.append(text)
 
             if items and len(items) >= 2:
+                # Nav-list heuristic: if all items are short and there are many, skip
+                if all(len(item) < 30 for item in items) and len(items) > 8:
+                    continue
                 lists.append(items)
 
         return lists[:10]  # Limit to 10 lists
@@ -773,19 +811,40 @@ class ContentExtractor:
 
         return colors, sizes, color_images
 
+    def _is_boilerplate_block(self, text: str) -> bool:
+        """Check if a text block is boilerplate content that should be filtered."""
+        if MODAL_PATTERN.search(text):
+            return True
+        if PRICE_PATTERN.search(text):
+            return True
+        # Breadcrumb pattern: "Home > Shop > Category" or with /, ›, »
+        if re.match(
+            r"^[\w\s']+(?:>|/|›|»)[\w\s']+(?:(?:>|/|›|»)[\w\s']+)*$", text
+        ):
+            return True
+        return False
+
     def _should_skip_element(self, elem: Tag) -> bool:
-        """Check if an element should be skipped during extraction."""
+        """Check if an element or any of its ancestors should be skipped."""
+        # Check element itself first
         if elem.name in SKIP_TAGS:
             return True
-
-        # Check class and id for nav/footer patterns
         classes = " ".join(elem.get("class", []))
         elem_id = elem.get("id", "") or ""
-
         for pattern in NAV_FOOTER_PATTERNS:
             if re.search(pattern, classes, re.I) or re.search(pattern, elem_id, re.I):
                 return True
-
+        # Walk ancestors up to body
+        for ancestor in elem.parents:
+            if ancestor.name in ("body", "html", "[document]", None):
+                break
+            if ancestor.name in SKIP_TAGS:
+                return True
+            anc_classes = " ".join(ancestor.get("class", []))
+            anc_id = ancestor.get("id", "") or ""
+            for pattern in NAV_FOOTER_PATTERNS:
+                if re.search(pattern, anc_classes, re.I) or re.search(pattern, anc_id, re.I):
+                    return True
         return False
 
     def _should_skip_image(self, url: str) -> bool:

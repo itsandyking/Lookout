@@ -135,6 +135,8 @@ vendors:
       - "/about"
       - "/help"
       - "/account"
+    selectors:
+      content_area: "product-info, .product__info-container"
     product_url_patterns:
       - "/products/"
       - "/p/"
