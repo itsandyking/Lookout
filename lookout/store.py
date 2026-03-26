@@ -6,9 +6,15 @@ receive plain dicts, never SQLAlchemy models.
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+# Default TVR database path (sibling repo to Lookout)
+_DEFAULT_DB = str(Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db")
 
 
 class LookoutStore:
@@ -18,7 +24,13 @@ class LookoutStore:
         from tvr.db.store import ShopifyStore
         from tvr.db.vendor_store import VendorStore
 
-        self._store = ShopifyStore(db_url) if db_url else ShopifyStore()
+        # Use explicit path, or env var, or default TVR location
+        db_path = db_url or os.environ.get("LOOKOUT_DB_PATH") or _DEFAULT_DB
+        if Path(db_path).exists():
+            self._store = ShopifyStore(db_path)
+        else:
+            logger.warning(f"Database not found at {db_path}, using in-memory")
+            self._store = ShopifyStore()
         self._vendor_store = VendorStore()
 
     # --- Product data ---
