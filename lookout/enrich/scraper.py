@@ -170,6 +170,22 @@ class WebScraper:
                 error=str(e),
             )
 
+    @staticmethod
+    def _is_bot_blocked(html: str) -> bool:
+        """Check if the page is a bot protection / waiting room."""
+        markers = [
+            "sit tight",
+            "hands full at the moment",
+            "checking your browser",
+            "access denied",
+            "please verify you are a human",
+            "ray id",
+            "just a moment",
+            "enable javascript",
+        ]
+        html_lower = html.lower()
+        return any(marker in html_lower for marker in markers)
+
     async def _scrape_dynamic(
         self,
         url: str,
@@ -196,6 +212,10 @@ class WebScraper:
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--disable-dev-shm-usage",
+                        "--no-sandbox",
+                        "--disable-setuid-sandbox",
+                        "--disable-infobars",
+                        "--disable-extensions",
                     ],
                 )
 
@@ -211,6 +231,18 @@ class WebScraper:
 
             try:
                 page = await context.new_page()
+
+                # Add stealth script to avoid bot detection
+                await page.add_init_script("""
+                    // Override webdriver flag
+                    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                    // Override plugins (headless has 0 plugins)
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                    // Override languages
+                    Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+                    // Override platform
+                    Object.defineProperty(navigator, 'platform', { get: () => 'MacIntel' });
+                """)
 
                 # Navigate to the page
                 response = await page.goto(
@@ -239,6 +271,58 @@ class WebScraper:
                 html = await page.content()
                 final_url = page.url
                 status_code = response.status if response else 200
+
+                # Check for bot protection / waiting room
+                if self._is_bot_blocked(html):
+                    logger.warning(
+                        "Bot protection detected on %s, retrying with fresh context",
+                        url,
+                    )
+                    await context.close()
+
+                    # Retry with different viewport and user agent
+                    context = await self._browser.new_context(
+                        viewport={"width": 1440, "height": 900},
+                        user_agent=(
+                            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/122.0.0.0 Safari/537.36"
+                        ),
+                        locale="en-US",
+                    )
+                    page = await context.new_page()
+                    await page.add_init_script("""
+                        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+                    """)
+
+                    response = await page.goto(
+                        url,
+                        timeout=config.wait_timeout_ms,
+                        wait_until="networkidle",
+                    )
+
+                    if config.wait_for_selector:
+                        try:
+                            await page.wait_for_selector(
+                                config.wait_for_selector,
+                                timeout=config.wait_timeout_ms,
+                            )
+                        except Exception:
+                            pass
+
+                    if config.extra_wait_ms > 0:
+                        await asyncio.sleep(config.extra_wait_ms / 1000)
+
+                    html = await page.content()
+                    final_url = page.url
+                    status_code = response.status if response else 200
+
+                    if self._is_bot_blocked(html):
+                        logger.warning(
+                            "Bot protection persists on %s after retry", url
+                        )
 
                 return ScrapedPage(
                     url=url,
