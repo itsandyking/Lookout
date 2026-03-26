@@ -201,6 +201,107 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
         sys.exit(1)
 
 
+@enrich.command("score")
+@click.option(
+    "--output-dir", "-d", "output_dir", type=click.Path(exists=True, path_type=Path),
+    default=Path("./output"), help="Enrichment output directory to score",
+)
+@click.option("--handle", "-h", "handles", multiple=True, help="Specific handles to score (repeatable)")
+@click.option("--verify/--no-verify", default=False, help="Run LLM fact-checking (requires API key)")
+@click.option("--json-output", "json_out", is_flag=True, help="Output as JSON instead of table")
+@click.option("--verbose", is_flag=True)
+def score(output_dir, handles, verify, json_out, verbose):
+    """Score enrichment quality across 5 axes.
+
+    Reads merch_output.json and facts.json from the output directory and
+    computes a composite quality score (0-100) for each product.
+
+    Axes: factual fidelity, structural compliance, length targets,
+    anti-hype compliance, and fact coverage.
+    """
+    import json as json_mod
+
+    setup_logging(verbose)
+    from lookout.enrich.scorer import AxisScore, score_output_dir
+
+    handle_list = list(handles) if handles else None
+    verifications: dict | None = None
+
+    if verify:
+        console.print("[dim]Running LLM fact-checking (this uses API credits)...[/dim]")
+        from lookout.enrich.scorer import load_artifacts
+        from lookout.enrich.llm import get_llm_client
+
+        llm = get_llm_client()
+
+        # Determine handles to verify
+        if handle_list is None:
+            handle_list = [
+                d.name for d in sorted(output_dir.iterdir())
+                if d.is_dir() and (d / "merch_output.json").exists()
+            ]
+
+        verifications = {}
+        for h in handle_list:
+            merch, facts = load_artifacts(output_dir, h)
+            if merch and merch.body_html and facts:
+                console.print(f"  [dim]Verifying {h}...[/dim]")
+                result = asyncio.run(llm.verify_description(facts.model_dump(), merch.body_html))
+                verifications[h] = result
+
+    scores = score_output_dir(output_dir, handle_list, verifications)
+
+    if not scores:
+        console.print("[yellow]No scoreable products found in output directory.[/yellow]")
+        return
+
+    if json_out:
+        console.print(json_mod.dumps([s.summary_dict() for s in scores], indent=2))
+        return
+
+    # Summary table
+    table = Table(title="Enrichment Quality Scores")
+    table.add_column("Handle", style="cyan", max_width=30)
+    table.add_column("Total", style="bold green", justify="right")
+    table.add_column("Fidelity\n(0-30)", justify="right")
+    table.add_column("Structure\n(0-25)", justify="right")
+    table.add_column("Length\n(0-15)", justify="right")
+    table.add_column("Anti-hype\n(0-15)", justify="right")
+    table.add_column("Coverage\n(0-15)", justify="right")
+
+    for s in sorted(scores, key=lambda x: x.total, reverse=True):
+        a = s.axes
+        table.add_row(
+            s.handle,
+            f"{s.total}/{s.max_total}",
+            str(a.get("factual_fidelity", AxisScore("", 0, 30)).score),
+            str(a.get("structural_compliance", AxisScore("", 0, 25)).score),
+            str(a.get("length_targets", AxisScore("", 0, 15)).score),
+            str(a.get("anti_hype", AxisScore("", 0, 15)).score),
+            str(a.get("coverage", AxisScore("", 0, 15)).score),
+        )
+
+    console.print(table)
+
+    # Aggregate stats
+    avg_total = sum(s.total for s in scores) / len(scores)
+    avg_pct = sum(s.pct for s in scores) / len(scores)
+    console.print(f"\n[bold]Average:[/bold] {avg_total:.1f}/{scores[0].max_total} ({avg_pct:.1f}%)")
+    console.print(f"[bold]Products scored:[/bold] {len(scores)}")
+
+    # Per-axis averages
+    if verbose:
+        console.print("\n[bold]Per-axis averages:[/bold]")
+        axis_names = ["factual_fidelity", "structural_compliance", "length_targets", "anti_hype", "coverage"]
+        for name in axis_names:
+            vals = [s.axes[name].score for s in scores if name in s.axes]
+            maxes = [s.axes[name].max_score for s in scores if name in s.axes]
+            if vals:
+                avg = sum(vals) / len(vals)
+                max_val = maxes[0]
+                console.print(f"  {name}: {avg:.1f}/{max_val}")
+
+
 @enrich.command()
 @click.argument("input_path", type=click.Path(exists=True, path_type=Path))
 @click.option("--verbose", is_flag=True)
