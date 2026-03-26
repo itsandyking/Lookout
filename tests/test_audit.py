@@ -158,6 +158,11 @@ def test_audit_result_to_priority_csv():
         "Conversion Rate",
         "Online Revenue",
         "Opportunity Gap",
+        "GMC Clicks",
+        "GMC Impressions",
+        "GMC CTR",
+        "GMC Disapproved",
+        "Discovery Gap",
         "Admin Link",
     }
     assert expected_columns == set(reader.fieldnames)

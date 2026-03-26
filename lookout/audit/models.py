@@ -58,6 +58,14 @@ class ProductScore:
     online_orders: int = 0
     opportunity_gap: float = 0.0  # high sessions + low conversion
 
+    # GMC signals (populated when available)
+    gmc_clicks: int = 0
+    gmc_impressions: int = 0
+    gmc_ctr: float = 0.0
+    gmc_disapproved: bool = False
+    gmc_issues: list[str] = field(default_factory=list)
+    discovery_gap: float = 0.0  # high impressions + low CTR
+
     # Computed
     gap_count: float = 0.0
     gaps: list[str] = field(default_factory=list)
@@ -127,18 +135,25 @@ class ProductScore:
 
         base_score = self.inventory_value * self.gap_count * price_multiplier
 
-        # When online signals are available, boost products with high
-        # sessions + low conversion (content opportunity) and dampen
-        # products with no online traffic.
+        # When online/GMC signals are available, boost products with
+        # untapped potential (high traffic + low conversion).
+        import math
+        boost = 1.0
+
         if self.online_sessions > 0:
-            # opportunity_gap: 0-1, higher = more untapped potential
-            # session_weight: log-scale boost for traffic volume
-            import math
             session_weight = math.log1p(self.online_sessions) / math.log1p(100)
-            opportunity_boost = 1.0 + (self.opportunity_gap * session_weight)
-            self.priority_score = base_score * opportunity_boost
-        else:
-            self.priority_score = base_score
+            boost += self.opportunity_gap * session_weight
+
+        if self.gmc_impressions > 0:
+            impression_weight = math.log1p(self.gmc_impressions) / math.log1p(1000)
+            boost += self.discovery_gap * impression_weight
+
+        # Disapproved products get a flat 50% boost — fixing content
+        # could restore their listing entirely
+        if self.gmc_disapproved:
+            boost += 0.5
+
+        self.priority_score = base_score * boost
 
     @property
     def completeness_percent(self) -> float:
@@ -306,6 +321,11 @@ class AuditResult:
         "Conversion Rate",
         "Online Revenue",
         "Opportunity Gap",
+        "GMC Clicks",
+        "GMC Impressions",
+        "GMC CTR",
+        "GMC Disapproved",
+        "Discovery Gap",
         "Admin Link",
     ]
 
@@ -338,6 +358,11 @@ class AuditResult:
                 "Conversion Rate": f"{s.online_conversion_rate:.1%}" if s.online_sessions else "",
                 "Online Revenue": f"${s.online_revenue:.2f}" if s.online_revenue else "",
                 "Opportunity Gap": round(s.opportunity_gap, 3) if s.online_sessions else "",
+                "GMC Clicks": s.gmc_clicks or "",
+                "GMC Impressions": s.gmc_impressions or "",
+                "GMC CTR": f"{s.gmc_ctr:.1%}" if s.gmc_impressions else "",
+                "GMC Disapproved": "Yes" if s.gmc_disapproved else "",
+                "Discovery Gap": round(s.discovery_gap, 3) if s.gmc_impressions else "",
                 "Admin Link": s.admin_link,
             }
             for s in self.priority_items

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 
+from lookout.audit.gmc_signals import GMCSignals
 from lookout.audit.models import MIN_DESCRIPTION_LENGTH, AuditResult, ProductScore
 from lookout.audit.online_signals import OnlineSignals
 from lookout.store import LookoutStore
@@ -38,11 +39,13 @@ class ContentAuditor:
         min_description_length: int = MIN_DESCRIPTION_LENGTH,
         exclude_house_brands: bool = True,
         online_signals: dict[str, OnlineSignals] | None = None,
+        gmc_signals: dict[str, GMCSignals] | None = None,
     ) -> None:
         self.store = store
         self.min_description_length = min_description_length
         self.exclude_house_brands = exclude_house_brands
         self.online_signals = online_signals or {}
+        self.gmc_signals = gmc_signals or {}
 
     def audit(self, vendor: str | None = None) -> AuditResult:
         """Run content audit on all active products (or filtered by vendor)."""
@@ -55,6 +58,7 @@ class ContentAuditor:
             score = self._score_product(product)
             # Enrich with online signals if available (matched by title)
             title = product.get("title", "")
+            needs_recalc = False
             if title in self.online_signals:
                 sig = self.online_signals[title]
                 score.online_sessions = sig.sessions
@@ -62,8 +66,24 @@ class ContentAuditor:
                 score.online_revenue = sig.online_revenue
                 score.online_orders = sig.orders
                 score.opportunity_gap = sig.opportunity_gap
-                # Recalculate priority with online data
+                needs_recalc = True
+
+            # Enrich with GMC signals if available (matched by SKU/barcode)
+            sku = score.sku
+            barcode = score.barcode
+            gmc_sig = self.gmc_signals.get(sku) or self.gmc_signals.get(barcode)
+            if gmc_sig:
+                score.gmc_clicks = gmc_sig.clicks
+                score.gmc_impressions = gmc_sig.impressions
+                score.gmc_ctr = gmc_sig.ctr
+                score.gmc_disapproved = gmc_sig.disapproved
+                score.gmc_issues = gmc_sig.issues
+                score.discovery_gap = gmc_sig.discovery_gap
+                needs_recalc = True
+
+            if needs_recalc:
                 score.calculate_gaps()
+
             scores.append(score)
 
         return AuditResult(scores=scores, vendor=vendor or "")

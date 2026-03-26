@@ -62,9 +62,10 @@ def cli() -> None:
 )
 @click.option("--include-house-brands", is_flag=True, help="Include house brands in audit")
 @click.option("--online/--no-online", default=False, help="Enrich with online opportunity signals (sessions, conversion)")
-@click.option("--lookback", default=90, help="Days to look back for online signals (default 90)")
+@click.option("--gmc/--no-gmc", default=False, help="Enrich with Google Merchant Center signals (clicks, impressions, disapprovals)")
+@click.option("--lookback", default=90, help="Days to look back for online/GMC signals (default 90)")
 @click.option("--verbose", is_flag=True)
-def audit(vendor, output_path, include_house_brands, online, lookback, verbose):
+def audit(vendor, output_path, include_house_brands, online, gmc, lookback, verbose):
     """Run content audit — find products with gaps."""
     setup_logging(verbose)
     from lookout.audit.auditor import ContentAuditor
@@ -99,10 +100,23 @@ def audit(vendor, output_path, include_house_brands, online, lookback, verbose):
             console.print(f"[yellow]Warning: Could not fetch online signals: {e}[/yellow]")
             console.print("[dim]Falling back to inventory-only priority scoring[/dim]")
 
+    gmc_signals = {}
+    if gmc:
+        console.print("[dim]Fetching Google Merchant Center signals...[/dim]")
+        try:
+            from lookout.audit.gmc_signals import fetch_all_gmc_signals
+
+            gmc_signals = fetch_all_gmc_signals(lookback_days=lookback)
+            console.print(f"[dim]Got GMC signals for {len(gmc_signals)} products[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not fetch GMC signals: {e}[/yellow]")
+            console.print("[dim]Falling back to non-GMC priority scoring[/dim]")
+
     auditor = ContentAuditor(
         store,
         exclude_house_brands=not include_house_brands,
         online_signals=online_signals,
+        gmc_signals=gmc_signals,
     )
     result = auditor.audit(vendor=vendor)
     summary = result.summary()
