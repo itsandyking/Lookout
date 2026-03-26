@@ -1,0 +1,29 @@
+You are verifying a product description against source data. Check that every claim in the description is supported by the extracted facts.
+
+## SOURCE FACTS
+
+{facts}
+
+## GENERATED DESCRIPTION
+
+{description}
+
+## TASK
+
+For each claim in the description, check if it's supported by the source facts. Report:
+
+1. **supported**: Claims directly backed by the facts (quote the supporting fact)
+2. **unsupported**: Claims not found in the facts (these must be removed)
+3. **embellished**: Claims that stretch or exaggerate what the facts say
+4. **verdict**: "PASS" if no unsupported or embellished claims, "FAIL" if any found
+
+Respond with JSON:
+
+```json
+{
+  "supported": ["claim 1 — fact: ...", "claim 2 — fact: ..."],
+  "unsupported": ["claim that was made up"],
+  "embellished": ["claim that stretched the truth — original fact: ..."],
+  "verdict": "PASS or FAIL"
+}
+```

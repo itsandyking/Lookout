@@ -367,6 +367,56 @@ class LLMClient:
             logger.warning("Failed to parse variant image response as JSON")
             return {}
 
+    async def verify_description(
+        self,
+        facts: dict[str, Any],
+        description: str,
+    ) -> dict[str, Any]:
+        """
+        Verify a generated description against source facts.
+
+        Checks that every claim in the description is supported by the
+        extracted facts. Returns a verdict with supported, unsupported,
+        and embellished claims.
+
+        Args:
+            facts: Extracted product facts (source of truth).
+            description: Generated HTML description to verify.
+
+        Returns:
+            Dict with 'supported', 'unsupported', 'embellished' lists
+            and 'verdict' ("PASS" or "FAIL").
+        """
+        prompt_template = self.load_prompt("verify_facts")
+
+        prompt = prompt_template.format(
+            facts=json.dumps(facts, indent=2),
+            description=description,
+        )
+
+        system = (
+            "You are a fact-checker for product descriptions. Your job is to "
+            "verify that every claim in the description is directly supported "
+            "by the source facts. Be strict — if a fact is not explicitly "
+            "stated in the source, mark it as unsupported. Respond with JSON only."
+        )
+
+        response = await self.provider.complete(prompt, system, max_tokens=2048)
+
+        try:
+            result = self.provider._extract_and_parse_json(response)
+            if "verdict" not in result:
+                result["verdict"] = "UNKNOWN"
+            return result
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse fact-check response as JSON")
+            return {
+                "supported": [],
+                "unsupported": [],
+                "embellished": [],
+                "verdict": "ERROR",
+            }
+
 
 def get_llm_client(
     api_key: str | None = None,

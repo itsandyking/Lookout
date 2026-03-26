@@ -480,6 +480,52 @@ class ProductProcessor:
                         )
                     )
 
+            # Step 4d: Fact-check generated description (if LLM available)
+            if self.llm_client and merch_output.body_html:
+                try:
+                    facts_dict = {
+                        "product_name": facts.product_name,
+                        "description_blocks": facts.description_blocks[:5],
+                        "feature_bullets": facts.feature_bullets[:10],
+                        "specs": dict(list(facts.specs.items())[:10]),
+                        "materials": facts.materials,
+                    }
+                    verification = await self.llm_client.verify_description(
+                        facts=facts_dict,
+                        description=merch_output.body_html,
+                    )
+                    verdict = verification.get("verdict", "UNKNOWN")
+                    unsupported = verification.get("unsupported", [])
+                    embellished = verification.get("embellished", [])
+
+                    if verdict == "FAIL":
+                        metadata["warnings"].append(
+                            f"FACT_CHECK_FAILED: {len(unsupported)} unsupported, "
+                            f"{len(embellished)} embellished claims"
+                        )
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="WARNING",
+                                message=f"Fact-check FAILED: {unsupported[:2]}",
+                                data=verification,
+                            )
+                        )
+                    else:
+                        handle_log.entries.append(
+                            LogEntry(
+                                message=f"Fact-check PASSED: {len(verification.get('supported', []))} claims verified",
+                            )
+                        )
+
+                    # Save verification result
+                    import json as _json
+                    verify_path = artifacts_dir / "fact_check.json"
+                    with open(verify_path, "w") as f:
+                        _json.dump(verification, f, indent=2)
+
+                except Exception as e:
+                    logger.warning(f"Fact-check failed: {e}")
+
             # Save merchandising output
             await self.generator.save_output(merch_output, artifacts_dir)
 
