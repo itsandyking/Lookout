@@ -139,6 +139,91 @@ def audit(vendor, output_path, include_house_brands, online, gmc, lookback, verb
         console.print(f"\nPriority CSV written to [green]{output_path}[/green]")
 
 
+@cli.command("shipping")
+@click.option(
+    "--out", "-o", "output_path", type=click.Path(path_type=Path), default=None,
+    help="Export shipping audit CSV",
+)
+@click.option("--verbose", is_flag=True)
+def shipping(output_path, verbose):
+    """Audit shipping weights and cost ratios.
+
+    Finds zero-weight products (broken checkout), weight mismatches
+    (wrong shipping quotes), and products where shipping cost is a
+    high percentage of product price (conversion blocker).
+    """
+    setup_logging(verbose)
+    from lookout.audit.shipping import run_shipping_audit, export_shipping_audit_csv
+    from lookout.store import LookoutStore
+
+    try:
+        store = LookoutStore()
+    except Exception as e:
+        console.print(f"[red]Error connecting to database:[/red] {e}")
+        sys.exit(1)
+
+    issues = run_shipping_audit(store)
+
+    # Summary
+    critical = [i for i in issues if i.severity == "critical"]
+    warnings = [i for i in issues if i.severity == "warning"]
+    info = [i for i in issues if i.severity == "info"]
+
+    zero_weight = [i for i in issues if i.issue_type == "zero_weight"]
+    mismatches = [i for i in issues if i.issue_type == "weight_mismatch"]
+    high_ratio = [i for i in issues if i.issue_type == "high_shipping_ratio"]
+
+    table = Table(title="Shipping Audit Summary")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="green")
+    table.add_row("[red]Critical[/red] (zero weight)", str(len(zero_weight)))
+    table.add_row("[yellow]Warning[/yellow] (weight mismatch + high ratio)", str(len(warnings)))
+    table.add_row("Info (moderate ratio)", str(len(info)))
+    table.add_row("Total issues", str(len(issues)))
+    console.print(table)
+
+    # Show critical issues
+    if zero_weight:
+        console.print(f"\n[red bold]Zero-weight products ({len(zero_weight)}):[/red bold]")
+        zt = Table()
+        zt.add_column("Handle", style="red", max_width=35)
+        zt.add_column("Type")
+        zt.add_column("Vendor")
+        zt.add_column("Est. Weight")
+        for i in zero_weight[:20]:
+            zt.add_row(
+                i.handle,
+                i.product_type,
+                i.vendor,
+                f"{i.estimated_weight_g}g" if i.estimated_weight_g else "unknown",
+            )
+        console.print(zt)
+
+    # Show high shipping ratio
+    if high_ratio:
+        console.print(f"\n[yellow bold]High shipping-to-price ratio ({len(high_ratio)}):[/yellow bold]")
+        ht = Table()
+        ht.add_column("Handle", max_width=35)
+        ht.add_column("Price", justify="right")
+        ht.add_column("Est. Ship", justify="right")
+        ht.add_column("Ratio", justify="right")
+        ht.add_column("Type")
+        for i in sorted(high_ratio, key=lambda x: -x.shipping_to_price_pct)[:20]:
+            color = "red" if i.shipping_to_price_pct > 40 else "yellow"
+            ht.add_row(
+                i.handle,
+                f"${i.price:.0f}",
+                f"${i.estimated_shipping:.0f}",
+                f"[{color}]{i.shipping_to_price_pct:.0f}%[/{color}]",
+                i.product_type,
+            )
+        console.print(ht)
+
+    if output_path:
+        export_shipping_audit_csv(issues, output_path)
+        console.print(f"\nShipping audit CSV written to [green]{output_path}[/green]")
+
+
 # ---------------------------------------------------------------------------
 # enrich
 # ---------------------------------------------------------------------------

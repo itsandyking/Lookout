@@ -174,4 +174,7 @@ class LookoutStore:
             "option3_value": v.option3_value or "",
             "image_src": v.image_src or "",
             "position": v.position,
+            "grams": v.grams or 0,
+            "weight_unit": v.weight_unit or "lb",
+            "requires_shipping": v.requires_shipping if v.requires_shipping is not None else True,
         }
