@@ -212,7 +212,8 @@ class Generator:
         # Generate variant images if needed
         if input_row.needs_variant_images:
             variant_map, variant_warnings = await self._assign_variant_images(
-                facts, selected_images=output.images or None
+                facts, selected_images=output.images or None,
+                store_colors=input_row.known_colors,
             )
             output.variant_image_map = variant_map
             warnings.extend(variant_warnings)
@@ -428,6 +429,7 @@ class Generator:
         self,
         facts: ExtractedFacts,
         selected_images: list[OutputImage] | None = None,
+        store_colors: list[str] | None = None,
     ) -> tuple[dict[str, str | list[str]], list[str]]:
         """
         Assign images to variants using tiered approach.
@@ -439,6 +441,7 @@ class Generator:
         Args:
             facts: Extracted product facts.
             selected_images: Already-selected output images (for Tier 0).
+            store_colors: Color values from Shopify store variant options (fallback).
 
         Returns:
             Tuple of (variant_image_map, warnings)
@@ -457,12 +460,19 @@ class Generator:
                 logger.info(f"Tier 1 variant images assigned: {len(variant_map)} colors")
                 return variant_map, warnings
 
-        # Check if we have color variants defined
+        # Check if we have color variants defined (from scraper or store fallback)
         color_variant = None
         for variant in facts.variants:
             if variant.option_name.lower() in ("color", "colour"):
                 color_variant = variant
                 break
+
+        # Fallback: inject store color data if scraper missed them
+        if not color_variant and store_colors and len(store_colors) > 1:
+            from lookout.enrich.models import VariantOption
+            color_variant = VariantOption(option_name="Color", values=store_colors)
+            facts.variants.append(color_variant)
+            logger.info(f"Injected {len(store_colors)} colors from Shopify store: {store_colors}")
 
         # Tier 2: LLM-assisted color matching (only if color variants exist)
         if color_variant and self.llm_client and facts.images:

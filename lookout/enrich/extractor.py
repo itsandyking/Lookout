@@ -517,10 +517,8 @@ class ContentExtractor:
 
         # Also look for size selectors
         sizes: list[str] = []
-        for elem in soup.select("[data-size], .size-option, [data-option-value]"):
-            size = (
-                elem.get("data-size") or elem.get("data-option-value") or elem.get_text(strip=True)
-            )
+        for elem in soup.select("[data-size], [data-option-value]"):
+            size = elem.get("data-size") or elem.get("data-option-value") or ""
             if size and isinstance(size, str) and size not in sizes:
                 sizes.append(size)
 
