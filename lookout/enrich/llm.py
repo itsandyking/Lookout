@@ -198,6 +198,101 @@ class AnthropicProvider(LLMProvider):
         raise json.JSONDecodeError("No valid JSON found", text, 0)
 
 
+class ClaudeCLIProvider(LLMProvider):
+    """LLM provider using `claude --print` CLI. Authenticates via Max subscription."""
+
+    def __init__(self, model: str = "claude-sonnet-4-6") -> None:
+        import shutil
+        self.model = model
+        self.claude_bin = shutil.which("claude") or str(Path.home() / ".local" / "bin" / "claude")
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=30),
+        retry=retry_if_exception_type(Exception),
+    )
+    async def complete(
+        self,
+        prompt: str,
+        system: str | None = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> str:
+        import asyncio
+        cmd = [
+            self.claude_bin, "--print",
+            "--model", self.model,
+            "--max-turns", "1",
+        ]
+        if system:
+            cmd += ["--system-prompt", system]
+
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(input=prompt.encode()),
+            timeout=300,
+        )
+
+        if proc.returncode != 0:
+            err = stderr.decode().strip()
+            raise RuntimeError(f"claude CLI failed (exit {proc.returncode}): {err}")
+
+        return stdout.decode().strip()
+
+    async def complete_structured(
+        self,
+        prompt: str,
+        output_schema: dict[str, Any],
+        tool_name: str = "structured_output",
+        tool_description: str = "Output structured data",
+        system: str | None = None,
+        max_tokens: int = 4096,
+    ) -> dict[str, Any]:
+        """Generate structured output via CLI by requesting JSON."""
+        schema_hint = json.dumps(output_schema, indent=2)
+        structured_prompt = (
+            f"{prompt}\n\n"
+            f"Respond with ONLY valid JSON matching this schema:\n"
+            f"```json\n{schema_hint}\n```\n"
+            f"No explanation, no markdown, just the JSON object."
+        )
+
+        structured_system = system or ""
+        structured_system += "\nYou must respond with only valid JSON. No other text."
+
+        text = await self.complete(structured_prompt, system=structured_system.strip(), max_tokens=max_tokens)
+        return AnthropicProvider._extract_and_parse_json(text)
+
+
+def _create_default_provider() -> LLMProvider:
+    """Create the best available LLM provider.
+
+    Prefers claude CLI (uses Max subscription), falls back to SDK.
+    """
+    import shutil
+    claude_bin = shutil.which("claude") or str(Path.home() / ".local" / "bin" / "claude")
+
+    # Check if claude CLI is available
+    if Path(claude_bin).exists():
+        logger.info("Using claude CLI provider (Max subscription)")
+        return ClaudeCLIProvider()
+
+    # Fall back to SDK
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if api_key:
+        logger.info("Using Anthropic SDK provider")
+        return AnthropicProvider(api_key=api_key)
+
+    raise ValueError(
+        "No LLM provider available. Install claude CLI or set ANTHROPIC_API_KEY."
+    )
+
+
 class LLMClient:
     """High-level LLM client with prompt template support and structured output."""
 
@@ -206,7 +301,7 @@ class LLMClient:
         provider: LLMProvider | None = None,
         prompts_dir: Path | None = None,
     ) -> None:
-        self.provider = provider or AnthropicProvider()
+        self.provider = provider or _create_default_provider()
         self.prompts_dir = prompts_dir or (Path(__file__).parent / "prompts")
         self._prompt_cache: dict[str, str] = {}
 
