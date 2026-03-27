@@ -317,21 +317,40 @@ class LLMClient:
             "there is clear evidence. It's better to skip uncertain matches."
         )
 
+        # Build schema with explicit properties from known colors
+        color_values = []
+        for v in facts.get("variants", []):
+            if v.get("option_name", "").lower() in ("color", "colour"):
+                color_values = v.get("values", [])
+                break
+
+        properties = {}
+        for color in color_values:
+            safe_key = color.replace(" ", "_").replace("'", "").replace("/", "_")
+            properties[safe_key] = {
+                "type": "string",
+                "description": f"Image URL for the {color} variant",
+            }
+
+        if not properties:
+            return {}
+
         try:
             result = await self.provider.complete_structured(
                 prompt,
                 output_schema={
                     "type": "object",
-                    "description": "Mapping of color/variant name to image URL",
-                    "additionalProperties": {"type": "string"},
+                    "properties": properties,
                 },
                 tool_name="assign_variant_images",
                 tool_description="Map each color variant to its best matching product image URL",
                 system=system,
             )
-            return result
-        except Exception:
-            logger.warning("Structured variant image selection failed")
+            # Remap safe keys back to original color names
+            safe_to_original = {c.replace(" ", "_").replace("'", "").replace("/", "_"): c for c in color_values}
+            return {safe_to_original.get(k, k): v for k, v in result.items() if v}
+        except Exception as e:
+            logger.warning("Structured variant image selection failed: %s", e)
             return {}
 
     async def verify_description(
