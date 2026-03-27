@@ -1003,6 +1003,15 @@ def review(run_dir, out, serve, port, verbose):
         # Get image data from merch output
         new_images = [img.model_dump() if hasattr(img, 'model_dump') else img for img in (merch.images or [])]
         current_images = product.get("images", [])
+        variant_image_map = dict(merch.variant_image_map) if merch.variant_image_map else None
+
+        # Get variant names for display
+        variants = store.get_variants(product["id"])
+        variant_names = {}
+        for v in variants:
+            opts = [v.get(f"option{i}", "") for i in (1, 2, 3) if v.get(f"option{i}")]
+            label = " / ".join(opts) if opts else v.get("sku", v.get("title", ""))
+            variant_names[v.get("sku", "")] = label
 
         changes.append(ProductChange(
             handle=merch.handle,
@@ -1013,6 +1022,7 @@ def review(run_dir, out, serve, port, verbose):
             new_body_html=merch.body_html,
             current_images=current_images,
             new_images=new_images,
+            new_variant_image_map=variant_image_map,
             confidence=merch.confidence,
         ))
 

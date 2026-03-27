@@ -42,19 +42,45 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
 
         # Images section
         if has_images:
+            # Build image src lookup by position and URL
+            img_by_src = {}
             thumbs = []
-            for img in change.new_images[:8]:
+            for img in change.new_images[:12]:
                 src = img.get("src", "")
                 alt = html.escape(img.get("alt", ""))
                 pos = img.get("position", "")
+                img_by_src[src] = pos
                 thumbs.append(f'<div class="thumb"><img src="{src}" alt="{alt}" loading="lazy" /><span class="pos">#{pos}</span></div>')
-            remaining = len(change.new_images) - 8
+            remaining = len(change.new_images) - 12
             extra = f'<div class="thumb more">+{remaining} more</div>' if remaining > 0 else ""
             current_img_count = len(change.current_images) if change.current_images else 0
+
+            # Variant assignment section
+            vim = change.new_variant_image_map or {}
+            assignments_html = ""
+            if vim:
+                rows = []
+                for variant_key, img_src in vim.items():
+                    if variant_key == "__all__":
+                        label = "All variants"
+                    else:
+                        label = html.escape(variant_key)
+                    # img_src can be a string or list
+                    srcs = img_src if isinstance(img_src, list) else [img_src]
+                    pos_labels = []
+                    for s in srcs:
+                        pos = img_by_src.get(s, "?")
+                        pos_labels.append(f"#{pos}")
+                    rows.append(f'<div class="assignment"><span class="variant-name">{label}</span>'
+                                f'<span class="arrow">&rarr;</span>'
+                                f'<span class="assigned-imgs">{", ".join(pos_labels)}</span></div>')
+                assignments_html = '<div class="assignments">' + "\n".join(rows) + '</div>'
+
             images_html = _IMAGES_TEMPLATE.format(
                 current_count=current_img_count,
                 proposed_count=len(change.new_images),
                 thumbnails="\n".join(thumbs) + extra,
+                assignments=assignments_html,
             )
         else:
             images_html = ""
@@ -164,6 +190,7 @@ _IMAGES_TEMPLATE = """
   <div class="image-grid">
     {thumbnails}
   </div>
+  {assignments}
 </div>
 """
 
@@ -275,6 +302,21 @@ _TEMPLATE = """<!DOCTYPE html>
     display: flex; align-items: center; justify-content: center;
     font-size: 0.85em; color: #666; font-weight: 600;
   }}
+
+  /* Variant assignments */
+  .assignments {{
+    margin-top: 10px; padding: 8px 10px;
+    background: #f8f9fa; border-radius: 6px; border: 1px solid #eee;
+  }}
+  .assignment {{
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 0; font-size: 0.8em;
+    border-bottom: 1px solid #eee;
+  }}
+  .assignment:last-child {{ border-bottom: none; }}
+  .variant-name {{ font-weight: 600; color: #333; min-width: 0; flex-shrink: 1; }}
+  .arrow {{ color: #999; flex-shrink: 0; }}
+  .assigned-imgs {{ color: #666; font-family: monospace; font-size: 0.9em; }}
 
   /* Actions */
   .actions {{ padding: 8px 16px 12px; }}
