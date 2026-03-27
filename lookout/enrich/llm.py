@@ -227,11 +227,16 @@ class ClaudeCLIProvider(LLMProvider):
         if system:
             cmd += ["--system-prompt", system]
 
+        # Don't pass ANTHROPIC_API_KEY to CLI — let it use its own auth (Max subscription)
+        import os
+        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
         stdout, stderr = await asyncio.wait_for(
             proc.communicate(input=prompt.encode()),
@@ -240,7 +245,8 @@ class ClaudeCLIProvider(LLMProvider):
 
         if proc.returncode != 0:
             err = stderr.decode().strip()
-            raise RuntimeError(f"claude CLI failed (exit {proc.returncode}): {err}")
+            out = stdout.decode().strip()[:200]
+            raise RuntimeError(f"claude CLI failed (exit {proc.returncode}): stderr={err!r} stdout={out!r}")
 
         return stdout.decode().strip()
 
@@ -384,11 +390,10 @@ class LLMClient:
         )
 
         system = (
-            "You are a product data formatter. Your job is to organize vendor-provided "
-            "product information into clean Shopify HTML. Use the vendor's own words "
-            "and terminology — do not rewrite, embellish, or add original copy. "
-            "Pull directly from the provided facts. Clean up formatting issues "
-            "but preserve the vendor's phrasing and technical details exactly."
+            "You are writing product descriptions for an outdoor retail Shopify store. "
+            "Use vendor facts as source material but write naturally — lead with benefits, "
+            "be selective with specs, and skip measurements that don't help buying decisions. "
+            "Never include review ratings, star counts, or review text in the description."
         )
 
         return await self.provider.complete(prompt, system)
@@ -516,6 +521,9 @@ def get_llm_client(
     model: str = "claude-sonnet-4-20250514",
     prompts_dir: Path | None = None,
 ) -> LLMClient:
-    """Create an LLM client with default configuration."""
-    provider = AnthropicProvider(api_key=api_key, model=model)
+    """Create an LLM client with default configuration.
+
+    Prefers claude CLI provider (uses Max subscription), falls back to SDK.
+    """
+    provider = _create_default_provider()
     return LLMClient(provider=provider, prompts_dir=prompts_dir)

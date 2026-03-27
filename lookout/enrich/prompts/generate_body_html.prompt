@@ -1,14 +1,14 @@
-You are formatting a product description for a Shopify store. Your job is to organize the vendor's own product information into clean HTML — not to write original copy.
+You are writing a product description for a Shopify outdoor retail store. Your job is to organize the vendor's product information into compelling, clean HTML that helps customers understand and want this product.
 
 ## RULES
 
-1. **Use the vendor's own words.** Pull directly from the description blocks, feature bullets, and specs provided. Rephrase only for formatting (e.g., turning a paragraph into bullets), not for style.
+1. **Use the vendor's own words.** Pull from description blocks, features, and specs. Rephrase only for clarity and flow.
 
-2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler. Never use marketing words like amazing, incredible, revolutionary, ultimate, perfect, premium, superior, exceptional, outstanding, fantastic, excellent, best, top, leading, advanced, cutting-edge, or state-of-the-art.
+2. **Don't invent facts.** If the facts don't say it, don't write it. No claims, no embellishments, no filler. No marketing superlatives (amazing, incredible, ultimate, premium, superior, etc.).
 
-3. **Don't remove important details.** Keep material names, tech specs, measurements, and certifications exactly as the vendor states them.
+3. **Lead with what matters to the customer.** What does this product do? Why would someone choose it? What makes it different? The opening should answer these questions in natural prose, not a spec dump.
 
-4. **Clean up, don't rewrite.** Fix obvious formatting issues (all caps, broken sentences, duplicate content), but preserve the vendor's terminology and phrasing.
+4. **Be selective with specs.** Include specs that help a buying decision (materials, weight, waterproof rating, insulation type). Skip internal measurements (arm length, center back length, hem width) and manufacturing details that don't help the customer.
 
 ## PRODUCT FACTS
 
@@ -17,40 +17,22 @@ Vendor: {vendor}
 
 {facts}
 
-## MANDATORY STRUCTURE
+## STRUCTURE
 
-You must output ALL THREE sections in this exact order:
+Output HTML with these sections in order:
 
-1. **Opening paragraph(s)** (ALWAYS REQUIRED): Start with `<p>` tags. Extract 2-4 complete sentences from description blocks using vendor's exact words. Target exactly 100-150 words for opening content.
+1. **Opening prose** (REQUIRED): 2-4 sentences in `<p>` tags. Describe what the product is, who it's for, and its key benefits. Write in natural, conversational prose — not a list of features disguised as sentences. Target 80-120 words.
 
-2. **Features section** (ALWAYS REQUIRED): Must include exact heading `<h3>Features</h3>` followed by `<ul><li>` list. Create exactly 4-6 feature bullets, each strictly 8-12 words maximum. Source from feature bullets, key description phrases, or notable specifications.
+2. **Key features** (REQUIRED): `<h3>Features</h3>` followed by `<ul><li>` list. Pick 4-6 features that would actually influence a purchase decision. Each bullet should be concise (under 12 words). Skip obvious features that apply to all products in the category.
 
-3. **Specifications section** (ALWAYS REQUIRED): Must include exact heading `<h3>Specifications</h3>` followed by `<table><tr><td>` structure. Include all available measurements, materials, technical specs, and care instructions using vendor's exact labels and values.
-
-## MANDATORY FACT EXTRACTION
-
-You must systematically extract content from EVERY available fact category provided. For each product, check and use:
-
-**DESCRIPTION BLOCKS**: Extract all key sentences for opening paragraphs. If multiple description blocks exist, combine relevant content while preserving vendor's exact phrasing.
-
-**FEATURE BULLETS**: Convert each provided feature bullet into Features section. If vendor provides 8+ bullets, select the most important 4-6. If fewer than 4 bullets provided, extract additional features from description text or specifications.
-
-**SPECIFICATIONS DATA**: Include every single specification provided - dimensions, weights, materials, capacities, technical ratings, compatibility, construction details, care instructions, performance metrics, certifications. Create table row for each data point using vendor's exact terminology.
-
-**MATERIAL INFORMATION**: All fabric types, construction materials, hardware details, and component specifications must appear in either Features bullets or Specifications table.
-
-**CARE INSTRUCTIONS**: All washing, maintenance, and usage guidelines must appear in Specifications table with exact vendor wording.
-
-**MEASUREMENTS**: All dimensions, weights, capacities, and size information must appear in Specifications table with exact units as provided.
+3. **Specs table** (OPTIONAL — only if specs add value): `<h3>Specifications</h3>` with `<table>` rows. Include materials, weight, waterproof/breathability ratings, insulation, certifications. Skip body measurements, care instructions, and trivial specs. If there are fewer than 3 meaningful specs, skip this section entirely.
 
 ## OUTPUT REQUIREMENTS
 
-- Total word count: 200-350 words
-- Use only semantic HTML: p, h3, ul, li, table, tr, td, th
-- Output raw HTML with no markdown formatting
-- Each feature bullet: exactly 8-12 words
-- Opening must be exactly 100-150 words using complete sentences
-- Specifications table must include ALL available data points with no omissions
-- No marketing language, store names, pricing, or shipping information
+- Total: 150-250 words
+- Use only: p, h3, ul, li, table, tr, td, th
+- Output raw HTML, no markdown
+- No store names, pricing, shipping, or availability info
+- The description should read naturally — like a knowledgeable salesperson explaining the product, not a spec sheet
 
-Generate the complete HTML structure now with all three mandatory sections, ensuring comprehensive coverage of all available facts:
+Generate the HTML now:

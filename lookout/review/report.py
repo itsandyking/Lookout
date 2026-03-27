@@ -45,51 +45,61 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
         else:
             desc_html = '<div class="no-change">No description changes proposed</div>'
 
-        # Variants section
+        # Build image data and variant-to-image mapping
+        vim = change.new_variant_image_map or {}
+        img_by_src = {}
+        if has_images:
+            for img in change.new_images[:12]:
+                img_by_src[img.get("src", "")] = img.get("position", "")
+
+        # Build variant → image positions mapping for interactive highlighting
+        variant_img_positions = {}  # variant_label → [position, ...]
+        for variant_key, img_src in vim.items():
+            srcs = img_src if isinstance(img_src, list) else [img_src]
+            positions = [str(img_by_src.get(s, "")) for s in srcs if img_by_src.get(s)]
+            if variant_key == "__all__":
+                # All images go to all variants
+                positions = [str(img_by_src.get(s, "")) for s in img_by_src]
+            variant_img_positions[variant_key] = positions
+
+        # Variants section with interactive pills
         if change.variant_labels:
-            pills = " ".join(
-                f'<span class="variant-pill">{html.escape(v)}</span>'
-                for v in change.variant_labels
-            )
-            variants_html = f'<div class="section"><h4 class="section-label">Variants ({len(change.variant_labels)})</h4><div class="variant-pills">{pills}</div></div>'
+            pills = []
+            for v in change.variant_labels:
+                # Find which images this variant maps to
+                positions = variant_img_positions.get(v, variant_img_positions.get("__all__", []))
+                pos_data = html.escape(json.dumps(positions))
+                assigned = f' data-images="{pos_data}"' if positions else ""
+                img_badge = f' <span class="pill-img-count">{len(positions)}</span>' if positions else ""
+                pills.append(
+                    f'<span class="variant-pill" onclick="highlightVariantImages(this)"{assigned}>'
+                    f'{html.escape(v)}{img_badge}</span>'
+                )
+            pills_html = " ".join(pills)
+            variants_html = f'<div class="section"><h4 class="section-label">Variants ({len(change.variant_labels)})</h4><div class="variant-pills">{pills_html}</div></div>'
         else:
             variants_html = ""
 
         # Images section
         if has_images:
-            img_by_src = {}
             thumbs = []
             for img in change.new_images[:12]:
                 src = img.get("src", "")
-                alt = html.escape(img.get("alt", ""))
+                alt_text = html.escape(img.get("alt", ""))
                 pos = img.get("position", "")
-                img_by_src[src] = pos
-                thumbs.append(f'<div class="thumb"><img src="{src}" alt="{alt}" loading="lazy" /><span class="pos">#{pos}</span></div>')
+                thumbs.append(
+                    f'<div class="thumb" data-pos="{pos}">'
+                    f'<img src="{src}" alt="{alt_text}" loading="lazy" />'
+                    f'<span class="pos">#{pos}</span></div>'
+                )
             remaining = len(change.new_images) - 12
             extra = f'<div class="thumb more">+{remaining} more</div>' if remaining > 0 else ""
             current_img_count = len(change.current_images) if change.current_images else 0
-
-            vim = change.new_variant_image_map or {}
-            assignments_html = ""
-            if vim:
-                rows = []
-                for variant_key, img_src in vim.items():
-                    if variant_key == "__all__":
-                        label = "All variants"
-                    else:
-                        label = html.escape(variant_key)
-                    srcs = img_src if isinstance(img_src, list) else [img_src]
-                    pos_labels = [f"#{img_by_src.get(s, '?')}" for s in srcs]
-                    rows.append(f'<div class="assignment"><span class="variant-name">{label}</span>'
-                                f'<span class="arrow">&rarr;</span>'
-                                f'<span class="assigned-imgs">{", ".join(pos_labels)}</span></div>')
-                assignments_html = '<div class="assignments">' + "\n".join(rows) + '</div>'
 
             images_html = _IMAGES_TEMPLATE.format(
                 current_count=current_img_count,
                 proposed_count=len(change.new_images),
                 thumbnails="\n".join(thumbs) + extra,
-                assignments=assignments_html,
             )
         else:
             images_html = ""
@@ -200,7 +210,6 @@ _IMAGES_TEMPLATE = """
   <div class="image-grid">
     {thumbnails}
   </div>
-  {assignments}
 </div>
 """
 
@@ -267,11 +276,21 @@ _TEMPLATE = """<!DOCTYPE html>
   .img-count {{ font-weight: 400; text-transform: none; letter-spacing: 0; }}
 
   /* Variant pills */
-  .variant-pills {{ display: flex; flex-wrap: wrap; gap: 4px; }}
+  .variant-pills {{ display: flex; flex-wrap: wrap; gap: 6px; }}
   .variant-pill {{
-    font-size: 0.75em; padding: 3px 8px; border-radius: 12px;
+    font-size: 0.75em; padding: 4px 10px; border-radius: 14px;
     background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb;
+    cursor: pointer; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    display: inline-flex; align-items: center; gap: 4px;
   }}
+  .variant-pill:active {{ transform: scale(0.95); }}
+  .variant-pill.active {{ background: #1565c0; color: #fff; border-color: #0d47a1; }}
+  .pill-img-count {{
+    background: rgba(0,0,0,0.1); padding: 0 5px; border-radius: 8px;
+    font-size: 0.9em;
+  }}
+  .variant-pill.active .pill-img-count {{ background: rgba(255,255,255,0.25); }}
 
   /* Description comparison */
   .comparison {{ display: flex; flex-direction: column; gap: 8px; }}
@@ -314,6 +333,8 @@ _TEMPLATE = """<!DOCTYPE html>
     overflow: hidden; border: 1px solid #eee; background: #f5f5f5;
   }}
   .thumb img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
+  .thumb.dim {{ opacity: 0.25; }}
+  .thumb.highlighted {{ border: 2px solid #1565c0; box-shadow: 0 0 0 2px rgba(21,101,192,0.3); }}
   .thumb .pos {{
     position: absolute; bottom: 2px; right: 4px;
     font-size: 0.65em; color: #fff; background: rgba(0,0,0,0.5);
@@ -324,20 +345,11 @@ _TEMPLATE = """<!DOCTYPE html>
     font-size: 0.85em; color: #666; font-weight: 600;
   }}
 
-  /* Variant assignments */
-  .assignments {{
-    margin-top: 10px; padding: 8px 10px;
-    background: #f8f9fa; border-radius: 6px; border: 1px solid #eee;
+  /* No variant — all images indicator */
+  .all-images-note {{
+    font-size: 0.75em; color: #999; font-style: italic;
+    margin-top: 4px;
   }}
-  .assignment {{
-    display: flex; align-items: center; gap: 6px;
-    padding: 4px 0; font-size: 0.8em;
-    border-bottom: 1px solid #eee;
-  }}
-  .assignment:last-child {{ border-bottom: none; }}
-  .variant-name {{ font-weight: 600; color: #333; }}
-  .arrow {{ color: #999; }}
-  .assigned-imgs {{ color: #666; font-family: monospace; font-size: 0.9em; }}
 
   /* Actions */
   .actions {{ padding: 8px 16px 12px; }}
@@ -435,6 +447,32 @@ _TEMPLATE = """<!DOCTYPE html>
 <script>
 const total = {product_count};
 let dispositions = {{}};
+
+function highlightVariantImages(pill) {{
+  const product = pill.closest('.product');
+  const wasActive = pill.classList.contains('active');
+
+  // Clear all highlights in this product
+  product.querySelectorAll('.variant-pill').forEach(p => p.classList.remove('active'));
+  product.querySelectorAll('.thumb').forEach(t => {{
+    t.classList.remove('highlighted', 'dim');
+  }});
+
+  if (wasActive) return; // Toggle off
+
+  pill.classList.add('active');
+  const positions = JSON.parse(pill.dataset.images || '[]');
+
+  if (positions.length > 0) {{
+    product.querySelectorAll('.thumb[data-pos]').forEach(t => {{
+      if (positions.includes(t.dataset.pos)) {{
+        t.classList.add('highlighted');
+      }} else {{
+        t.classList.add('dim');
+      }}
+    }});
+  }}
+}}
 
 function updateProgress() {{
   const count = Object.keys(dispositions).length;

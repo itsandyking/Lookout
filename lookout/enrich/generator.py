@@ -254,16 +254,24 @@ class Generator:
             return None, warnings
 
         try:
-            # Prepare facts for LLM
+            # Prepare facts for LLM — clean scraper noise
+            import re
+            def _clean_text(text: str) -> str:
+                text = re.sub(r'\d+\.?\d*\(\d+\)\d+\s*total reviews?', '', text)
+                text = re.sub(r'\d+\.?\d*\s*out of \d+\s*stars?', '', text)
+                return text.strip()
+
+            clean_descriptions = [_clean_text(d) for d in facts.description_blocks[:3] if _clean_text(d)]
+
             facts_dict = {
-                "product_name": facts.product_name,
+                "product_name": _clean_text(facts.product_name),
                 "brand": facts.brand,
-                "description_blocks": facts.description_blocks[:3],
+                "description_blocks": clean_descriptions,
                 "feature_bullets": facts.feature_bullets[:6],
-                "specs": dict(list(facts.specs.items())[:10]),
+                "specs": {k: v for k, v in list(facts.specs.items())[:10]
+                          if not any(skip in k.lower() for skip in
+                                     ["arm length", "inseam", "chest", "waist", "hips", "seat", "center back"])},
                 "materials": facts.materials,
-                "care": facts.care,
-                "fit_dimensions": facts.fit_dimensions,
             }
 
             body_html = await self.llm_client.generate_body_html(
@@ -289,8 +297,14 @@ class Generator:
             return body_html, warnings
 
         except Exception as e:
-            logger.error(f"Error generating body HTML: {e}")
-            warnings.append(f"HTML_GENERATION_ERROR: {e!s}")
+            # Log the root cause, not just the retry wrapper
+            root = e
+            if hasattr(e, '__cause__') and e.__cause__:
+                root = e.__cause__
+            elif hasattr(e, '__context__') and e.__context__:
+                root = e.__context__
+            logger.error(f"Error generating body HTML: {root}")
+            warnings.append(f"HTML_GENERATION_ERROR: {root!s}")
             return self._generate_fallback_html(facts), warnings
 
     def _generate_fallback_html(self, facts: ExtractedFacts) -> str | None:
@@ -584,6 +598,10 @@ class Generator:
         # Remove markdown code blocks if present
         html = re.sub(r"^```(?:html)?\s*", "", html.strip())
         html = re.sub(r"\s*```$", "", html)
+
+        # Remove LLM meta-commentary after the HTML (notes, explanations)
+        # Cut at any line starting with --- or **Note
+        html = re.split(r'\n---\n|\n\*\*Note', html)[0]
 
         # Basic cleanup
         html = html.strip()
