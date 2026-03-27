@@ -4,7 +4,7 @@ You are formatting a product description for a Shopify store. Your job is to org
 
 1. **Use the vendor's own words.** Pull directly from the description blocks, feature bullets, and specs provided. Rephrase only for formatting (e.g., turning a paragraph into bullets), not for style.
 
-2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler.
+2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler. Never use marketing words like amazing, incredible, revolutionary, ultimate, perfect, premium, superior, exceptional, outstanding, fantastic, or excellent.
 
 3. **Don't remove important details.** Keep material names, tech specs, measurements, and certifications exactly as the vendor states them.
 
@@ -17,32 +17,38 @@ Vendor: {vendor}
 
 {facts}
 
-## REQUIRED STRUCTURE
+## MANDATORY STRUCTURE
 
-You must output ALL sections that have available data:
+You must output ALL THREE sections in this exact order:
 
-1. **Opening paragraph(s)** (required): Start with `<p>` tags. Extract 1-3 informative sentences from description blocks. Target 50-150 words total for opening content.
+1. **Opening paragraph(s)** (ALWAYS REQUIRED): Start with `<p>` tags. Extract 2-4 complete sentences from description blocks using vendor's exact words. Target exactly 100-150 words for opening content.
 
-2. **Features section** (if feature bullets available): Must include `<h3>Features</h3>` followed by `<ul><li>` list. Each bullet should be 6-12 words. Maximum 6 features.
+2. **Features section** (ALWAYS REQUIRED): Must include exact heading `<h3>Features</h3>` followed by `<ul><li>` list. Create exactly 4-6 feature bullets, each strictly 8-12 words maximum. Source from feature bullets, key description phrases, or notable specifications.
 
-3. **Specifications section** (if specs/measurements available): Must include `<h3>Specifications</h3>` followed by `<table>` with vendor's exact spec labels and values.
+3. **Specifications section** (ALWAYS REQUIRED): Must include exact heading `<h3>Specifications</h3>` followed by `<table><tr><td>` structure. Include all available measurements, materials, technical specs, and care instructions using vendor's exact labels and values.
 
-## COVERAGE CHECKLIST
+## COMPREHENSIVE COVERAGE REQUIREMENTS
 
-Extract content from ALL available fact types:
-- Description blocks (primary source for opening paragraphs)
-- Feature bullets (for Features section)
-- Technical specifications and measurements (for Specifications table)
-- Material information (integrate into appropriate sections)
-- Care instructions (add to Specifications if present)
+You must systematically extract content from EVERY available fact category. Check each:
+- ✓ Description blocks → primary source for opening paragraphs
+- ✓ Feature bullets → Features section bullets  
+- ✓ Technical specifications → Specifications table rows
+- ✓ Measurements and dimensions → Specifications table
+- ✓ Material information → Specifications table or Features bullets
+- ✓ Care instructions → Specifications table
+- ✓ Performance data → Features bullets or Specifications
+- ✓ Weight, size, capacity details → Specifications table
+- ✓ Construction details → Features or Specifications
+- ✓ Compatibility information → Specifications table
 
 ## OUTPUT REQUIREMENTS
 
-- Target total length: 100-400 words
-- Use semantic HTML only: p, h3, ul, li, table, tr, td, th
-- Output raw HTML with no markdown code blocks
-- No store names, pricing, shipping, or return information
-- Each feature bullet: 6-12 words maximum
-- Each opening paragraph: complete sentences using vendor's exact terminology
+- Total word count: 200-350 words
+- Use only semantic HTML: p, h3, ul, li, table, tr, td, th
+- Output raw HTML with no markdown formatting
+- Each feature bullet: exactly 8-12 words
+- Opening must be exactly 100-150 words using complete sentences
+- Specifications table must include ALL available data points with no omissions
+- No marketing language, store names, pricing, or shipping information
 
-Generate the complete HTML structure now, ensuring all available fact types are represented:
+Generate the complete HTML structure now with all three mandatory sections, ensuring comprehensive coverage of all available facts:

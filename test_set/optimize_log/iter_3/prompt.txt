@@ -4,7 +4,7 @@ You are formatting a product description for a Shopify store. Your job is to org
 
 1. **Use the vendor's own words.** Pull directly from the description blocks, feature bullets, and specs provided. Rephrase only for formatting (e.g., turning a paragraph into bullets), not for style.
 
-2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler.
+2. **Don't add anything.** If the facts don't say it, don't write it. No claims, no embellishments, no filler. Never use marketing words like amazing, incredible, revolutionary, ultimate, perfect, premium, superior, exceptional, outstanding, fantastic, excellent, best, top, leading, advanced, cutting-edge, or state-of-the-art.
 
 3. **Don't remove important details.** Keep material names, tech specs, measurements, and certifications exactly as the vendor states them.
 
@@ -21,38 +21,36 @@ Vendor: {vendor}
 
 You must output ALL THREE sections in this exact order:
 
-1. **Opening paragraph(s)** (ALWAYS REQUIRED): Start with `<p>` tags. Extract 2-4 complete sentences from description blocks using vendor's exact words. Target 100-150 words for opening content.
+1. **Opening paragraph(s)** (ALWAYS REQUIRED): Start with `<p>` tags. Extract 2-4 complete sentences from description blocks using vendor's exact words. Target exactly 100-150 words for opening content.
 
-2. **Features section** (ALWAYS REQUIRED): Must include exact heading `<h3>Features</h3>` followed by `<ul><li>` list. Create exactly 4-6 feature bullets, each 8-12 words maximum. Source from feature bullets, key description phrases, or notable specifications.
+2. **Features section** (ALWAYS REQUIRED): Must include exact heading `<h3>Features</h3>` followed by `<ul><li>` list. Create exactly 4-6 feature bullets, each strictly 8-12 words maximum. Source from feature bullets, key description phrases, or notable specifications.
 
 3. **Specifications section** (ALWAYS REQUIRED): Must include exact heading `<h3>Specifications</h3>` followed by `<table><tr><td>` structure. Include all available measurements, materials, technical specs, and care instructions using vendor's exact labels and values.
 
-## COMPREHENSIVE COVERAGE REQUIREMENTS - EXTRACT FROM ALL SOURCES
+## MANDATORY FACT EXTRACTION
 
-You MUST systematically extract and use content from EVERY available fact type. Check each source:
+You must systematically extract content from EVERY available fact category provided. For each product, check and use:
 
-**REQUIRED EXTRACTION CHECKLIST:**
-- □ Description blocks → Use for opening paragraphs (complete sentences only)
-- □ Feature bullets → Convert to Features section bullets (4-6 items mandatory)
-- □ Technical specifications → Add every spec to Specifications table
-- □ Measurements/dimensions → Include ALL in Specifications table
-- □ Material composition → Add to Features bullets or Specifications table
-- □ Care/maintenance instructions → Include in Specifications table
-- □ Performance/technical data → Use in Features bullets or Specifications table
-- □ Compatibility information → Include in appropriate section
-- □ Size/weight data → Must appear in Specifications table
-- □ Construction details → Use in Features or Specifications
+**DESCRIPTION BLOCKS**: Extract all key sentences for opening paragraphs. If multiple description blocks exist, combine relevant content while preserving vendor's exact phrasing.
 
-**COVERAGE MANDATE:** If a fact type exists in the provided data, it MUST appear in your output. Missing any available information will result in incomplete coverage.
+**FEATURE BULLETS**: Convert each provided feature bullet into Features section. If vendor provides 8+ bullets, select the most important 4-6. If fewer than 4 bullets provided, extract additional features from description text or specifications.
+
+**SPECIFICATIONS DATA**: Include every single specification provided - dimensions, weights, materials, capacities, technical ratings, compatibility, construction details, care instructions, performance metrics, certifications. Create table row for each data point using vendor's exact terminology.
+
+**MATERIAL INFORMATION**: All fabric types, construction materials, hardware details, and component specifications must appear in either Features bullets or Specifications table.
+
+**CARE INSTRUCTIONS**: All washing, maintenance, and usage guidelines must appear in Specifications table with exact vendor wording.
+
+**MEASUREMENTS**: All dimensions, weights, capacities, and size information must appear in Specifications table with exact units as provided.
 
 ## OUTPUT REQUIREMENTS
 
-- Total word count: 150-350 words
+- Total word count: 200-350 words
 - Use only semantic HTML: p, h3, ul, li, table, tr, td, th
 - Output raw HTML with no markdown formatting
 - Each feature bullet: exactly 8-12 words
-- Opening must be 100-150 words using complete sentences from description blocks
+- Opening must be exactly 100-150 words using complete sentences
 - Specifications table must include ALL available data points with no omissions
 - No marketing language, store names, pricing, or shipping information
 
-Generate the complete HTML structure now with all three mandatory sections, ensuring you have systematically extracted information from every available source in the facts:
+Generate the complete HTML structure now with all three mandatory sections, ensuring comprehensive coverage of all available facts:

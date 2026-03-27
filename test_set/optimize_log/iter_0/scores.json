@@ -1,18 +1,158 @@
 {
   "iteration": 0,
-  "timestamp": "2026-03-26T14:37:36.333126+00:00",
+  "timestamp": "2026-03-27T03:23:24.307280+00:00",
   "prompt_path": "lookout/enrich/prompts/generate_body_html.prompt",
-  "avg_score": 50.4,
-  "max_score": 60,
+  "avg_score": 63.4,
+  "max_score": 70,
   "per_axis": {
-    "structural_compliance": 18.8,
-    "length_targets": 11.1,
-    "anti_hype": 13.2,
-    "coverage": 7.4
+    "structural_compliance": 24.4,
+    "length_targets": 15.0,
+    "anti_hype": 12.1,
+    "coverage": 11.8
   },
   "per_product": [
     {
+      "handle": "faction-x-vuarnet-artic-jacket-3l",
+      "score": 70,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 15
+      }
+    },
+    {
+      "handle": "kids-reverb-ski-boot-2026",
+      "score": 70,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 15
+      }
+    },
+    {
+      "handle": "womens-mtn-surf-insulated-parka",
+      "score": 69,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 14
+      }
+    },
+    {
+      "handle": "octo-skis-2025",
+      "score": 68,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 13
+      }
+    },
+    {
+      "handle": "strand-sunglasses",
+      "score": 68,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 13
+      }
+    },
+    {
+      "handle": "sato-birdie-skis-2026",
+      "score": 66,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 11
+      }
+    },
+    {
+      "handle": "bwii-10-5mm-200-static-rope",
+      "score": 65,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 10
+      }
+    },
+    {
+      "handle": "preview-goggles-3",
+      "score": 64,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 14
+      }
+    },
+    {
+      "handle": "womens-mtn-surf-bib",
+      "score": 64,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 14
+      }
+    },
+    {
+      "handle": "i-o-mag-xl",
+      "score": 63,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 13
+      }
+    },
+    {
+      "handle": "mens-reserve-2l-insulated-jacket",
+      "score": 63,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 15,
+        "coverage": 8
+      }
+    },
+    {
+      "handle": "102502",
+      "score": 62,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 12
+      }
+    },
+    {
       "handle": "mens-kyanite-lightweight-jacket",
+      "score": 62,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 12
+      }
+    },
+    {
+      "handle": "3mm-niteline",
+      "score": 61,
+      "axes": {
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 10,
+        "coverage": 11
+      }
+    },
+    {
+      "handle": "mens-shralpinist-stretch-jacket",
       "score": 60,
       "axes": {
         "structural_compliance": 25,
@@ -22,183 +162,43 @@
       }
     },
     {
-      "handle": "womens-protect-rainforests-easy-cut-t-shirt",
-      "score": 58,
-      "axes": {
-        "structural_compliance": 23,
-        "length_targets": 5,
-        "anti_hype": 15,
-        "coverage": 15
-      }
-    },
-    {
-      "handle": "prodigy-3",
-      "score": 57,
-      "axes": {
-        "structural_compliance": 25,
-        "length_targets": 12,
-        "anti_hype": 15,
-        "coverage": 5
-      }
-    },
-    {
       "handle": "mind-expander-snowboard-2025",
-      "score": 56,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 15,
-        "anti_hype": 15,
-        "coverage": 10
-      }
-    },
-    {
-      "handle": "mens-reserve-2l-insulated-jacket",
-      "score": 55,
+      "score": 60,
       "axes": {
         "structural_compliance": 25,
-        "length_targets": 10,
-        "anti_hype": 15,
-        "coverage": 5
-      }
-    },
-    {
-      "handle": "bwii-10-5mm-200-static-rope",
-      "score": 51,
-      "axes": {
-        "structural_compliance": 16,
         "length_targets": 15,
-        "anti_hype": 15,
-        "coverage": 5
-      }
-    },
-    {
-      "handle": "kids-reverb-ski-boot-2026",
-      "score": 51,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 10,
-        "anti_hype": 15,
-        "coverage": 10
-      }
-    },
-    {
-      "handle": "octo-skis-2025",
-      "score": 51,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 15,
-        "anti_hype": 15,
-        "coverage": 5
-      }
-    },
-    {
-      "handle": "sato-birdie-skis-2026",
-      "score": 51,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 15,
-        "anti_hype": 15,
-        "coverage": 5
-      }
-    },
-    {
-      "handle": "strand-sunglasses",
-      "score": 51,
-      "axes": {
-        "structural_compliance": 21,
-        "length_targets": 14,
         "anti_hype": 10,
-        "coverage": 6
-      }
-    },
-    {
-      "handle": "faction-x-vuarnet-artic-jacket-3l",
-      "score": 50,
-      "axes": {
-        "structural_compliance": 15,
-        "length_targets": 10,
-        "anti_hype": 15,
         "coverage": 10
       }
     },
     {
       "handle": "i-o-mag",
-      "score": 49,
+      "score": 59,
       "axes": {
-        "structural_compliance": 21,
-        "length_targets": 13,
+        "structural_compliance": 25,
+        "length_targets": 15,
         "anti_hype": 10,
-        "coverage": 5
+        "coverage": 9
       }
     },
     {
-      "handle": "i-o-mag-xl",
-      "score": 49,
+      "handle": "prodigy-3",
+      "score": 56,
       "axes": {
-        "structural_compliance": 21,
-        "length_targets": 13,
-        "anti_hype": 10,
-        "coverage": 5
+        "structural_compliance": 25,
+        "length_targets": 15,
+        "anti_hype": 5,
+        "coverage": 11
       }
     },
     {
-      "handle": "preview-goggles-3",
-      "score": 49,
+      "handle": "womens-protect-rainforests-easy-cut-t-shirt",
+      "score": 54,
       "axes": {
-        "structural_compliance": 21,
-        "length_targets": 13,
-        "anti_hype": 10,
-        "coverage": 5
-      }
-    },
-    {
-      "handle": "mens-shralpinist-stretch-jacket",
-      "score": 46,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 5,
+        "structural_compliance": 14,
+        "length_targets": 15,
         "anti_hype": 15,
         "coverage": 10
-      }
-    },
-    {
-      "handle": "womens-mtn-surf-bib",
-      "score": 46,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 5,
-        "anti_hype": 15,
-        "coverage": 10
-      }
-    },
-    {
-      "handle": "womens-mtn-surf-insulated-parka",
-      "score": 46,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 5,
-        "anti_hype": 15,
-        "coverage": 10
-      }
-    },
-    {
-      "handle": "102502",
-      "score": 41,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 10,
-        "anti_hype": 10,
-        "coverage": 5
-      }
-    },
-    {
-      "handle": "3mm-niteline",
-      "score": 41,
-      "axes": {
-        "structural_compliance": 16,
-        "length_targets": 10,
-        "anti_hype": 10,
-        "coverage": 5
       }
     }
   ],

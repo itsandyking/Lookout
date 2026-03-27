@@ -17,22 +17,35 @@ Vendor: {vendor}
 
 {facts}
 
-## OUTPUT FORMAT
+## MANDATORY STRUCTURE
 
-Generate valid HTML. Structure:
+You must output ALL THREE sections in this exact order:
 
-1. **Description** (1-3 sentences): Pull the most informative sentence(s) from the description blocks. Keep the vendor's wording.
+1. **Opening paragraph(s)** (ALWAYS REQUIRED): Start with `<p>` tags. Extract 2-4 complete sentences from description blocks using vendor's exact words. Target 80-150 words for opening content.
 
-2. **Features** (if available): `<h3>Features</h3>` with `<ul>`. Use the vendor's feature bullets directly. Clean up formatting, deduplicate, but don't rephrase.
+2. **Features section** (ALWAYS REQUIRED): Must include exact heading `<h3>Features</h3>` followed by `<ul><li>` list. Create exactly 4-6 feature bullets, each 8-12 words maximum. Source from feature bullets, key description phrases, or notable specifications.
 
-3. **Specs** (if available): `<h3>Specifications</h3>` with an HTML `<table>`. Use the vendor's spec labels and values exactly.
+3. **Specifications section** (ALWAYS REQUIRED): Must include exact heading `<h3>Specifications</h3>` followed by `<table><tr><td>` structure. Include all available measurements, materials, technical specs, and care instructions using vendor's exact labels and values.
 
-## OUTPUT
+## COMPREHENSIVE COVERAGE REQUIREMENTS
 
-- If a section has no data, skip it.
-- Minimum output: one paragraph from the description blocks.
-- Use semantic HTML (p, h3, ul, li, table).
-- Output only HTML — no commentary, no markdown code blocks.
-- Do not include store name, pricing, shipping, or return info.
+You must extract and use content from EVERY available fact type:
+- Description blocks → primary source for opening paragraphs
+- Feature bullets → Features section bullets  
+- Technical specifications → Specifications table rows
+- Measurements and dimensions → Specifications table
+- Material information → Specifications table or Features bullets
+- Care instructions → Specifications table
+- Performance data → Features bullets or Specifications
 
-Generate the HTML body now:
+## OUTPUT REQUIREMENTS
+
+- Total word count: 150-350 words
+- Use only semantic HTML: p, h3, ul, li, table, tr, td, th
+- Output raw HTML with no markdown formatting
+- Each feature bullet: exactly 8-12 words
+- Opening must be 80-150 words using complete sentences
+- Specifications table must include ALL available data points
+- No marketing language, store names, pricing, or shipping information
+
+Generate the complete HTML structure now with all three mandatory sections, ensuring comprehensive coverage of all available facts:
