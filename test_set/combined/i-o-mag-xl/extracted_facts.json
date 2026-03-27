@@ -3,33 +3,33 @@
   "product_name": "I/O MAG XL",
   "brand": "Smith Optics",
   "description_blocks": [
-    "Virtual Try-OnSkip to product informationOpen media 1 in modalOpen media 2 in modalOpen media 3 in modalOpen media 4 in modalOpen media 5 in modalOpen media 6 in modalOpen media 7 in modalOpen media 8 in modalOpen media 9 in modalOpen media 10 in modalOpen media 11 in modalOpen media 12 in modalOpen media 13 in modalOpen media 14 in modalOpen media 15 in modalOpen media 16 in modalOpen media 17 in modalOpen media 18 in modalOpen media 19 in modalOpen media 20 in modalOpen media 21 in modalOpen media 22 in modalOpen media 23 in modalOpen media 24 in modalOpen media 25 in modalOpen media 26 in modalOpen media 27 in modalOpen media 28 in modalOpen media 29 in modalOpen media 30 in modalOpen media 31 in modalOpen media 32 in modalOpen media 33 in modalOpen media 34 in modalOpen media 35 in modalOpen media 36 in modalOpen media 37 in modalOpen media 38 in modalOpen media 39 in modalOpen media 40 in modalOpen media 41 in modalOpen media 42 in modalOpen media 43 in modalOpen media 44 in modalOpen media 45 in modalOpen media 46 in modalOpen media 47 in modalOpen media 48 in modalOpen media 49 in modalOpen media 50 in modalOpen media 51 in modalOpen media 52 in modalOpen media 53 in modalOpen media 54 in modalOpen media 55 in modalOpen media 56 in modalOpen media 57 in modalOpen media 58 in modalOpen media 59 in modalOpen media 60 in modalOpen media 61 in modalOpen media 62 in modalOpen media 63 in modalOpen media 64 in modalOpen media 65 in modalOpen media 66 in modalOpen media 67 in modalOpen media 68 in modalPlay video1/of35",
-    "Open media 1 in modal",
-    "Open media 2 in modal",
-    "Open media 3 in modal",
-    "Open media 4 in modal",
-    "Open media 5 in modal",
-    "Open media 6 in modal",
-    "Open media 7 in modal",
-    "Open media 8 in modal",
-    "Open media 9 in modal"
+    "Your ExpertVoice deal.$[Deal Price]$[Original Price]Discount applied at checkout.On sale now \u2014 lower than your ExpertVoice discount.Not eligible for ExpertVoice discount.You\u2019ll see your ExpertVoice discount at checkout.",
+    "White Fade Out | ChromaPop Sun Black",
+    "Black | ChromaPop Sun Red Mirror",
+    "Black | ChromaPop Sun Green Mirror",
+    "Black | ChromaPop Everyday Red Mirror",
+    "Black | ChromaPop Everyday Green Mirror",
+    "Black | ChromaPop Pro Photochromic Gold Mirror",
+    "Black | ChromaPop Everyday Blue Mirror",
+    "Slate | ChromaPop Everyday Red Mirror",
+    "Visible Light Transmission =12%"
   ],
   "feature_bullets": [
-    "New Arrivals",
-    "Best Sellers",
-    "Gift Cards",
-    "60 Years of SMITH",
-    "4D MAG Series",
-    "Guide's Choice",
-    "Lowdown Collection",
-    "Core Collection",
-    "ChromaPop\u2122 Glacier PhotoChromic",
-    "ChromaPop\u2122 Pro PhotoChromic",
-    "ChromaPop\u2122 Glass PolarChromic",
-    "ChromaPop\u2122",
-    "PhotoChromic",
-    "Best Selling Sunglasses",
-    "Sport & Performance"
+    "Free Shipping",
+    "30-Day Return",
+    "Small Frame",
+    "Medium Frame",
+    "Large Frame",
+    "Spherical Carbonic-x lens for distortion-free optics and impact resistance",
+    "ChromaPop\u2122 lenses enhance contrast and natural color to make the details pop",
+    "5X anti-fog inner lens for advanced fog-free performance",
+    "Smith MAG lens change system uses magnets for quick, easy lens changes",
+    "Fits over the glasses (OTG ) and is compatible with ouroptical docking system (ODS) prescription lens insert",
+    "Provides 100% protection against UVA / UVB",
+    "Designed for ultimate integration with Smith helmets for maximum comfort, venting and fog-free performance",
+    "QuickFit strap adjustment system lets you find the right fit fast",
+    "Ultra-wide, silicone-backed strap stays put",
+    "Three-layer DriWix face foam wicks moisture for a fog-free fit"
   ],
   "specs": {},
   "materials": "",
@@ -203,9 +203,47 @@
       "values": [
         "xs"
       ]
+    },
+    {
+      "option_name": "Color",
+      "values": [
+        "White Fade Out | ChromaPop Sun Black",
+        "Black | ChromaPop Sun Red Mirror",
+        "Black | ChromaPop Sun Green Mirror",
+        "Black | ChromaPop Everyday Red Mirror",
+        "Black | ChromaPop Everyday Green Mirror",
+        "Black | ChromaPop Pro Photochromic Gold Mirror",
+        "Black | ChromaPop Everyday Blue Mirror",
+        "Slate | ChromaPop Everyday Red Mirror"
+      ]
     }
   ],
-  "variant_image_candidates": {},
+  "variant_image_candidates": {
+    "White Fade Out | ChromaPop Sun Black": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_whiteFadeOut-cpSunChromaPopSunBlack_3Q.png?v=1763744879"
+    ],
+    "Black | ChromaPop Sun Red Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpSunRedMirror_3Q.png?v=1763687198"
+    ],
+    "Black | ChromaPop Sun Green Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpSunGreenMirror_3Q.png?v=1758223086"
+    ],
+    "Black | ChromaPop Everyday Red Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpEverydayRedMirror_3Q.png?v=1763687198"
+    ],
+    "Black | ChromaPop Everyday Green Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpEverydayGreenMirror_3Q.png?v=1763687198"
+    ],
+    "Black | ChromaPop Pro Photochromic Gold Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpPhotochromicCopperGoldMirror_3Q.png?v=1763687198"
+    ],
+    "Black | ChromaPop Everyday Blue Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_black-cpEverydayBlueMirror_3Q.png?v=1763687198"
+    ],
+    "Slate | ChromaPop Everyday Red Mirror": [
+      "https://www.smithoptics.com/cdn/shop/files/io-mag-xl-goggles_Slate_M007130NT99MP_3Q.png?v=1763744879"
+    ]
+  },
   "json_ld_data": {
     "offers": {
       "@type": "AggregateOffer",
