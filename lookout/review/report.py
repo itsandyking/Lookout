@@ -136,7 +136,7 @@ document.querySelectorAll('input[type=radio]').forEach(radio => {{
   }});
 }});
 
-function saveDispositions() {{
+function gatherDispositions() {{
   const dispositions = {{}};
   document.querySelectorAll('.product').forEach(product => {{
     const handle = product.dataset.handle;
@@ -149,14 +149,38 @@ function saveDispositions() {{
     }}
     dispositions[handle] = d;
   }});
+  return dispositions;
+}}
 
-  const blob = new Blob([JSON.stringify(dispositions, null, 2)], {{ type: 'application/json' }});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = '{dispositions_filename}';
-  a.click();
-  URL.revokeObjectURL(url);
+function saveDispositions() {{
+  const dispositions = gatherDispositions();
+  const reviewed = Object.keys(dispositions).length;
+  if (reviewed === 0) {{ alert('No products reviewed yet.'); return; }}
+
+  // If served over HTTP, POST to server; otherwise download as file
+  if (location.protocol.startsWith('http')) {{
+    fetch('/dispositions', {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify(dispositions, null, 2),
+    }})
+    .then(r => r.json())
+    .then(data => {{
+      const btn = document.getElementById('save-btn');
+      btn.textContent = '✓ Saved ' + data.saved + ' dispositions';
+      btn.style.background = '#2196F3';
+      setTimeout(() => {{ btn.textContent = 'Save Dispositions'; btn.style.background = '#4CAF50'; }}, 3000);
+    }})
+    .catch(err => alert('Save failed: ' + err));
+  }} else {{
+    const blob = new Blob([JSON.stringify(dispositions, null, 2)], {{ type: 'application/json' }});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '{dispositions_filename}';
+    a.click();
+    URL.revokeObjectURL(url);
+  }}
 }}
 </script>
 </body>

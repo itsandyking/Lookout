@@ -962,12 +962,16 @@ def weight_audit(output_path, verbose):
               help="Enrichment output directory to review")
 @click.option("--out", "-o", type=click.Path(path_type=Path), default=None,
               help="Output HTML report path (default: {run-dir}/review.html)")
+@click.option("--serve", is_flag=True, help="Start a local server (accessible from phone)")
+@click.option("--port", "-p", type=int, default=8787, help="Server port (default: 8787)")
 @click.option("--verbose", is_flag=True)
-def review(run_dir, out, verbose):
+def review(run_dir, out, serve, port, verbose):
     """Generate a review report for enrichment output.
 
     Creates an HTML file with side-by-side current vs proposed descriptions.
     Open it in a browser, approve/reject each product, then save dispositions.
+
+    Use --serve to start a local server accessible from your phone.
     """
     setup_logging(verbose)
     import json as json_mod
@@ -1011,7 +1015,13 @@ def review(run_dir, out, verbose):
     output_path = out or (run_dir / "review.html")
     generate_review_report(run, output_path)
     console.print(f"Review report: [green]{output_path}[/green] ({len(changes)} products)")
-    console.print("Open in your browser, review each product, then Save Dispositions.")
+
+    if serve:
+        from lookout.review.server import serve_review
+        dispositions_path = run_dir / f"{run_id}_dispositions.json"
+        serve_review(output_path, dispositions_path, port=port)
+    else:
+        console.print("Open in your browser, review each product, then Save Dispositions.")
 
 
 @enrich.command("apply")
