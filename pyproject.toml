@@ -35,6 +35,10 @@ web = [
     "rq>=1.16",
     "redis>=5.0",
 ]
+gmc = [
+    "google-api-python-client>=2.0",
+    "google-auth-oauthlib>=1.0",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov",

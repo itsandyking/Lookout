@@ -145,6 +145,8 @@ def fetch_gmc_performance(
     parent = f"accounts/{merchant_id}"
 
     # Map lookback to nearest GMC date literal
+    if lookback_days > 30:
+        logger.warning("GMC only supports up to 30 days lookback; using LAST_30_DAYS")
     if lookback_days <= 7:
         date_range = "LAST_7_DAYS"
     elif lookback_days <= 14:
