@@ -952,6 +952,251 @@ def weight_audit(output_path, verbose):
     console.print(f"Generated {stats['rows']} rows for review")
 
 
+# ---------------------------------------------------------------------------
+# enrich review / apply / revert / feedback
+# ---------------------------------------------------------------------------
+
+
+@enrich.command("review")
+@click.option("--run-dir", "-d", required=True, type=click.Path(exists=True, path_type=Path),
+              help="Enrichment output directory to review")
+@click.option("--out", "-o", type=click.Path(path_type=Path), default=None,
+              help="Output HTML report path (default: {run-dir}/review.html)")
+@click.option("--verbose", is_flag=True)
+def review(run_dir, out, verbose):
+    """Generate a review report for enrichment output.
+
+    Creates an HTML file with side-by-side current vs proposed descriptions.
+    Open it in a browser, approve/reject each product, then save dispositions.
+    """
+    setup_logging(verbose)
+    import json as json_mod
+    from lookout.apply.models import ApplyRun, ProductChange
+    from lookout.enrich.models import MerchOutput
+    from lookout.review.report import generate_review_report
+    from lookout.store import LookoutStore
+
+    store = LookoutStore()
+    run_dir = Path(run_dir)
+
+    # Build changes from enrichment artifacts
+    changes = []
+    for handle_dir in sorted(run_dir.iterdir()):
+        if not handle_dir.is_dir():
+            continue
+        merch_path = handle_dir / "merch_output.json"
+        if not merch_path.exists():
+            continue
+
+        merch = MerchOutput(**json_mod.loads(merch_path.read_text()))
+
+        product = store.get_product(merch.handle)
+        if not product:
+            console.print(f"[yellow]Skipping {merch.handle}: not found in store[/yellow]")
+            continue
+
+        changes.append(ProductChange(
+            handle=merch.handle,
+            product_id=product["id"],
+            title=product.get("title", ""),
+            vendor=product.get("vendor", ""),
+            current_body_html=product.get("body_html", ""),
+            new_body_html=merch.body_html,
+            confidence=merch.confidence,
+        ))
+
+    run_id = run_dir.name
+    run = ApplyRun(run_id=run_id, source_dir=str(run_dir), changes=changes)
+
+    output_path = out or (run_dir / "review.html")
+    generate_review_report(run, output_path)
+    console.print(f"Review report: [green]{output_path}[/green] ({len(changes)} products)")
+    console.print("Open in your browser, review each product, then Save Dispositions.")
+
+
+@enrich.command("apply")
+@click.option("--run-dir", "-d", required=True, type=click.Path(exists=True, path_type=Path),
+              help="Enrichment output directory")
+@click.option("--dispositions", "-r", required=True, type=click.Path(exists=True, path_type=Path),
+              help="Dispositions JSON from review")
+@click.option("--backup-dir", type=click.Path(path_type=Path), default=Path("./backups"),
+              help="Directory for pre-write backups")
+@click.option("--dry-run", is_flag=True, help="Show what would be applied without writing")
+@click.option("--verbose", is_flag=True)
+def apply_cmd(run_dir, dispositions, backup_dir, dry_run, verbose):
+    """Apply approved enrichment changes to Shopify.
+
+    Reads dispositions from the review step, backs up current state,
+    then writes approved/edited descriptions to Shopify via API.
+    """
+    setup_logging(verbose)
+    import json as json_mod
+    from lookout.apply.models import ApplyRun, ProductChange, ChangeStatus
+    from lookout.apply.writer import apply_run
+    from lookout.enrich.models import MerchOutput
+    from lookout.feedback.collector import collect_feedback, save_feedback
+    from lookout.review.dispositions import load_dispositions, apply_dispositions_to_run
+    from lookout.store import LookoutStore
+
+    store = LookoutStore()
+
+    # Build changes (same as review command)
+    changes = []
+    for handle_dir in sorted(Path(run_dir).iterdir()):
+        if not handle_dir.is_dir():
+            continue
+        merch_path = handle_dir / "merch_output.json"
+        if not merch_path.exists():
+            continue
+        merch = MerchOutput(**json_mod.loads(merch_path.read_text()))
+        product = store.get_product(merch.handle)
+        if not product:
+            continue
+        changes.append(ProductChange(
+            handle=merch.handle, product_id=product["id"],
+            title=product.get("title", ""), vendor=product.get("vendor", ""),
+            current_body_html=product.get("body_html", ""),
+            new_body_html=merch.body_html, confidence=merch.confidence,
+        ))
+
+    run = ApplyRun(run_id=Path(run_dir).name, source_dir=str(run_dir), changes=changes)
+
+    # Apply dispositions
+    disps = load_dispositions(Path(dispositions))
+    apply_dispositions_to_run(run, disps)
+
+    approved = run.approved
+    rejected = run.rejected
+
+    console.print(f"Approved: [green]{len(approved)}[/green]  Rejected: [red]{len(rejected)}[/red]  Pending: {len(run.pending)}")
+
+    if dry_run:
+        console.print("\n[yellow]DRY RUN — no changes will be made[/yellow]")
+        for c in approved:
+            label = "EDITED" if c.status == ChangeStatus.EDITED else "APPROVED"
+            console.print(f"  [{label}] {c.handle} ({c.vendor})")
+        return
+
+    if not approved:
+        console.print("[yellow]No approved changes to apply.[/yellow]")
+    else:
+        # Apply to Shopify
+        from tvr.mcp.api import ShopifyAdminAPI
+        from tvr.mcp.auth import ShopifyAuth
+        auth = ShopifyAuth()
+        api = ShopifyAdminAPI(auth)
+        asyncio.run(apply_run(run, api, Path(backup_dir)))
+
+        applied = run.applied
+        failed = [c for c in run.changes if c.status == ChangeStatus.FAILED]
+        console.print(f"\nApplied: [green]{len(applied)}[/green]  Failed: [red]{len(failed)}[/red]")
+
+        for c in failed:
+            console.print(f"  [red]FAILED[/red] {c.handle}: {c.error}")
+
+    # Collect and save feedback (from ALL dispositions, not just applied)
+    feedback_entries = collect_feedback(run)
+    if feedback_entries:
+        feedback_dir = Path(run_dir) / "feedback"
+        save_feedback(feedback_entries, feedback_dir)
+        console.print(f"\nFeedback saved: {len(feedback_entries)} entries to {feedback_dir}")
+
+
+@enrich.command("revert")
+@click.option("--handle", "-h", "handles", multiple=True, help="Product handles to revert (repeatable)")
+@click.option("--run-dir", "-d", type=click.Path(exists=True, path_type=Path), help="Revert all products from a run")
+@click.option("--backup-dir", type=click.Path(exists=True, path_type=Path), default=Path("./backups"),
+              help="Directory containing backups")
+@click.option("--verbose", is_flag=True)
+def revert_cmd(handles, run_dir, backup_dir, verbose):
+    """Revert applied enrichment changes from backup.
+
+    Restores the previous Shopify state for specified products.
+    """
+    setup_logging(verbose)
+    from lookout.apply.revert import revert_change
+
+    handles = list(handles)
+
+    if not handles and not run_dir:
+        console.print("[red]Provide --handle or --run-dir[/red]")
+        sys.exit(1)
+
+    if run_dir:
+        # Find all applied products from run feedback
+        import json as json_mod
+        feedback_dir = Path(run_dir) / "feedback"
+        if feedback_dir.exists():
+            for f in feedback_dir.glob("*_approved.json"):
+                data = json_mod.loads(f.read_text())
+                handles.append(data["handle"])
+
+    from tvr.mcp.api import ShopifyAdminAPI
+    from tvr.mcp.auth import ShopifyAuth
+    auth = ShopifyAuth()
+    api = ShopifyAdminAPI(auth)
+
+    reverted = 0
+    for handle in handles:
+        success = asyncio.run(revert_change(handle, Path(backup_dir), api))
+        if success:
+            console.print(f"  [green]Reverted[/green] {handle}")
+            reverted += 1
+        else:
+            console.print(f"  [red]No backup[/red] {handle}")
+
+    console.print(f"\nReverted {reverted}/{len(handles)} products")
+
+
+@enrich.command("feedback")
+@click.option("--feedback-dir", "-d", type=click.Path(exists=True, path_type=Path),
+              default=None, help="Feedback directory to summarize")
+@click.option("--all-runs", is_flag=True, help="Aggregate feedback across all campaign runs")
+@click.option("--verbose", is_flag=True)
+def feedback_cmd(feedback_dir, all_runs, verbose):
+    """Show feedback summary from review dispositions.
+
+    Displays approval rate, rejection reasons, and trends over time.
+    """
+    setup_logging(verbose)
+    from lookout.feedback.collector import load_all_feedback, feedback_summary
+
+    if all_runs:
+        all_entries = []
+        for run_dir in sorted(Path("campaign").glob("run_*/feedback")):
+            all_entries.extend(load_all_feedback(run_dir))
+        entries = all_entries
+    elif feedback_dir:
+        entries = load_all_feedback(Path(feedback_dir))
+    else:
+        console.print("[red]Provide --feedback-dir or --all-runs[/red]")
+        sys.exit(1)
+
+    if not entries:
+        console.print("[yellow]No feedback entries found.[/yellow]")
+        return
+
+    summary = feedback_summary(entries)
+
+    table = Table(title="Feedback Summary")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="green")
+    table.add_row("Total reviewed", str(summary["total"]))
+    table.add_row("Approved", f"[green]{summary['approved']}[/green]")
+    table.add_row("Rejected", f"[red]{summary['rejected']}[/red]")
+    table.add_row("Edited", f"[yellow]{summary['edited']}[/yellow]")
+    table.add_row("Approval rate", f"{summary['approval_rate']:.0%}")
+    console.print(table)
+
+    if summary["rejection_reasons"]:
+        rtable = Table(title="Rejection Reasons")
+        rtable.add_column("Reason", style="cyan")
+        rtable.add_column("Count", style="red")
+        for reason, count in sorted(summary["rejection_reasons"].items(), key=lambda x: -x[1]):
+            rtable.add_row(reason, str(count))
+        console.print(rtable)
+
+
 def main() -> None:
     cli()
 
