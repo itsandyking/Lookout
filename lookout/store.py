@@ -79,9 +79,10 @@ class LookoutStore:
             return [self._product_to_dict(p) for p in products]
 
     def get_product(self, handle: str) -> dict | None:
+        from sqlalchemy.orm import joinedload
         from tvr.db.models import Product
         with self._store.session() as s:
-            p = s.query(Product).filter(Product.handle == handle).first()
+            p = s.query(Product).options(joinedload(Product.images)).filter(Product.handle == handle).first()
             return self._product_to_dict(p) if p else None
 
     # --- Variant data ---
@@ -143,6 +144,13 @@ class LookoutStore:
 
     @staticmethod
     def _product_to_dict(p: Any) -> dict:
+        images = []
+        if hasattr(p, "images") and p.images:
+            images = [
+                {"src": img.src or "", "position": img.position or 0,
+                 "alt": img.alt_text or "", "variant_id": img.variant_id}
+                for img in sorted(p.images, key=lambda i: i.position or 0)
+            ]
         return {
             "id": p.id,
             "handle": p.handle,
@@ -153,6 +161,7 @@ class LookoutStore:
             "tags": p.tags or "",
             "status": p.status or "",
             "created_at": p.created_at,
+            "images": images,
         }
 
     @staticmethod

@@ -43,7 +43,7 @@ def test_list_collections(lookout_store):
 
 
 def test_get_product_not_found(lookout_store, mock_tvr_store):
-    mock_tvr_store.session().__enter__().query().filter().first.return_value = None
+    mock_tvr_store.session().__enter__().query().options().filter().first.return_value = None
     result = lookout_store.get_product("nonexistent-handle")
     assert result is None
 
