@@ -62,25 +62,67 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 positions = [str(img_by_src.get(s, "")) for s in img_by_src]
             variant_img_positions[variant_key] = positions
 
-        # Variants section with interactive pills
-        if change.variant_labels:
-            pills = []
+        # Build src → image data lookup
+        img_data_by_src = {}
+        if has_images:
+            for img in change.new_images:
+                img_data_by_src[img.get("src", "")] = img
+
+        # Variant assignment table: Color → thumbnail
+        if change.variant_labels and has_images:
+            assignment_rows = []
             for v in change.variant_labels:
-                # Find which images this variant maps to
+                # Find assigned image src(s) for this variant
+                assigned_srcs = []
+                if v in vim:
+                    raw = vim[v]
+                    assigned_srcs = raw if isinstance(raw, list) else [raw]
+                elif "__all__" in vim:
+                    raw = vim["__all__"]
+                    assigned_srcs = raw if isinstance(raw, list) else [raw]
+
+                if assigned_srcs:
+                    thumb_cells = []
+                    for src in assigned_srcs[:3]:
+                        pos = img_by_src.get(src, "?")
+                        alt = html.escape(img_data_by_src.get(src, {}).get("alt", ""))
+                        thumb_cells.append(
+                            f'<div class="assign-thumb">'
+                            f'<img src="{src}" alt="{alt}" loading="lazy" />'
+                            f'<span class="assign-pos">#{pos}</span></div>'
+                        )
+                    remaining_count = len(assigned_srcs) - 3
+                    if remaining_count > 0:
+                        thumb_cells.append(f'<span class="assign-more">+{remaining_count}</span>')
+                    img_cell = "".join(thumb_cells)
+                else:
+                    img_cell = '<span class="no-assign">No image assigned</span>'
+
                 positions = variant_img_positions.get(v, variant_img_positions.get("__all__", []))
                 pos_data = html.escape(json.dumps(positions))
-                assigned = f' data-images="{pos_data}"' if positions else ""
-                img_badge = f' <span class="pill-img-count">{len(positions)}</span>' if positions else ""
-                pills.append(
-                    f'<span class="variant-pill" onclick="highlightVariantImages(this)"{assigned}>'
-                    f'{html.escape(v)}{img_badge}</span>'
+
+                assignment_rows.append(
+                    f'<tr class="assign-row" onclick="highlightVariantImages(this)" data-images=\'{pos_data}\'>'
+                    f'<td class="assign-label">{html.escape(v)}</td>'
+                    f'<td class="assign-images">{img_cell}</td></tr>'
                 )
-            pills_html = " ".join(pills)
-            variants_html = f'<div class="section"><h4 class="section-label">Variants ({len(change.variant_labels)})</h4><div class="variant-pills">{pills_html}</div></div>'
+
+            variants_html = (
+                f'<div class="section">'
+                f'<h4 class="section-label">Variant Image Assignments</h4>'
+                f'<table class="assign-table">{"".join(assignment_rows)}</table>'
+                f'</div>'
+            )
+        elif change.variant_labels:
+            pills = " ".join(
+                f'<span class="variant-pill">{html.escape(v)}</span>'
+                for v in change.variant_labels
+            )
+            variants_html = f'<div class="section"><h4 class="section-label">Variants ({len(change.variant_labels)})</h4><div class="variant-pills">{pills}</div></div>'
         else:
             variants_html = ""
 
-        # Images section
+        # Images section (full grid)
         if has_images:
             thumbs = []
             for img in change.new_images[:12]:
@@ -292,6 +334,47 @@ _TEMPLATE = """<!DOCTYPE html>
   }}
   .variant-pill.active .pill-img-count {{ background: rgba(255,255,255,0.25); }}
 
+  /* Variant assignment table */
+  .assign-table {{
+    width: 100%; border-collapse: collapse;
+    border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;
+  }}
+  .assign-row {{
+    cursor: pointer; transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }}
+  .assign-row:active {{ background: #e3f2fd; }}
+  .assign-row.active {{ background: #e3f2fd; }}
+  .assign-row + .assign-row {{ border-top: 1px solid #eee; }}
+  .assign-label {{
+    padding: 8px 12px; font-weight: 600; font-size: 0.85em;
+    color: #333; white-space: nowrap; vertical-align: middle;
+    width: 1%; /* shrink to content */
+  }}
+  .assign-images {{
+    padding: 6px 8px; display: flex; gap: 6px;
+    align-items: center; flex-wrap: wrap;
+  }}
+  .assign-thumb {{
+    position: relative; width: 48px; height: 48px;
+    border-radius: 4px; overflow: hidden; border: 1px solid #ddd;
+    flex-shrink: 0;
+  }}
+  .assign-thumb img {{
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }}
+  .assign-pos {{
+    position: absolute; bottom: 1px; right: 2px;
+    font-size: 0.6em; color: #fff; background: rgba(0,0,0,0.5);
+    padding: 0 3px; border-radius: 2px;
+  }}
+  .assign-more {{
+    font-size: 0.8em; color: #666; font-weight: 600;
+  }}
+  .no-assign {{
+    font-size: 0.8em; color: #999; font-style: italic;
+  }}
+
   /* Description comparison */
   .comparison {{ display: flex; flex-direction: column; gap: 8px; }}
   .side {{
@@ -448,20 +531,20 @@ _TEMPLATE = """<!DOCTYPE html>
 const total = {product_count};
 let dispositions = {{}};
 
-function highlightVariantImages(pill) {{
-  const product = pill.closest('.product');
-  const wasActive = pill.classList.contains('active');
+function highlightVariantImages(el) {{
+  const product = el.closest('.product');
+  const wasActive = el.classList.contains('active');
 
   // Clear all highlights in this product
-  product.querySelectorAll('.variant-pill').forEach(p => p.classList.remove('active'));
+  product.querySelectorAll('.variant-pill, .assign-row').forEach(p => p.classList.remove('active'));
   product.querySelectorAll('.thumb').forEach(t => {{
     t.classList.remove('highlighted', 'dim');
   }});
 
   if (wasActive) return; // Toggle off
 
-  pill.classList.add('active');
-  const positions = JSON.parse(pill.dataset.images || '[]');
+  el.classList.add('active');
+  const positions = JSON.parse(el.dataset.images || '[]');
 
   if (positions.length > 0) {{
     product.querySelectorAll('.thumb[data-pos]').forEach(t => {{
