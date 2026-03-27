@@ -79,11 +79,10 @@ class LookoutStore:
             return [self._product_to_dict(p) for p in products]
 
     def get_product(self, handle: str) -> dict | None:
-        results = self._store.search_products(handle, limit=10)
-        for p in results:
-            if p.handle == handle:
-                return self._product_to_dict(p)
-        return None
+        from tvr.db.models import Product
+        with self._store.session() as s:
+            p = s.query(Product).filter(Product.handle == handle).first()
+            return self._product_to_dict(p) if p else None
 
     # --- Variant data ---
 

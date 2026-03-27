@@ -417,8 +417,9 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
 
     # If no input CSV, run audit internally to get priorities with rich variant data
     enriched_rows = None
-    if input_path is None and vendor:
-        console.print(f"[dim]Running internal audit for vendor: {vendor}[/dim]")
+    if input_path is None:
+        label = f"vendor: {vendor}" if vendor else "all vendors"
+        console.print(f"[dim]Running internal audit for {label}[/dim]")
 
         from lookout.audit.auditor import ContentAuditor
         from lookout.store import LookoutStore
@@ -444,7 +445,7 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
             console.print(f"[dim]Catalog images available for {catalog_count} products[/dim]")
 
     if input_path is None and enriched_rows is None:
-        console.print("[red]Error:[/red] Provide --input CSV or --vendor for internal audit")
+        console.print("[red]Error:[/red] Provide --input CSV or run with internal audit")
         sys.exit(1)
 
     config = PipelineConfig(
