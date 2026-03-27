@@ -1019,6 +1019,22 @@ def review(run_dir, out, serve, port, verbose):
             if label and label not in variant_labels:
                 variant_labels.append(label)
 
+        # Inventory and cost
+        try:
+            inv = store.get_inventory(product["id"])
+            inventory_count = inv.get("total_quantity", 0)
+            inventory_value = inv.get("total_cost", 0.0) or 0.0
+        except Exception:
+            inventory_count = 0
+            inventory_value = 0.0
+
+        # Missing fields check
+        missing_fields = []
+        if not product.get("product_type"):
+            missing_fields.append("product_type")
+        if not product.get("tags"):
+            missing_fields.append("tags")
+
         changes.append(ProductChange(
             handle=merch.handle,
             product_id=product["id"],
@@ -1030,6 +1046,9 @@ def review(run_dir, out, serve, port, verbose):
             new_images=new_images,
             new_variant_image_map=variant_image_map,
             variant_labels=variant_labels,
+            inventory_count=inventory_count,
+            inventory_value=inventory_value,
+            missing_fields=missing_fields,
             confidence=merch.confidence,
         ))
 

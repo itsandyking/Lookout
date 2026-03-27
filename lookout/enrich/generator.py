@@ -53,6 +53,20 @@ def _detect_llm_refusal(html: str) -> str | None:
         "the provided product information",
         "the available data appears",
         "not enough information to",
+        "vendor facts provided",
+        "don't contain usable",
+        "no usable product information",
+        "what i'd recommend",
+        "what i would recommend",
+        "re-run with",
+        "want me to",
+        "paste the content from",
+        "violates rule",
+        "i'd be inventing",
+        "to write this description, i need",
+        "where to get this",
+        "checkout ui text",
+        "checkout boilerplate",
     ]
     for pattern in refusal_patterns:
         if pattern in text:
@@ -595,13 +609,15 @@ class Generator:
 
     def _clean_html(self, html: str) -> str:
         """Clean and validate HTML output."""
-        # Remove markdown code blocks if present
-        html = re.sub(r"^```(?:html)?\s*", "", html.strip())
-        html = re.sub(r"\s*```$", "", html)
+        # Remove markdown code blocks if present (start and end)
+        html = re.sub(r"^```(?:html|HTML)?\s*\n?", "", html.strip())
+        html = re.sub(r"\n?\s*```\s*$", "", html)
+        # Also catch stray backticks anywhere
+        html = re.sub(r"^```\s*$", "", html, flags=re.MULTILINE)
 
-        # Remove LLM meta-commentary after the HTML (notes, explanations)
-        # Cut at any line starting with --- or **Note
-        html = re.split(r'\n---\n|\n\*\*Note', html)[0]
+        # Remove LLM meta-commentary after the HTML
+        # Cut at lines starting with ---, **Note, **Where, **What, **To write
+        html = re.split(r'\n---\n|\n\*\*(?:Note|Where|What|To write|I\'d recommend)', html)[0]
 
         # Basic cleanup
         html = html.strip()

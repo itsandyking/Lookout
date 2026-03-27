@@ -182,6 +182,22 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
         conf = change.confidence
         conf_class = "conf-high" if conf >= 80 else ("conf-med" if conf >= 60 else "conf-low")
 
+        # Inventory and payoff info
+        inv_parts = []
+        if change.inventory_count > 0:
+            inv_parts.append(f'{change.inventory_count} units')
+        if change.inventory_value > 0:
+            inv_parts.append(f'${change.inventory_value:,.0f} on hand')
+        inventory_html = f'<span class="inv-badge">{" / ".join(inv_parts)}</span>' if inv_parts else ""
+
+        # Missing fields flags
+        flag_labels = {
+            "product_type": "No product type",
+            "tags": "No tags",
+        }
+        flags = [f'<span class="flag-pill">{flag_labels.get(f, f)}</span>' for f in change.missing_fields]
+        flags_html = " ".join(flags)
+
         products_html.append(
             _PRODUCT_TEMPLATE.format(
                 handle=change.handle,
@@ -190,6 +206,8 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 confidence=conf,
                 conf_class=conf_class,
                 product_id=change.product_id,
+                inventory_info=inventory_html,
+                missing_flags=flags_html,
                 variants_section=variants_html,
                 description_section=desc_html,
                 images_section=images_html,
@@ -222,8 +240,10 @@ _PRODUCT_TEMPLATE = """
     </div>
     <div class="header-meta">
       <span class="vendor">{vendor}</span>
+      {inventory_info}
       <span class="handle">{handle}</span>
     </div>
+    <div class="header-flags">{missing_flags}</div>
   </div>
 
   {variants_section}
@@ -231,9 +251,24 @@ _PRODUCT_TEMPLATE = """
   {images_section}
 
   <div class="actions">
+    <div class="section-actions">
+      <div class="section-action" data-section="description">
+        <span class="section-action-label">Description</span>
+        <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
+        <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
+      </div>
+      <div class="section-action" data-section="images">
+        <span class="section-action-label">Images</span>
+        <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
+        <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
+      </div>
+      <div class="section-action" data-section="variant_images">
+        <span class="section-action-label">Variant&nbsp;Assign</span>
+        <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
+        <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
+      </div>
+    </div>
     <div class="action-buttons">
-      <button type="button" class="btn btn-approve" onclick="setDisposition(this, 'approved')">Approve</button>
-      <button type="button" class="btn btn-reject" onclick="setDisposition(this, 'rejected')">Reject</button>
       <button type="button" class="btn btn-skip" onclick="setDisposition(this, 'skip')">Skip</button>
     </div>
     <div class="reason-pills" style="display:none">
@@ -334,6 +369,16 @@ _TEMPLATE = """<!DOCTYPE html>
   .header-meta {{ display: flex; gap: 8px; margin-top: 4px; font-size: 0.8em; }}
   .vendor {{ color: #666; }}
   .handle {{ color: #999; font-family: monospace; }}
+  .inv-badge {{
+    font-size: 0.8em; color: #2e7d32; font-weight: 600;
+    background: #e8f5e9; padding: 1px 6px; border-radius: 4px;
+  }}
+  .header-flags {{ display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }}
+  .header-flags:empty {{ display: none; }}
+  .flag-pill {{
+    font-size: 0.7em; padding: 2px 8px; border-radius: 10px;
+    background: #fff3e0; color: #e65100; border: 1px solid #ffcc80;
+  }}
 
   .badge {{
     font-size: 0.75em; font-weight: 600; padding: 2px 8px;
@@ -473,6 +518,30 @@ _TEMPLATE = """<!DOCTYPE html>
 
   /* Actions */
   .actions {{ padding: 8px 16px 12px; }}
+
+  /* Section-level approve/reject */
+  .section-actions {{
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;
+  }}
+  .section-action {{
+    display: flex; align-items: center; gap: 4px;
+    border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px 8px;
+    background: #fafafa;
+  }}
+  .section-action-label {{
+    font-size: 0.75em; font-weight: 600; color: #666; min-width: 50px;
+  }}
+  .sbtn {{
+    width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px;
+    background: #fff; font-size: 1em; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; color: #999;
+    -webkit-tap-highlight-color: transparent;
+  }}
+  .sbtn:active {{ transform: scale(0.9); }}
+  .sbtn.active-approve {{ background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; }}
+  .sbtn.active-reject {{ background: #ffebee; border-color: #f44336; color: #c62828; }}
+
   .action-buttons {{ display: flex; gap: 8px; }}
   .btn {{
     flex: 1; padding: 10px 0; border: 2px solid #ddd; border-radius: 6px;
@@ -594,6 +663,53 @@ function highlightVariantImages(el) {{
   }}
 }}
 
+function setSectionDisposition(btn, status) {{
+  const sectionAction = btn.closest('.section-action');
+  const section = sectionAction.dataset.section;
+  const product = btn.closest('.product');
+  const handle = product.dataset.handle;
+
+  // Toggle off if same button
+  const wasActive = btn.classList.contains('active-approve') || btn.classList.contains('active-reject');
+  sectionAction.querySelectorAll('.sbtn').forEach(b => b.classList.remove('active-approve', 'active-reject'));
+
+  if (!dispositions[handle]) dispositions[handle] = {{ status: 'mixed' }};
+  if (!dispositions[handle].sections) dispositions[handle].sections = {{}};
+
+  if (wasActive && dispositions[handle].sections[section] === status) {{
+    delete dispositions[handle].sections[section];
+  }} else {{
+    btn.classList.add(status === 'approved' ? 'active-approve' : 'active-reject');
+    dispositions[handle].sections[section] = status;
+  }}
+
+  // Show reason pills if any section is rejected
+  const hasRejection = Object.values(dispositions[handle].sections).includes('rejected');
+  const reasonPills = product.querySelector('.reason-pills');
+  const highlightsList = product.querySelector('.highlights-list');
+  reasonPills.style.display = hasRejection ? 'block' : 'none';
+  highlightsList.style.display = hasRejection ? 'block' : 'none';
+
+  // Determine overall status from sections
+  const sectionStatuses = Object.values(dispositions[handle].sections);
+  if (sectionStatuses.length === 0) {{
+    delete dispositions[handle];
+  }} else {{
+    product.classList.remove('reviewed-approved', 'reviewed-rejected', 'reviewed-skip');
+    if (sectionStatuses.every(s => s === 'approved')) {{
+      dispositions[handle].status = 'approved';
+      product.classList.add('reviewed-approved');
+    }} else if (sectionStatuses.some(s => s === 'rejected')) {{
+      dispositions[handle].status = 'rejected';
+      product.classList.add('reviewed-rejected');
+    }} else {{
+      dispositions[handle].status = 'mixed';
+    }}
+  }}
+
+  updateProgress();
+}}
+
 function updateProgress() {{
   const count = Object.keys(dispositions).length;
   document.getElementById('review-count').textContent = count + ' / ' + total;
@@ -690,10 +806,35 @@ function handleTextSelect() {{
     const range = sel.getRangeAt(0);
     const mark = document.createElement('mark');
     mark.className = 'highlight-mark';
+    mark.onclick = function(e) {{
+      e.stopPropagation();
+      unhighlight(this);
+    }};
     range.surroundContents(mark);
   }} catch(e) {{ /* cross-element selection */ }}
 
   sel.removeAllRanges();
+  renderHighlights(product, handle);
+}}
+
+function unhighlight(mark) {{
+  const product = mark.closest('.product');
+  const handle = product.dataset.handle;
+  const text = mark.textContent;
+
+  // Remove from dispositions
+  if (dispositions[handle] && dispositions[handle].highlights) {{
+    const idx = dispositions[handle].highlights.indexOf(text);
+    if (idx > -1) dispositions[handle].highlights.splice(idx, 1);
+    if (dispositions[handle].highlights.length === 0) delete dispositions[handle].highlights;
+  }}
+
+  // Unwrap the mark element
+  const parent = mark.parentNode;
+  while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+  parent.removeChild(mark);
+  parent.normalize();
+
   renderHighlights(product, handle);
 }}
 

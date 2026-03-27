@@ -43,7 +43,10 @@ class ProductChange:
     confidence: int = 0
 
     # Display metadata (not persisted)
-    variant_labels: list[str] = field(default_factory=list)  # e.g. ["Stealth Black / M", "Lime Green / L"]
+    variant_labels: list[str] = field(default_factory=list)
+    inventory_count: int = 0
+    inventory_value: float = 0.0  # cost on hand
+    missing_fields: list[str] = field(default_factory=list)  # e.g. ["product_type", "tags", "google_shopping"]
 
     # Apply tracking
     applied_at: str | None = None
