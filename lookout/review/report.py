@@ -152,10 +152,28 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
             remaining = len(change.new_images) - 12
             extra = f'<div class="thumb more">+{remaining} more</div>' if remaining > 0 else ""
             current_img_count = len(change.current_images) if change.current_images else 0
+            proposed_count = len(change.new_images)
+
+            if current_img_count == 0:
+                change_summary = f"adding {proposed_count} images (none currently)"
+            else:
+                # Check for overlapping URLs
+                current_srcs = {img.get("src", "") for img in (change.current_images or [])}
+                new_srcs = {img.get("src", "") for img in change.new_images}
+                kept = len(current_srcs & new_srcs)
+                added = len(new_srcs - current_srcs)
+                removed = len(current_srcs - new_srcs)
+                parts = []
+                if kept:
+                    parts.append(f"{kept} kept")
+                if added:
+                    parts.append(f"{added} added")
+                if removed:
+                    parts.append(f"{removed} replaced")
+                change_summary = ", ".join(parts) if parts else f"{current_img_count} → {proposed_count}"
 
             images_html = _IMAGES_TEMPLATE.format(
-                current_count=current_img_count,
-                proposed_count=len(change.new_images),
+                change_summary=change_summary,
                 thumbnails="\n".join(thumbs) + extra,
             )
         else:
@@ -263,7 +281,7 @@ _DESC_TEMPLATE = """
 
 _IMAGES_TEMPLATE = """
 <div class="section">
-  <h4 class="section-label">Images <span class="img-count">{current_count} current &rarr; {proposed_count} proposed</span></h4>
+  <h4 class="section-label">Images <span class="img-count">{change_summary}</span></h4>
   <div class="image-grid">
     {thumbnails}
   </div>
