@@ -1049,12 +1049,13 @@ def review(run_dir, out, serve, port, verbose):
 @click.option("--backup-dir", type=click.Path(path_type=Path), default=Path("./backups"),
               help="Directory for pre-write backups")
 @click.option("--dry-run", is_flag=True, help="Show what would be applied without writing")
+@click.option("--push/--no-push", default=False, help="Actually write to Shopify (default: off)")
 @click.option("--verbose", is_flag=True)
-def apply_cmd(run_dir, dispositions, backup_dir, dry_run, verbose):
-    """Apply approved enrichment changes to Shopify.
+def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
+    """Process review dispositions and collect feedback.
 
-    Reads dispositions from the review step, backs up current state,
-    then writes approved/edited descriptions to Shopify via API.
+    By default, collects feedback only (no Shopify writes).
+    Use --push to actually write approved changes to Shopify.
     """
     setup_logging(verbose)
     import json as json_mod
@@ -1104,9 +1105,7 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, verbose):
             console.print(f"  [{label}] {c.handle} ({c.vendor})")
         return
 
-    if not approved:
-        console.print("[yellow]No approved changes to apply.[/yellow]")
-    else:
+    if push and not dry_run and approved:
         # Apply to Shopify
         from tvr.mcp.api import ShopifyAdminAPI
         from tvr.mcp.auth import ShopifyAuth
@@ -1120,6 +1119,8 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, verbose):
 
         for c in failed:
             console.print(f"  [red]FAILED[/red] {c.handle}: {c.error}")
+    elif approved and not dry_run:
+        console.print(f"\n[dim]{len(approved)} approved changes ready. Use --push to write to Shopify.[/dim]")
 
     # Collect and save feedback (from ALL dispositions, not just applied)
     feedback_entries = collect_feedback(run)
