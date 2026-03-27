@@ -1000,6 +1000,10 @@ def review(run_dir, out, serve, port, verbose):
             console.print(f"[yellow]Skipping {merch.handle}: not found in store[/yellow]")
             continue
 
+        # Get image data from merch output
+        new_images = [img.model_dump() if hasattr(img, 'model_dump') else img for img in (merch.images or [])]
+        current_images = product.get("images", [])
+
         changes.append(ProductChange(
             handle=merch.handle,
             product_id=product["id"],
@@ -1007,6 +1011,8 @@ def review(run_dir, out, serve, port, verbose):
             vendor=product.get("vendor", ""),
             current_body_html=product.get("body_html", ""),
             new_body_html=merch.body_html,
+            current_images=current_images,
+            new_images=new_images,
             confidence=merch.confidence,
         ))
 
