@@ -69,13 +69,23 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 img_data_by_src[img.get("src", "")] = img
 
         # Variant assignment table: Color → thumbnail
-        if change.variant_labels and has_images:
-            assignment_rows = []
+        if change.variant_labels and (has_images or vim):
+            # Deduplicate variant labels by color (strip size info)
+            seen_colors = {}
             for v in change.variant_labels:
+                color = v.split(" / ")[0] if " / " in v else v
+                if color not in seen_colors:
+                    seen_colors[color] = v
+
+            assignment_rows = []
+            for color, full_label in seen_colors.items():
                 # Find assigned image src(s) for this variant
                 assigned_srcs = []
-                if v in vim:
-                    raw = vim[v]
+                if color in vim:
+                    raw = vim[color]
+                    assigned_srcs = raw if isinstance(raw, list) else [raw]
+                elif full_label in vim:
+                    raw = vim[full_label]
                     assigned_srcs = raw if isinstance(raw, list) else [raw]
                 elif "__all__" in vim:
                     raw = vim["__all__"]
@@ -84,26 +94,31 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 if assigned_srcs:
                     thumb_cells = []
                     for src in assigned_srcs[:3]:
-                        pos = img_by_src.get(src, "?")
-                        alt = html.escape(img_data_by_src.get(src, {}).get("alt", ""))
+                        # Show the image directly from the assigned URL
+                        # (may not be in the main image list)
+                        pos = img_by_src.get(src, "")
+                        pos_label = f'<span class="assign-pos">#{pos}</span>' if pos else ""
                         thumb_cells.append(
                             f'<div class="assign-thumb">'
-                            f'<img src="{src}" alt="{alt}" loading="lazy" />'
-                            f'<span class="assign-pos">#{pos}</span></div>'
+                            f'<img src="{src}" loading="lazy" />'
+                            f'{pos_label}</div>'
                         )
                     remaining_count = len(assigned_srcs) - 3
                     if remaining_count > 0:
                         thumb_cells.append(f'<span class="assign-more">+{remaining_count}</span>')
                     img_cell = "".join(thumb_cells)
+                    is_all = "__all__" in vim and color not in vim and full_label not in vim
+                    if is_all:
+                        img_cell += '<span class="assign-shared">shared</span>'
                 else:
                     img_cell = '<span class="no-assign">No image assigned</span>'
 
-                positions = variant_img_positions.get(v, variant_img_positions.get("__all__", []))
+                positions = variant_img_positions.get(color, variant_img_positions.get(full_label, variant_img_positions.get("__all__", [])))
                 pos_data = html.escape(json.dumps(positions))
 
                 assignment_rows.append(
                     f'<tr class="assign-row" onclick="highlightVariantImages(this)" data-images=\'{pos_data}\'>'
-                    f'<td class="assign-label">{html.escape(v)}</td>'
+                    f'<td class="assign-label">{html.escape(color)}</td>'
                     f'<td class="assign-images">{img_cell}</td></tr>'
                 )
 
@@ -373,6 +388,10 @@ _TEMPLATE = """<!DOCTYPE html>
   }}
   .no-assign {{
     font-size: 0.8em; color: #999; font-style: italic;
+  }}
+  .assign-shared {{
+    font-size: 0.65em; color: #999; font-style: italic;
+    margin-left: 4px;
   }}
 
   /* Description comparison */
