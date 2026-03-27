@@ -123,8 +123,13 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 )
 
             variants_html = (
-                f'<div class="section">'
+                f'<div class="section" data-section-type="variant_images">'
+                f'<div class="section-head">'
                 f'<h4 class="section-label">Variant Image Assignments</h4>'
+                f'<div class="section-action" data-section="variant_images">'
+                f'<button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, \'approved\')">&#10003;</button>'
+                f'<button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, \'rejected\')">&#10007;</button>'
+                f'</div></div>'
                 f'<table class="assign-table">{"".join(assignment_rows)}</table>'
                 f'</div>'
             )
@@ -246,28 +251,11 @@ _PRODUCT_TEMPLATE = """
     <div class="header-flags">{missing_flags}</div>
   </div>
 
-  {variants_section}
   {description_section}
+  {variants_section}
   {images_section}
 
   <div class="actions">
-    <div class="section-actions">
-      <div class="section-action" data-section="description">
-        <span class="section-action-label">Description</span>
-        <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
-        <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
-      </div>
-      <div class="section-action" data-section="images">
-        <span class="section-action-label">Images</span>
-        <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
-        <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
-      </div>
-      <div class="section-action" data-section="variant_images">
-        <span class="section-action-label">Variant&nbsp;Assign</span>
-        <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
-        <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
-      </div>
-    </div>
     <div class="action-buttons">
       <button type="button" class="btn btn-skip" onclick="setDisposition(this, 'skip')">Skip</button>
     </div>
@@ -299,8 +287,14 @@ _PRODUCT_TEMPLATE = """
 """
 
 _DESC_TEMPLATE = """
-<div class="section">
-  <h4 class="section-label">Description</h4>
+<div class="section" data-section-type="description">
+  <div class="section-head">
+    <h4 class="section-label">Description</h4>
+    <div class="section-action" data-section="description">
+      <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
+      <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
+    </div>
+  </div>
   <div class="comparison">
     <div class="side current">
       <div class="side-label">Current</div>
@@ -315,8 +309,14 @@ _DESC_TEMPLATE = """
 """
 
 _IMAGES_TEMPLATE = """
-<div class="section">
-  <h4 class="section-label">Images <span class="img-count">{change_summary}</span></h4>
+<div class="section" data-section-type="images">
+  <div class="section-head">
+    <h4 class="section-label">Images <span class="img-count">{change_summary}</span></h4>
+    <div class="section-action" data-section="images">
+      <button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, 'approved')">&#10003;</button>
+      <button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, 'rejected')">&#10007;</button>
+    </div>
+  </div>
   <div class="image-grid">
     {thumbnails}
   </div>
@@ -519,17 +519,14 @@ _TEMPLATE = """<!DOCTYPE html>
   /* Actions */
   .actions {{ padding: 8px 16px 12px; }}
 
-  /* Section-level approve/reject */
-  .section-actions {{
-    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;
+  /* Section header with inline approve/reject */
+  .section-head {{
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px;
   }}
+  .section-head .section-label {{ margin: 0; }}
   .section-action {{
     display: flex; align-items: center; gap: 4px;
-    border: 1px solid #e0e0e0; border-radius: 6px; padding: 4px 8px;
-    background: #fafafa;
-  }}
-  .section-action-label {{
-    font-size: 0.75em; font-weight: 600; color: #666; min-width: 50px;
   }}
   .sbtn {{
     width: 32px; height: 32px; border: 1px solid #ddd; border-radius: 4px;
@@ -541,6 +538,8 @@ _TEMPLATE = """<!DOCTYPE html>
   .sbtn:active {{ transform: scale(0.9); }}
   .sbtn.active-approve {{ background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; }}
   .sbtn.active-reject {{ background: #ffebee; border-color: #f44336; color: #c62828; }}
+  .section.section-approved {{ border-left: 3px solid #4CAF50; padding-left: 13px; }}
+  .section.section-rejected {{ border-left: 3px solid #f44336; padding-left: 13px; opacity: 0.7; }}
 
   .action-buttons {{ display: flex; gap: 8px; }}
   .btn {{
@@ -676,11 +675,18 @@ function setSectionDisposition(btn, status) {{
   if (!dispositions[handle]) dispositions[handle] = {{ status: 'mixed' }};
   if (!dispositions[handle].sections) dispositions[handle].sections = {{}};
 
+  const sectionEl = sectionAction.closest('.section');
+
   if (wasActive && dispositions[handle].sections[section] === status) {{
     delete dispositions[handle].sections[section];
+    if (sectionEl) sectionEl.classList.remove('section-approved', 'section-rejected');
   }} else {{
     btn.classList.add(status === 'approved' ? 'active-approve' : 'active-reject');
     dispositions[handle].sections[section] = status;
+    if (sectionEl) {{
+      sectionEl.classList.remove('section-approved', 'section-rejected');
+      sectionEl.classList.add(status === 'approved' ? 'section-approved' : 'section-rejected');
+    }}
   }}
 
   // Show reason pills if any section is rejected
