@@ -807,8 +807,9 @@ class Pipeline:
             logger.warning(f"LLM client not available: {e}")
             self.llm_client = None
 
-        # Setup directories
-        artifacts_dir = ensure_dir(self.config.output_dir / "artifacts")
+        # Setup directories — output_dir is used directly as the artifacts root
+        # (each handle gets its own subdirectory under output_dir)
+        artifacts_dir = ensure_dir(self.config.output_dir)
 
         # Initialize output builder
         output_builder = ShopifyOutputBuilder(self.config.shopify_export_path)
