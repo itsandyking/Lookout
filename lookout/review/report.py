@@ -131,6 +131,10 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 f'<button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, \'rejected\')">&#10007;</button>'
                 f'</div></div>'
                 f'<table class="assign-table">{"".join(assignment_rows)}</table>'
+                f'<div class="section-reasons" style="display:none">'
+                f'<button type="button" class="pill" data-reason="wrong_image_match">Wrong variant match</button>'
+                f'<button type="button" class="pill" data-reason="missing_variant_image">Missing variant image</button>'
+                f'</div>'
                 f'</div>'
             )
         elif change.variant_labels:
@@ -259,29 +263,6 @@ _PRODUCT_TEMPLATE = """
     <div class="action-buttons">
       <button type="button" class="btn btn-skip" onclick="setDisposition(this, 'skip')">Skip</button>
     </div>
-    <div class="reason-pills" style="display:none">
-      <div class="pill-group" data-label="Description">
-        <button type="button" class="pill" data-reason="hallucinated">Hallucinated</button>
-        <button type="button" class="pill" data-reason="bad_source_data">Bad source data</button>
-        <button type="button" class="pill" data-reason="stale_source">Stale/outdated</button>
-        <button type="button" class="pill" data-reason="bad_structure">Bad structure</button>
-        <button type="button" class="pill" data-reason="incomplete">Incomplete</button>
-        <button type="button" class="pill" data-reason="tone">Wrong tone</button>
-        <button type="button" class="pill" data-reason="typos">Typos/grammar</button>
-      </div>
-      <div class="pill-group" data-label="Images">
-        <button type="button" class="pill" data-reason="wrong_image_match">Wrong image match</button>
-        <button type="button" class="pill" data-reason="missing_image">Missing images</button>
-        <button type="button" class="pill" data-reason="bad_image_quality">Bad image quality</button>
-      </div>
-      <div class="pill-group" data-label="Other">
-        <button type="button" class="pill" data-reason="other">Other</button>
-      </div>
-    </div>
-    <div class="highlights-list" style="display:none">
-      <div class="highlights-label">Highlighted issues:</div>
-      <div class="highlights-items"></div>
-    </div>
   </div>
 </div>
 """
@@ -305,6 +286,19 @@ _DESC_TEMPLATE = """
       <div class="content rendered-html selectable-text">{proposed}</div>
     </div>
   </div>
+  <div class="section-reasons" style="display:none">
+    <button type="button" class="pill" data-reason="hallucinated">Hallucinated</button>
+    <button type="button" class="pill" data-reason="bad_source_data">Bad source data</button>
+    <button type="button" class="pill" data-reason="stale_source">Stale/outdated</button>
+    <button type="button" class="pill" data-reason="bad_structure">Bad structure</button>
+    <button type="button" class="pill" data-reason="incomplete">Incomplete</button>
+    <button type="button" class="pill" data-reason="tone">Wrong tone</button>
+    <button type="button" class="pill" data-reason="typos">Typos/grammar</button>
+  </div>
+  <div class="highlights-list" style="display:none">
+    <div class="highlights-label">Highlighted issues:</div>
+    <div class="highlights-items"></div>
+  </div>
 </div>
 """
 
@@ -319,6 +313,11 @@ _IMAGES_TEMPLATE = """
   </div>
   <div class="image-grid">
     {thumbnails}
+  </div>
+  <div class="section-reasons" style="display:none">
+    <button type="button" class="pill" data-reason="wrong_image_match">Wrong image match</button>
+    <button type="button" class="pill" data-reason="missing_image">Missing images</button>
+    <button type="button" class="pill" data-reason="bad_image_quality">Bad image quality</button>
   </div>
 </div>
 """
@@ -553,16 +552,10 @@ _TEMPLATE = """<!DOCTYPE html>
   .btn-reject.active {{ background: #ffebee; border-color: #f44336; color: #c62828; }}
   .btn-skip.active {{ background: #f5f5f5; border-color: #9e9e9e; color: #666; }}
 
-  /* Rejection reason pills */
-  .reason-pills {{ margin-top: 8px; }}
-  .pill-group {{
-    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;
-  }}
-  .pill-group::before {{
-    content: attr(data-label);
-    display: block; width: 100%;
-    font-size: 0.65em; text-transform: uppercase; color: #999;
-    letter-spacing: 0.5px; margin-bottom: 2px;
+  /* Section-local rejection reason pills */
+  .section-reasons {{
+    display: none; flex-wrap: wrap; gap: 6px;
+    margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;
   }}
   .pill {{
     font-size: 0.8em; padding: 5px 12px; border-radius: 16px;
@@ -689,12 +682,14 @@ function setSectionDisposition(btn, status) {{
     }}
   }}
 
-  // Show reason pills if any section is rejected
-  const hasRejection = Object.values(dispositions[handle].sections).includes('rejected');
-  const reasonPills = product.querySelector('.reason-pills');
-  const highlightsList = product.querySelector('.highlights-list');
-  reasonPills.style.display = hasRejection ? 'block' : 'none';
-  highlightsList.style.display = hasRejection ? 'block' : 'none';
+  // Show/hide section-local reason pills and highlights
+  if (sectionEl) {{
+    const reasons = sectionEl.querySelector('.section-reasons');
+    const highlights = sectionEl.querySelector('.highlights-list');
+    const isRejected = dispositions[handle].sections[section] === 'rejected';
+    if (reasons) reasons.style.display = isRejected ? 'flex' : 'none';
+    if (highlights) highlights.style.display = isRejected ? 'block' : 'none';
+  }}
 
   // Determine overall status from sections
   const sectionStatuses = Object.values(dispositions[handle].sections);
@@ -764,17 +759,31 @@ function setDisposition(btn, status) {{
   updateProgress();
 }}
 
-// Pill multi-select
+// Pill multi-select — saves reasons per section
 document.querySelectorAll('.pill').forEach(pill => {{
   pill.addEventListener('click', function() {{
     this.classList.toggle('selected');
     const product = this.closest('.product');
     const handle = product.dataset.handle;
+    const sectionEl = this.closest('.section');
+    const section = sectionEl ? sectionEl.dataset.sectionType : 'general';
     if (!dispositions[handle]) return;
 
-    const selected = [...product.querySelectorAll('.pill.selected')].map(p => p.dataset.reason);
+    // Gather selected reasons within this section
+    const container = this.closest('.section-reasons');
+    const selected = [...container.querySelectorAll('.pill.selected')].map(p => p.dataset.reason);
+
+    if (!dispositions[handle].section_reasons) dispositions[handle].section_reasons = {{}};
     if (selected.length > 0) {{
-      dispositions[handle].reasons = selected;
+      dispositions[handle].section_reasons[section] = selected;
+    }} else {{
+      delete dispositions[handle].section_reasons[section];
+    }}
+
+    // Also flatten to top-level reasons for backward compat
+    const allReasons = Object.values(dispositions[handle].section_reasons).flat();
+    if (allReasons.length > 0) {{
+      dispositions[handle].reasons = [...new Set(allReasons)];
     }} else {{
       delete dispositions[handle].reasons;
     }}
@@ -798,8 +807,8 @@ function handleTextSelect() {{
   const product = proposed.closest('.product');
   const handle = product.dataset.handle;
 
-  // Only allow highlights when rejected
-  if (!dispositions[handle] || dispositions[handle].status !== 'rejected') return;
+  // Only allow highlights when description is rejected
+  if (!dispositions[handle] || !dispositions[handle].sections || dispositions[handle].sections.description !== 'rejected') return;
 
   // Add highlight
   if (!dispositions[handle].highlights) dispositions[handle].highlights = [];
