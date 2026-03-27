@@ -58,3 +58,92 @@ class TestBackup:
         change = ProductChange(handle="my-product", product_id=1, title="T", vendor="V")
         path = create_backup(change, tmp_path)
         assert "my-product" in path.name
+
+
+import asyncio
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from lookout.apply.writer import apply_change
+from lookout.apply.models import ProductChange, ChangeStatus
+
+
+class TestWriter:
+    def test_apply_change_updates_status(self):
+        change = ProductChange(
+            handle="test", product_id=123, title="Test", vendor="V",
+            new_body_html="<p>New</p>",
+            current_body_html="<p>Old</p>",
+            status=ChangeStatus.APPROVED,
+        )
+
+        mock_api = AsyncMock()
+        mock_api.update_product = AsyncMock(return_value={
+            "product": {"id": "gid://shopify/Product/123"},
+            "userErrors": [],
+        })
+
+        result = asyncio.run(apply_change(change, mock_api, backup_dir=None))
+        assert result.status == ChangeStatus.APPLIED
+        assert result.applied_at is not None
+
+    def test_apply_change_with_user_errors_fails(self):
+        change = ProductChange(
+            handle="test", product_id=123, title="Test", vendor="V",
+            new_body_html="<p>Bad</p>",
+            status=ChangeStatus.APPROVED,
+        )
+
+        mock_api = AsyncMock()
+        mock_api.update_product = AsyncMock(return_value={
+            "product": None,
+            "userErrors": [{"field": ["bodyHtml"], "message": "too long"}],
+        })
+
+        result = asyncio.run(apply_change(change, mock_api, backup_dir=None))
+        assert result.status == ChangeStatus.FAILED
+        assert "too long" in result.error
+
+    def test_apply_skips_non_approved(self):
+        change = ProductChange(
+            handle="test", product_id=123, title="Test", vendor="V",
+            status=ChangeStatus.PENDING,
+        )
+        mock_api = AsyncMock()
+        result = asyncio.run(apply_change(change, mock_api, backup_dir=None))
+        assert result.status == ChangeStatus.PENDING
+        mock_api.update_product.assert_not_called()
+
+
+from lookout.apply.revert import revert_change
+
+
+class TestRevert:
+    def test_revert_restores_from_backup(self, tmp_path):
+        import json
+        backup_data = {
+            "handle": "test-product",
+            "product_id": 123,
+            "body_html": "<p>Original</p>",
+            "images": [],
+        }
+        backup_path = tmp_path / "test-product_20260326_120000.json"
+        backup_path.write_text(json.dumps(backup_data))
+
+        mock_api = AsyncMock()
+        mock_api.update_product = AsyncMock(return_value={
+            "product": {"id": "gid://shopify/Product/123"},
+            "userErrors": [],
+        })
+
+        result = asyncio.run(revert_change("test-product", tmp_path, mock_api))
+        assert result is True
+        mock_api.update_product.assert_called_once_with(
+            product_id=123,
+            body_html="<p>Original</p>",
+        )
+
+    def test_revert_no_backup_returns_false(self, tmp_path):
+        mock_api = AsyncMock()
+        result = asyncio.run(revert_change("nonexistent", tmp_path, mock_api))
+        assert result is False
+        mock_api.update_product.assert_not_called()
