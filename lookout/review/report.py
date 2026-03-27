@@ -5,44 +5,58 @@ from __future__ import annotations
 import html
 import json
 import logging
+import re
 from pathlib import Path
 
 from lookout.apply.models import ApplyRun
 
 logger = logging.getLogger(__name__)
 
-TEMPLATE_DIR = Path(__file__).parent / "templates"
+
+def _clean_description(raw: str) -> str:
+    """Clean scraper junk from descriptions for display."""
+    # Remove rating/review noise like "4.5(35)35 total reviews"
+    text = re.sub(r'\d+\.\d+\(\d+\)\d+\s*total reviews?', '', raw)
+    # Remove standalone rating patterns
+    text = re.sub(r'\b\d+\.\d+\s*out of \d+\s*stars?\b', '', text)
+    return text.strip()
 
 
 def generate_review_report(run: ApplyRun, output_path: Path) -> None:
-    """Generate an HTML review report showing diffs and images.
-
-    Flags empty proposals, shows image thumbnails, mobile-friendly layout.
-    """
+    """Generate an HTML review report with rendered descriptions, variant info, and images."""
     products_html = []
     for change in run.changes:
         has_description = bool(change.new_body_html and change.new_body_html.strip())
         has_images = bool(change.new_images)
 
-        # Skip products with nothing to review
         if not has_description and not has_images:
             continue
 
-        current_desc = html.escape(change.current_body_html or "")
-        proposed_desc = html.escape(change.new_body_html or "")
+        # Render HTML descriptions (don't escape — show the actual formatted output)
+        current_desc = _clean_description(change.current_body_html or "")
+        proposed_desc = _clean_description(change.new_body_html or "")
 
-        # Description section
         if has_description:
+            current_display = current_desc if current_desc else '<span class="empty-tag">No current description</span>'
             desc_html = _DESC_TEMPLATE.format(
-                current=current_desc if current_desc else '<span class="empty-tag">No current description</span>',
+                current=current_display,
                 proposed=proposed_desc,
             )
         else:
             desc_html = '<div class="no-change">No description changes proposed</div>'
 
+        # Variants section
+        if change.variant_labels:
+            pills = " ".join(
+                f'<span class="variant-pill">{html.escape(v)}</span>'
+                for v in change.variant_labels
+            )
+            variants_html = f'<div class="section"><h4 class="section-label">Variants ({len(change.variant_labels)})</h4><div class="variant-pills">{pills}</div></div>'
+        else:
+            variants_html = ""
+
         # Images section
         if has_images:
-            # Build image src lookup by position and URL
             img_by_src = {}
             thumbs = []
             for img in change.new_images[:12]:
@@ -55,7 +69,6 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
             extra = f'<div class="thumb more">+{remaining} more</div>' if remaining > 0 else ""
             current_img_count = len(change.current_images) if change.current_images else 0
 
-            # Variant assignment section
             vim = change.new_variant_image_map or {}
             assignments_html = ""
             if vim:
@@ -65,12 +78,8 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                         label = "All variants"
                     else:
                         label = html.escape(variant_key)
-                    # img_src can be a string or list
                     srcs = img_src if isinstance(img_src, list) else [img_src]
-                    pos_labels = []
-                    for s in srcs:
-                        pos = img_by_src.get(s, "?")
-                        pos_labels.append(f"#{pos}")
+                    pos_labels = [f"#{img_by_src.get(s, '?')}" for s in srcs]
                     rows.append(f'<div class="assignment"><span class="variant-name">{label}</span>'
                                 f'<span class="arrow">&rarr;</span>'
                                 f'<span class="assigned-imgs">{", ".join(pos_labels)}</span></div>')
@@ -85,14 +94,8 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
         else:
             images_html = ""
 
-        # Confidence badge color
         conf = change.confidence
-        if conf >= 80:
-            conf_class = "conf-high"
-        elif conf >= 60:
-            conf_class = "conf-med"
-        else:
-            conf_class = "conf-low"
+        conf_class = "conf-high" if conf >= 80 else ("conf-med" if conf >= 60 else "conf-low")
 
         products_html.append(
             _PRODUCT_TEMPLATE.format(
@@ -102,6 +105,7 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 confidence=conf,
                 conf_class=conf_class,
                 product_id=change.product_id,
+                variants_section=variants_html,
                 description_section=desc_html,
                 images_section=images_html,
                 has_description="true" if has_description else "false",
@@ -137,6 +141,7 @@ _PRODUCT_TEMPLATE = """
     </div>
   </div>
 
+  {variants_section}
   {description_section}
   {images_section}
 
@@ -146,24 +151,29 @@ _PRODUCT_TEMPLATE = """
       <button type="button" class="btn btn-reject" onclick="setDisposition(this, 'rejected')">Reject</button>
       <button type="button" class="btn btn-skip" onclick="setDisposition(this, 'skip')">Skip</button>
     </div>
-    <select class="rejection-reason" style="display:none" onchange="updateReason(this)">
-      <option value="">Reason...</option>
-      <optgroup label="Description">
-        <option value="hallucinated">Hallucinated facts</option>
-        <option value="bad_source_data">Bad source data (wrong page scraped)</option>
-        <option value="stale_source">Stale/outdated source</option>
-        <option value="bad_structure">Bad structure (formatting/flow)</option>
-        <option value="incomplete">Incomplete (missing specs/features)</option>
-        <option value="tone">Wrong tone</option>
-        <option value="typos">Typos/grammar errors</option>
-      </optgroup>
-      <optgroup label="Images">
-        <option value="wrong_image_match">Wrong image match (wrong color/style)</option>
-        <option value="missing_image">Missing images</option>
-        <option value="bad_image_quality">Bad image quality</option>
-      </optgroup>
-      <option value="other">Other</option>
-    </select>
+    <div class="reason-pills" style="display:none">
+      <div class="pill-group" data-label="Description">
+        <button type="button" class="pill" data-reason="hallucinated">Hallucinated</button>
+        <button type="button" class="pill" data-reason="bad_source_data">Bad source data</button>
+        <button type="button" class="pill" data-reason="stale_source">Stale/outdated</button>
+        <button type="button" class="pill" data-reason="bad_structure">Bad structure</button>
+        <button type="button" class="pill" data-reason="incomplete">Incomplete</button>
+        <button type="button" class="pill" data-reason="tone">Wrong tone</button>
+        <button type="button" class="pill" data-reason="typos">Typos/grammar</button>
+      </div>
+      <div class="pill-group" data-label="Images">
+        <button type="button" class="pill" data-reason="wrong_image_match">Wrong image match</button>
+        <button type="button" class="pill" data-reason="missing_image">Missing images</button>
+        <button type="button" class="pill" data-reason="bad_image_quality">Bad image quality</button>
+      </div>
+      <div class="pill-group" data-label="Other">
+        <button type="button" class="pill" data-reason="other">Other</button>
+      </div>
+    </div>
+    <div class="highlights-list" style="display:none">
+      <div class="highlights-label">Highlighted issues:</div>
+      <div class="highlights-items"></div>
+    </div>
   </div>
 </div>
 """
@@ -174,11 +184,11 @@ _DESC_TEMPLATE = """
   <div class="comparison">
     <div class="side current">
       <div class="side-label">Current</div>
-      <div class="content">{current}</div>
+      <div class="content rendered-html">{current}</div>
     </div>
     <div class="side proposed">
       <div class="side-label">Proposed</div>
-      <div class="content">{proposed}</div>
+      <div class="content rendered-html selectable-text">{proposed}</div>
     </div>
   </div>
 </div>
@@ -217,17 +227,14 @@ _TEMPLATE = """<!DOCTYPE html>
     margin-bottom: 16px; border: 1px solid #e0e0e0;
     font-size: 0.9em;
   }}
-  .summary strong {{ color: #333; }}
   .stat {{ display: inline-block; margin-right: 16px; }}
   .stat-val {{ font-weight: 600; }}
-
   .progress-bar {{
     height: 4px; background: #e0e0e0; border-radius: 2px;
     margin-top: 8px; overflow: hidden;
   }}
   .progress-fill {{ height: 100%; background: #4CAF50; transition: width 0.3s; }}
 
-  /* Product card */
   .product {{
     background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
     margin-bottom: 16px; overflow: hidden;
@@ -252,13 +259,19 @@ _TEMPLATE = """<!DOCTYPE html>
   .conf-med {{ background: #fff3e0; color: #e65100; }}
   .conf-low {{ background: #ffebee; color: #c62828; }}
 
-  /* Sections */
   .section {{ padding: 0 16px 12px; }}
   .section-label {{
     font-size: 0.8em; font-weight: 600; color: #666;
     margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;
   }}
   .img-count {{ font-weight: 400; text-transform: none; letter-spacing: 0; }}
+
+  /* Variant pills */
+  .variant-pills {{ display: flex; flex-wrap: wrap; gap: 4px; }}
+  .variant-pill {{
+    font-size: 0.75em; padding: 3px 8px; border-radius: 12px;
+    background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb;
+  }}
 
   /* Description comparison */
   .comparison {{ display: flex; flex-direction: column; gap: 8px; }}
@@ -272,12 +285,23 @@ _TEMPLATE = """<!DOCTYPE html>
   }}
   .current {{ background: #fafafa; }}
   .proposed {{ background: #f0faf0; }}
-  .content {{ white-space: pre-wrap; word-break: break-word; }}
-  .empty-tag {{
-    color: #999; font-style: italic;
+
+  /* Render HTML descriptions properly */
+  .rendered-html {{ word-break: break-word; }}
+  .rendered-html ul, .rendered-html ol {{ padding-left: 20px; margin: 4px 0; }}
+  .rendered-html li {{ margin: 2px 0; }}
+  .rendered-html p {{ margin: 4px 0; }}
+  .rendered-html h1, .rendered-html h2, .rendered-html h3, .rendered-html h4 {{
+    margin: 8px 0 4px; font-size: 1em;
   }}
-  .no-change {{
-    padding: 0 16px 12px; color: #999; font-style: italic; font-size: 0.85em;
+  .empty-tag {{ color: #999; font-style: italic; }}
+  .no-change {{ padding: 0 16px 12px; color: #999; font-style: italic; font-size: 0.85em; }}
+
+  /* Text selection highlighting */
+  .selectable-text ::selection {{ background: #ffcdd2; }}
+  .highlight-mark {{
+    background: #ffcdd2; border-radius: 2px; padding: 0 1px;
+    cursor: pointer;
   }}
 
   /* Image grid */
@@ -289,10 +313,7 @@ _TEMPLATE = """<!DOCTYPE html>
     position: relative; aspect-ratio: 1; border-radius: 6px;
     overflow: hidden; border: 1px solid #eee; background: #f5f5f5;
   }}
-  .thumb img {{
-    width: 100%; height: 100%; object-fit: cover;
-    display: block;
-  }}
+  .thumb img {{ width: 100%; height: 100%; object-fit: cover; display: block; }}
   .thumb .pos {{
     position: absolute; bottom: 2px; right: 4px;
     font-size: 0.65em; color: #fff; background: rgba(0,0,0,0.5);
@@ -314,8 +335,8 @@ _TEMPLATE = """<!DOCTYPE html>
     border-bottom: 1px solid #eee;
   }}
   .assignment:last-child {{ border-bottom: none; }}
-  .variant-name {{ font-weight: 600; color: #333; min-width: 0; flex-shrink: 1; }}
-  .arrow {{ color: #999; flex-shrink: 0; }}
+  .variant-name {{ font-weight: 600; color: #333; }}
+  .arrow {{ color: #999; }}
   .assigned-imgs {{ color: #666; font-family: monospace; font-size: 0.9em; }}
 
   /* Actions */
@@ -332,13 +353,42 @@ _TEMPLATE = """<!DOCTYPE html>
   .btn-reject.active {{ background: #ffebee; border-color: #f44336; color: #c62828; }}
   .btn-skip.active {{ background: #f5f5f5; border-color: #9e9e9e; color: #666; }}
 
-  .rejection-reason {{
-    display: block; width: 100%; margin-top: 8px; padding: 8px;
-    border: 1px solid #ddd; border-radius: 6px; font-size: 0.85em;
-    background: #fff;
+  /* Rejection reason pills */
+  .reason-pills {{ margin-top: 8px; }}
+  .pill-group {{
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px;
+  }}
+  .pill-group::before {{
+    content: attr(data-label);
+    display: block; width: 100%;
+    font-size: 0.65em; text-transform: uppercase; color: #999;
+    letter-spacing: 0.5px; margin-bottom: 2px;
+  }}
+  .pill {{
+    font-size: 0.8em; padding: 5px 12px; border-radius: 16px;
+    border: 1px solid #ddd; background: #fff; color: #666;
+    cursor: pointer; transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }}
+  .pill:active {{ transform: scale(0.95); }}
+  .pill.selected {{
+    background: #ffebee; border-color: #ef9a9a; color: #c62828;
   }}
 
-  /* Save button */
+  /* Highlights */
+  .highlights-list {{ margin-top: 8px; }}
+  .highlights-label {{ font-size: 0.7em; text-transform: uppercase; color: #999; margin-bottom: 4px; }}
+  .highlights-items {{ display: flex; flex-direction: column; gap: 4px; }}
+  .highlight-item {{
+    font-size: 0.8em; padding: 4px 8px; background: #fff5f5;
+    border-left: 3px solid #ef9a9a; border-radius: 0 4px 4px 0;
+    display: flex; justify-content: space-between; align-items: center;
+  }}
+  .highlight-item .remove {{
+    color: #999; cursor: pointer; font-size: 0.9em; padding: 0 4px;
+  }}
+
+  /* Save bar */
   #save-bar {{
     position: fixed; bottom: 0; left: 0; right: 0;
     background: #fff; border-top: 1px solid #e0e0e0;
@@ -349,16 +399,12 @@ _TEMPLATE = """<!DOCTYPE html>
     flex: 1; background: #4CAF50; color: white; border: none;
     padding: 14px; font-size: 1em; font-weight: 600;
     border-radius: 8px; cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
   }}
   #save-btn:active {{ background: #45a049; }}
   #save-btn.saved {{ background: #2196F3; }}
   #review-count {{ font-size: 0.85em; color: #666; white-space: nowrap; }}
-
-  /* Bottom padding for fixed save bar */
   .bottom-spacer {{ height: 80px; }}
 
-  /* Desktop: side-by-side descriptions */
   @media (min-width: 768px) {{
     body {{ max-width: 1000px; margin: 0 auto; padding: 20px; }}
     .comparison {{ flex-direction: row; }}
@@ -401,44 +447,116 @@ function setDisposition(btn, status) {{
   const product = btn.closest('.product');
   const handle = product.dataset.handle;
 
-  // Toggle off if clicking same button
   const wasActive = btn.classList.contains('active');
-  product.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+  product.querySelectorAll('.action-buttons .btn').forEach(b => b.classList.remove('active'));
   product.classList.remove('reviewed-approved', 'reviewed-rejected', 'reviewed-skip');
 
-  const reasonSelect = product.querySelector('.rejection-reason');
+  const reasonPills = product.querySelector('.reason-pills');
+  const highlightsList = product.querySelector('.highlights-list');
 
   if (wasActive) {{
     delete dispositions[handle];
-    reasonSelect.style.display = 'none';
+    reasonPills.style.display = 'none';
+    highlightsList.style.display = 'none';
   }} else {{
     btn.classList.add('active');
     product.classList.add('reviewed-' + status);
     if (status === 'skip') {{
       delete dispositions[handle];
+      reasonPills.style.display = 'none';
+      highlightsList.style.display = 'none';
     }} else {{
       dispositions[handle] = {{ status: status }};
       if (status === 'rejected') {{
-        reasonSelect.style.display = 'block';
-        const reason = reasonSelect.value;
-        if (reason) dispositions[handle].reason = reason;
+        reasonPills.style.display = 'block';
+        highlightsList.style.display = 'block';
+        // Restore any previously selected reasons
+        const existing = dispositions[handle].reasons || [];
+        product.querySelectorAll('.pill').forEach(p => {{
+          p.classList.toggle('selected', existing.includes(p.dataset.reason));
+        }});
       }} else {{
-        reasonSelect.style.display = 'none';
+        reasonPills.style.display = 'none';
+        highlightsList.style.display = 'none';
       }}
     }}
   }}
   updateProgress();
 }}
 
-function updateReason(select) {{
-  const handle = select.closest('.product').dataset.handle;
-  if (dispositions[handle]) {{
-    if (select.value) {{
-      dispositions[handle].reason = select.value;
+// Pill multi-select
+document.querySelectorAll('.pill').forEach(pill => {{
+  pill.addEventListener('click', function() {{
+    this.classList.toggle('selected');
+    const product = this.closest('.product');
+    const handle = product.dataset.handle;
+    if (!dispositions[handle]) return;
+
+    const selected = [...product.querySelectorAll('.pill.selected')].map(p => p.dataset.reason);
+    if (selected.length > 0) {{
+      dispositions[handle].reasons = selected;
     }} else {{
-      delete dispositions[handle].reason;
+      delete dispositions[handle].reasons;
     }}
+  }});
+}});
+
+// Text highlight on selection in proposed descriptions
+document.addEventListener('mouseup', handleTextSelect);
+document.addEventListener('touchend', handleTextSelect);
+
+function handleTextSelect() {{
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.toString().trim()) return;
+
+  const proposed = sel.anchorNode?.parentElement?.closest('.selectable-text');
+  if (!proposed) return;
+
+  const text = sel.toString().trim();
+  if (text.length < 3) return;
+
+  const product = proposed.closest('.product');
+  const handle = product.dataset.handle;
+
+  // Only allow highlights when rejected
+  if (!dispositions[handle] || dispositions[handle].status !== 'rejected') return;
+
+  // Add highlight
+  if (!dispositions[handle].highlights) dispositions[handle].highlights = [];
+  if (!dispositions[handle].highlights.includes(text)) {{
+    dispositions[handle].highlights.push(text);
   }}
+
+  // Wrap selected text in highlight mark
+  try {{
+    const range = sel.getRangeAt(0);
+    const mark = document.createElement('mark');
+    mark.className = 'highlight-mark';
+    range.surroundContents(mark);
+  }} catch(e) {{ /* cross-element selection */ }}
+
+  sel.removeAllRanges();
+  renderHighlights(product, handle);
+}}
+
+function renderHighlights(product, handle) {{
+  const container = product.querySelector('.highlights-items');
+  const highlights = (dispositions[handle] && dispositions[handle].highlights) || [];
+  container.innerHTML = highlights.map((h, i) =>
+    `<div class="highlight-item">
+      <span>"${{h.length > 50 ? h.slice(0, 50) + '...' : h}}"</span>
+      <span class="remove" onclick="removeHighlight('${{handle}}', ${{i}}, this)">&times;</span>
+    </div>`
+  ).join('');
+}}
+
+function removeHighlight(handle, index, el) {{
+  if (dispositions[handle] && dispositions[handle].highlights) {{
+    dispositions[handle].highlights.splice(index, 1);
+    if (dispositions[handle].highlights.length === 0) delete dispositions[handle].highlights;
+  }}
+  const product = el.closest('.product');
+  renderHighlights(product, handle);
 }}
 
 function saveDispositions() {{

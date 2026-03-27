@@ -42,6 +42,9 @@ class ProductChange:
     edited_body_html: str | None = None
     confidence: int = 0
 
+    # Display metadata (not persisted)
+    variant_labels: list[str] = field(default_factory=list)  # e.g. ["Stealth Black / M", "Lime Green / L"]
+
     # Apply tracking
     applied_at: str | None = None
     reverted_at: str | None = None
