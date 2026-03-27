@@ -208,35 +208,35 @@ def audit_snapshot(online, gmc, lookback, out, include_house_brands, verbose):
 
 @cli.command("audit-optimize")
 @click.option("--snapshot", "-s", required=True, type=click.Path(exists=True, path_type=Path), help="Snapshot JSON from audit-snapshot")
-@click.option("--ranking", "-r", required=True, type=click.Path(exists=True, path_type=Path), help="Expert ranking file (one handle per line)")
+@click.option("--top-n", default=50, help="Top-N products to optimize for (default 50)")
 @click.option("--log-dir", "-l", default=Path("./audit_optimize_log"), type=click.Path(path_type=Path), help="Directory for optimization logs")
 @click.option("--max-iterations", "-n", default=200, help="Max iterations per restart")
 @click.option("--verbose", is_flag=True)
-def audit_optimize(snapshot, ranking, log_dir, max_iterations, verbose):
-    """Optimize audit priority weights against an expert ranking."""
+def audit_optimize(snapshot, top_n, log_dir, max_iterations, verbose):
+    """Optimize audit priority weights for coverage efficiency.
+
+    Tunes weights to maximize how well the top-N products cover:
+    variant leverage, vendor clustering, inventory value, and online traffic.
+    No manual ranking needed — the metric is computed from the data.
+    """
     setup_logging(verbose)
     from lookout.audit.weight_config import PriorityWeights
-    from lookout.audit.weight_optimizer import (
-        load_expert_ranking,
-        load_snapshot,
-        run_weight_optimization,
-    )
+    from lookout.audit.weight_optimizer import load_snapshot, run_weight_optimization
 
     scores = load_snapshot(Path(snapshot))
-    expert_handles = load_expert_ranking(Path(ranking))
 
     console.print(Panel(
         f"[bold]Audit Weight Optimization[/bold]\n"
         f"Snapshot: {snapshot} ({len(scores)} products)\n"
-        f"Expert ranking: {ranking} ({len(expert_handles)} handles)\n"
+        f"Optimizing top-{top_n} coverage efficiency\n"
         f"Max iterations: {max_iterations}",
         title="Optimize",
     ))
 
     result = run_weight_optimization(
         scores=scores,
-        expert_handles=expert_handles,
         log_dir=Path(log_dir),
+        top_n=top_n,
         max_iterations=max_iterations,
     )
 
@@ -262,15 +262,30 @@ def audit_optimize(snapshot, ranking, log_dir, max_iterations, verbose):
             table.add_row(key, str(d_val), str(b_val), changed)
 
     console.print(table)
-    console.print(
-        f"\n[bold]Baseline Spearman:[/bold] {result['baseline_correlation']:.4f}"
-    )
-    console.print(
-        f"[bold]Best Spearman:[/bold] {result['best_correlation']:.4f}"
-    )
-    console.print(
-        f"[bold]Improvement:[/bold] {result['best_correlation'] - result['baseline_correlation']:+.4f}"
-    )
+
+    # Coverage breakdown comparison
+    bl = result["baseline_breakdown"]
+    bt = result["best_breakdown"]
+
+    btable = Table(title="Coverage Efficiency Breakdown")
+    btable.add_column("Component", style="cyan")
+    btable.add_column("Baseline", justify="right")
+    btable.add_column("Optimized", justify="right", style="green")
+
+    btable.add_row("Variant leverage (0.30)", f"{bl['variant_leverage']:.1%}", f"{bt['variant_leverage']:.1%}")
+    btable.add_row("Vendor concentration (0.20)", f"{bl['vendor_concentration']:.1%}", f"{bt['vendor_concentration']:.1%}")
+    btable.add_row("Inventory coverage (0.25)", f"{bl['inventory_coverage']:.1%}", f"{bt['inventory_coverage']:.1%}")
+    btable.add_row("Traffic alignment (0.25)", f"{bl['traffic_alignment']:.1%}", f"{bt['traffic_alignment']:.1%}")
+    btable.add_row("[bold]Composite[/bold]", f"[bold]{bl['composite']:.1%}[/bold]", f"[bold green]{bt['composite']:.1%}[/bold green]")
+
+    console.print(btable)
+
+    if bt.get("top_vendors"):
+        console.print(f"\n[bold]Top vendors in optimized batch:[/bold]")
+        for vendor, count in bt["top_vendors"]:
+            console.print(f"  {vendor}: {count} products")
+
+    console.print(f"\n[bold]Improvement:[/bold] {result['best_efficiency'] - result['baseline_efficiency']:+.4f}")
     console.print(f"[bold]Logs:[/bold] {log_dir}")
 
 

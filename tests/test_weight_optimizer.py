@@ -12,9 +12,8 @@ from lookout.audit.models import ProductScore
 from lookout.audit.priority_fn import compute_priority, rank_scores
 from lookout.audit.weight_config import BOUNDS, PriorityWeights, _CONTINUOUS_PARAMS
 from lookout.audit.weight_optimizer import (
-    _spearman,
-    compute_spearman,
-    load_expert_ranking,
+    coverage_efficiency,
+    coverage_efficiency_breakdown,
     load_snapshot,
     save_snapshot,
 )
@@ -215,81 +214,74 @@ class TestRankScores:
 # ---------------------------------------------------------------------------
 
 
-class TestSpearman:
-    def test_perfect_correlation(self):
-        assert _spearman([1, 2, 3, 4], [1, 2, 3, 4]) == pytest.approx(1.0)
-
-    def test_perfect_negative_correlation(self):
-        assert _spearman([1, 2, 3, 4], [4, 3, 2, 1]) == pytest.approx(-1.0)
-
-    def test_zero_correlation(self):
-        # [1,2,3,4,5] vs [3,5,1,4,2] has known Spearman
-        r = _spearman([1, 2, 3, 4, 5], [3, 5, 1, 4, 2])
-        assert -1.0 <= r <= 1.0
-
-    def test_single_element_returns_zero(self):
-        assert _spearman([1], [1]) == 0.0
-
-    def test_empty_returns_zero(self):
-        assert _spearman([], []) == 0.0
-
-
-class TestComputeSpearman:
-    def test_perfect_match(self):
-        """If formula ranking matches expert ranking, correlation = 1.0."""
-        # Products with decreasing inventory value -> decreasing priority
+class TestCoverageEfficiency:
+    def test_returns_between_zero_and_one(self):
         scores = [
-            _make_score(handle="a", has_product_image=False, inventory_value=300.0),
-            _make_score(handle="b", has_product_image=False, inventory_value=200.0),
-            _make_score(handle="c", has_product_image=False, inventory_value=100.0),
+            _make_score(handle="a", has_product_image=False, inventory_value=500.0,
+                        variant_count=10, variants_missing_images=8),
+            _make_score(handle="b", has_product_image=False, inventory_value=300.0,
+                        variant_count=5, variants_missing_images=3),
+            _make_score(handle="c", has_description=False, inventory_value=100.0),
         ]
-        expert = ["a", "b", "c"]
-        corr = compute_spearman(scores, PriorityWeights(), expert)
-        assert corr == pytest.approx(1.0)
+        eff = coverage_efficiency(scores, PriorityWeights(), top_n=2)
+        assert 0.0 <= eff <= 1.0
 
-    def test_reverse_ranking(self):
+    def test_no_gap_products_returns_zero(self):
+        scores = [_make_score(handle="perfect", inventory_value=9999.0)]
+        assert coverage_efficiency(scores, PriorityWeights()) == 0.0
+
+    def test_high_variant_leverage_preferred(self):
+        """Weights that prioritize products with many missing variants should score higher on variant leverage."""
         scores = [
-            _make_score(handle="a", has_product_image=False, inventory_value=300.0),
-            _make_score(handle="b", has_product_image=False, inventory_value=200.0),
-            _make_score(handle="c", has_product_image=False, inventory_value=100.0),
+            _make_score(handle="many-variants", has_product_image=False,
+                        variant_count=20, variants_missing_images=18,
+                        inventory_value=100.0, vendor="VendorA"),
+            _make_score(handle="few-variants", has_product_image=False,
+                        variant_count=2, variants_missing_images=1,
+                        inventory_value=500.0, vendor="VendorB"),
         ]
-        expert = ["c", "b", "a"]
-        corr = compute_spearman(scores, PriorityWeights(), expert)
-        assert corr == pytest.approx(-1.0)
+        # High gap_variant_images weight should favor the many-variants product
+        high_vi = PriorityWeights(gap_variant_images=3.0, gap_image=0.1)
+        low_vi = PriorityWeights(gap_variant_images=0.1, gap_image=3.0)
 
-    def test_no_overlap_returns_zero(self):
+        bd_high = coverage_efficiency_breakdown(scores, high_vi, top_n=1)
+        bd_low = coverage_efficiency_breakdown(scores, low_vi, top_n=1)
+
+        assert bd_high["variant_leverage"] >= bd_low["variant_leverage"]
+
+    def test_vendor_concentration_rewards_clustering(self):
+        """Products from the same vendor should improve vendor concentration."""
+        scores = [
+            _make_score(handle="a", has_product_image=False, inventory_value=300.0, vendor="Patagonia"),
+            _make_score(handle="b", has_product_image=False, inventory_value=200.0, vendor="Patagonia"),
+            _make_score(handle="c", has_product_image=False, inventory_value=100.0, vendor="Other"),
+        ]
+        bd = coverage_efficiency_breakdown(scores, PriorityWeights(), top_n=2)
+        # Top 2 by inventory should be a and b (both Patagonia), concentration = 1 - 1/2 = 0.5
+        assert bd["vendor_concentration"] == pytest.approx(0.5)
+
+    def test_traffic_alignment(self):
+        """Products with online sessions should score on traffic alignment."""
+        scores = [
+            _make_score(handle="traffic", has_product_image=False,
+                        inventory_value=100.0, online_sessions=200, gmc_impressions=500),
+            _make_score(handle="no-traffic", has_product_image=False,
+                        inventory_value=100.0, online_sessions=0, gmc_impressions=0),
+        ]
+        bd = coverage_efficiency_breakdown(scores, PriorityWeights(), top_n=2)
+        # Total traffic = 700, all from one product, so alignment > 0
+        assert bd["traffic_alignment"] > 0.0
+
+    def test_breakdown_keys(self):
         scores = [
             _make_score(handle="a", has_product_image=False, inventory_value=100.0),
         ]
-        expert = ["x", "y", "z"]
-        corr = compute_spearman(scores, PriorityWeights(), expert)
-        assert corr == 0.0
-
-
-# ---------------------------------------------------------------------------
-# load_expert_ranking
-# ---------------------------------------------------------------------------
-
-
-class TestLoadExpertRanking:
-    def test_handles_comments_and_blanks(self, tmp_path):
-        ranking_file = tmp_path / "ranking.txt"
-        ranking_file.write_text(
-            "# This is a comment\n"
-            "product-a\n"
-            "\n"
-            "# Another comment\n"
-            "product-b\n"
-            "product-c\n"
-            "\n"
-        )
-        result = load_expert_ranking(ranking_file)
-        assert result == ["product-a", "product-b", "product-c"]
-
-    def test_empty_file(self, tmp_path):
-        ranking_file = tmp_path / "empty.txt"
-        ranking_file.write_text("")
-        assert load_expert_ranking(ranking_file) == []
+        bd = coverage_efficiency_breakdown(scores, PriorityWeights(), top_n=1)
+        assert "variant_leverage" in bd
+        assert "vendor_concentration" in bd
+        assert "inventory_coverage" in bd
+        assert "traffic_alignment" in bd
+        assert "composite" in bd
 
 
 # ---------------------------------------------------------------------------
