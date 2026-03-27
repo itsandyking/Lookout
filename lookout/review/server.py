@@ -58,23 +58,42 @@ class ReviewHandler(SimpleHTTPRequestHandler):
         logger.debug(format, *args)
 
 
-def get_local_ip() -> str:
-    """Get the machine's LAN IP for display."""
+def get_network_ips() -> dict[str, str]:
+    """Get available network IPs for display."""
+    import subprocess
+
+    ips = {}
+
+    # LAN IP
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        ip = s.getsockname()[0]
+        ips["LAN"] = s.getsockname()[0]
         s.close()
-        return ip
     except Exception:
-        return "localhost"
+        pass
+
+    # Tailscale IP
+    try:
+        result = subprocess.run(
+            ["tailscale", "ip", "-4"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            ts_ip = result.stdout.strip().split("\n")[0]
+            if ts_ip:
+                ips["Tailscale"] = ts_ip
+    except Exception:
+        pass
+
+    return ips or {"Local": "localhost"}
 
 
 def serve_review(review_html: Path, dispositions_path: Path, port: int = 8787) -> None:
     """Start a local HTTP server for the review report.
 
     Serves the HTML on all interfaces so it's accessible from phones
-    on the same network. Dispositions are saved via POST.
+    on the same network or over Tailscale. Dispositions are saved via POST.
     """
     handler = partial(
         ReviewHandler,
@@ -82,11 +101,12 @@ def serve_review(review_html: Path, dispositions_path: Path, port: int = 8787) -
         dispositions_path=dispositions_path,
     )
     server = HTTPServer(("0.0.0.0", port), handler)
-    local_ip = get_local_ip()
+    ips = get_network_ips()
 
     logger.info("Review server started")
-    print(f"\n  Local:   http://localhost:{port}")
-    print(f"  Network: http://{local_ip}:{port}")
+    print(f"\n  Local:     http://localhost:{port}")
+    for label, ip in ips.items():
+        print(f"  {label + ':':10s} http://{ip}:{port}")
     print(f"\n  Open on your phone or any device on the same network.")
     print(f"  Dispositions will save to: {dispositions_path}")
     print(f"  Press Ctrl+C to stop.\n")
