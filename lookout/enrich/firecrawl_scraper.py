@@ -234,13 +234,28 @@ class FirecrawlScraper:
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type((ConnectionError, TimeoutError)),
     )
-    async def scrape_markdown(self, url: str) -> str | None:
-        """Markdown mode — returns clean markdown text.
+    async def scrape_markdown(
+        self,
+        url: str,
+        swatch_selector: str | None = None,
+        gallery_selector: str | None = None,
+        wait_after_click: int | None = None,
+    ) -> tuple[str | None, dict[str, list[str]] | None]:
+        """Markdown mode — returns (markdown, variant_images).
 
-        Uses only_main_content and exclude_tags to strip navigation,
-        footers, sidebars, and other non-product content.
+        When swatch params are provided, calls the Firecrawl API directly
+        (bypassing the SDK) to get variant_images alongside markdown.
+        The SDK's Document model drops unknown fields, so we need the raw response.
         """
         await self._polite_delay()
+        has_swatch_params = bool(swatch_selector or gallery_selector)
+
+        if has_swatch_params:
+            return await self._scrape_markdown_with_swatches(
+                url, swatch_selector, gallery_selector, wait_after_click
+            )
+
+        # Standard path via SDK (no swatch extraction)
         try:
             doc = await self._client.scrape(
                 url,
@@ -256,10 +271,69 @@ class FirecrawlScraper:
                     ".announcement-bar",
                 ],
             )
-            return doc.markdown
+            return doc.markdown, None
         except Exception:
             logger.exception("Firecrawl markdown scrape failed for %s", url)
-            return None
+            return None, None
+
+    async def _scrape_markdown_with_swatches(
+        self,
+        url: str,
+        swatch_selector: str | None = None,
+        gallery_selector: str | None = None,
+        wait_after_click: int | None = None,
+    ) -> tuple[str | None, dict[str, list[str]] | None]:
+        """Call Firecrawl API directly to get markdown + variant images.
+
+        Bypasses the SDK because its Document model drops unknown fields.
+        """
+        import httpx
+
+        api_url = self._client.api_url.rstrip("/")
+        payload: dict = {
+            "url": url,
+            "formats": ["markdown"],
+            "onlyMainContent": True,
+            "excludeTags": [
+                "nav", "footer", "header",
+                "[role='navigation']",
+                "[role='banner']",
+                "[role='contentinfo']",
+                ".site-footer", ".site-header", ".site-nav",
+                "#cookie-banner", ".cookie-notice",
+                ".announcement-bar",
+            ],
+        }
+        if swatch_selector:
+            payload["swatchSelector"] = swatch_selector
+        if gallery_selector:
+            payload["gallerySelector"] = gallery_selector
+        if wait_after_click:
+            payload["waitAfterClick"] = wait_after_click
+
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    f"{api_url}/v1/scrape",
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            doc_data = data.get("data", data)
+            markdown = doc_data.get("markdown")
+            variant_images = doc_data.get("variantImages")
+
+            if variant_images:
+                logger.info(
+                    "Firecrawl returned variant images for %d colors from %s",
+                    len(variant_images), url,
+                )
+
+            return markdown, variant_images
+        except Exception:
+            logger.exception("Firecrawl markdown+swatch scrape failed for %s", url)
+            return None, None
 
     async def scrape_variant_images(
         self,

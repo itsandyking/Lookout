@@ -412,6 +412,8 @@ class ProductProcessor:
             else:
                 shopify_succeeded = False
 
+            firecrawl_variant_images = None  # Set by Firecrawl scrape if swatch params present
+
             if not shopify_succeeded:
                 # Step 1: Resolve URL (use all available barcodes/SKUs)
                 # Pick the best barcode and SKU for search (try all, use first match)
@@ -476,7 +478,12 @@ class ProductProcessor:
                     )
                 )
 
-                markdown = await self.firecrawl.scrape_markdown(scrape_url)
+                markdown, firecrawl_variant_images = await self.firecrawl.scrape_markdown(
+                    scrape_url,
+                    swatch_selector=vendor_config.swatch_selector,
+                    gallery_selector=vendor_config.gallery_selector,
+                    wait_after_click=1500 if (vendor_config.swatch_selector or vendor_config.gallery_selector) else None,
+                )
 
                 # Check for bot block — try fallback domains if available
                 if not markdown or is_bot_blocked(markdown):
@@ -512,7 +519,7 @@ class ProductProcessor:
                         )
 
                         if fallback_output and fallback_output.selected_url:
-                            fallback_md = await self.firecrawl.scrape_markdown(
+                            fallback_md, _ = await self.firecrawl.scrape_markdown(
                                 fallback_output.selected_url
                             )
                             if fallback_md and not is_bot_blocked(fallback_md):
@@ -583,6 +590,19 @@ class ProductProcessor:
                         f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
                     )
 
+            # Step 3b2: Inject variant images from Firecrawl swatch extraction
+            if firecrawl_variant_images and not facts.variant_image_candidates:
+                facts.variant_image_candidates = {
+                    color: urls if isinstance(urls, list) else [urls]
+                    for color, urls in firecrawl_variant_images.items()
+                }
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Firecrawl swatch extraction found images for {len(firecrawl_variant_images)} colors",
+                        data={"colors": list(firecrawl_variant_images.keys())},
+                    )
+                )
+
             # Step 3c: Inject catalog images from TVR variant data
             from .colors import deduplicate_color_images, find_matching_color
 
@@ -631,11 +651,13 @@ class ProductProcessor:
                     )
                 )
 
-            # Step 3d: Swatch-based variant image extraction
-            # Only for non-Shopify vendors when HTML extraction found nothing
+            # Step 3d: Standalone swatch scrape fallback
+            # Only if Firecrawl's integrated extraction didn't find anything
+            # and vendor has explicit selectors configured
             if (
                 not vendor_config.is_shopify
                 and not facts.variant_image_candidates
+                and (vendor_config.swatch_selector or vendor_config.gallery_selector)
             ):
                 handle_log.entries.append(
                     LogEntry(message="Attempting swatch scrape for variant images")
