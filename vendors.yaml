@@ -211,6 +211,8 @@ vendors:
   # Template for adding new vendors
   # VendorName:
   #   domain: "vendor-domain.com"
+  #   swatch_selector: ".custom-color-swatch"  # optional, for variant image extraction
+  #   gallery_selector: ".product-gallery img"  # optional, for variant image extraction
   #   blocked_paths:
   #     - "/blog"
   #     - "/support"

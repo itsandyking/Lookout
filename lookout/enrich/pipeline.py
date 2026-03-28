@@ -642,8 +642,8 @@ class ProductProcessor:
                 )
                 swatch_images = await self.firecrawl.scrape_variant_images(
                     url=scrape_url,
-                    swatch_selector=getattr(vendor_config, 'swatch_selector', None),
-                    gallery_selector=getattr(vendor_config, 'gallery_selector', None),
+                    swatch_selector=vendor_config.swatch_selector,
+                    gallery_selector=vendor_config.gallery_selector,
                 )
                 if swatch_images:
                     facts.variant_image_candidates = swatch_images

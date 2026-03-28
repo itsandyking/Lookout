@@ -185,6 +185,8 @@ class VendorConfig(BaseModel):
     blocked_paths: list[str] = Field(default_factory=list)
     product_url_patterns: list[str] = Field(default_factory=list)
     search: SearchConfig = Field(default_factory=SearchConfig)
+    swatch_selector: str | None = None
+    gallery_selector: str | None = None
 
 
 class ConfidenceSettings(BaseModel):
