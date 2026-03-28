@@ -91,6 +91,7 @@ vendors:
 
   "Smith Optics":
     domain: "smithoptics.com"
+    is_shopify: true
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -136,6 +137,7 @@ vendors:
 
   "Black Crows":
     domain: "black-crows.com"
+    is_shopify: true
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -149,6 +151,7 @@ vendors:
 
   Faction:
     domain: "factionskis.com"
+    is_shopify: true
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -191,6 +194,7 @@ vendors:
 
   "Jones Snowboards":
     domain: "jonessnowboards.com"
+    is_shopify: true
     blocked_paths:
       - "/blog"
       - "/stories"

@@ -366,168 +366,214 @@ class ProductProcessor:
                 await self.generator.save_output(merch_output, artifacts_dir)
                 return merch_output, ProcessingStatus.UPDATED, metadata
 
-            # Step 1: Resolve URL (use all available barcodes/SKUs)
-            # Pick the best barcode and SKU for search (try all, use first match)
-            search_barcode = input_row.barcode
-            search_sku = input_row.sku
-            # If we have variant data, try all barcodes/SKUs for better matching
-            all_barcodes = input_row.all_barcodes
-            all_skus = input_row.all_skus
-            if all_barcodes:
-                search_barcode = all_barcodes[0]  # Primary, but resolver will try title too
-            if all_skus:
-                search_sku = all_skus[0]
+            # Step 0: Try Shopify JSON API (fastest path, no browser needed)
+            if vendor_config.is_shopify:
+                from .shopify_scraper import scrape_shopify_product
 
-            handle_log.entries.append(
-                LogEntry(
-                    message="Resolving product URL",
-                    data={
-                        "barcodes": len(all_barcodes),
-                        "skus": len(all_skus),
-                        "known_colors": known_colors[:5] if known_colors else [],
-                    },
-                )
-            )
-            resolver_output = await self.resolver.resolve(
-                handle=handle,
-                vendor=vendor,
-                vendor_config=vendor_config,
-                hints=input_row.gaps or input_row.suggestions or "",
-                title=input_row.title,
-                barcode=search_barcode,
-                sku=search_sku,
-            )
-
-            # Save resolver output
-            await self.resolver.save_output(resolver_output, artifacts_dir)
-
-            metadata["confidence"] = resolver_output.selected_confidence
-            metadata["warnings"].extend(resolver_output.warnings)
-
-            # Check confidence threshold
-            confidence_settings = self.vendors_config.settings.confidence
-            if resolver_output.selected_confidence < confidence_settings.reject_threshold:
                 handle_log.entries.append(
-                    LogEntry(
-                        level="WARNING",
-                        message=f"URL confidence too low: {resolver_output.selected_confidence}",
-                    )
-                )
-                return None, ProcessingStatus.NO_MATCH, metadata
-
-            if not resolver_output.selected_url:
-                handle_log.entries.append(LogEntry(level="WARNING", message="No URL found"))
-                return None, ProcessingStatus.NO_MATCH, metadata
-
-            # Step 2: Scrape page via Firecrawl (markdown mode)
-            from .firecrawl_scraper import is_bot_blocked
-
-            scrape_url = resolver_output.selected_url
-            handle_log.entries.append(
-                LogEntry(
-                    message=f"Scraping via Firecrawl: {scrape_url}",
-                )
-            )
-
-            markdown = await self.firecrawl.scrape_markdown(scrape_url)
-
-            # Check for bot block — try fallback domains if available
-            if not markdown or is_bot_blocked(markdown):
-                block_reason = "bot blocked" if markdown else "no content"
-                handle_log.entries.append(
-                    LogEntry(
-                        level="WARNING",
-                        message=f"Primary scrape {block_reason}: {scrape_url}",
-                    )
+                    LogEntry(message=f"Trying Shopify JSON API on {vendor_config.domain}")
                 )
 
-                fallback_domains = vendor_config.fallback_domains
-                fallback_success = False
+                shopify_facts = await scrape_shopify_product(
+                    domain=vendor_config.domain,
+                    handle=handle,
+                    http_client=self.http_client,
+                )
 
-                for fallback_domain in fallback_domains:
+                if shopify_facts and shopify_facts.product_name:
                     handle_log.entries.append(
                         LogEntry(
-                            message=f"Trying fallback domain: {fallback_domain}",
+                            message=f"Shopify JSON succeeded: {shopify_facts.product_name}",
+                            data={"images": len(shopify_facts.images)},
                         )
                     )
-                    # Re-resolve the product on the fallback domain
-                    fallback_resolver = URLResolver(http_client=self.http_client)
-                    fallback_vendor = VendorConfig(
-                        domain=fallback_domain,
-                        search=vendor_config.search,
-                    )
-                    fallback_output = await fallback_resolver.resolve(
-                        handle=handle,
-                        vendor=vendor,
-                        vendor_config=fallback_vendor,
-                        hints=input_row.gaps or input_row.suggestions or "",
-                        title=input_row.title,
-                    )
+                    facts = shopify_facts
+                    metadata["confidence"] = 100  # Direct API match
+                    metadata["source"] = "shopify_json"
 
-                    if fallback_output and fallback_output.selected_url:
-                        fallback_md = await self.firecrawl.scrape_markdown(
-                            fallback_output.selected_url
+                    # Save extraction outputs
+                    facts_path = artifacts_dir / "extracted_facts.json"
+                    facts_path.parent.mkdir(parents=True, exist_ok=True)
+                    facts_path.write_text(facts.model_dump_json(indent=2))
+
+                    # Skip directly to Step 3b (quality check)
+                    # We need to jump past the resolve + scrape + extract steps
+                    # Use a flag to skip those steps
+                    shopify_succeeded = True
+                else:
+                    handle_log.entries.append(
+                        LogEntry(
+                            level="WARNING",
+                            message="Shopify JSON failed, falling through to resolver",
                         )
-                        if fallback_md and not is_bot_blocked(fallback_md):
-                            markdown = fallback_md
-                            scrape_url = fallback_output.selected_url
-                            fallback_success = True
-                            handle_log.entries.append(
-                                LogEntry(
-                                    message=f"Fallback succeeded: {scrape_url}",
-                                )
-                            )
-                            metadata["warnings"].append(
-                                f"FALLBACK_USED: {fallback_domain}"
-                            )
-                            break
-                        else:
-                            handle_log.entries.append(
-                                LogEntry(
-                                    level="WARNING",
-                                    message=f"Fallback {fallback_domain} also blocked",
-                                )
-                            )
+                    )
+                    shopify_succeeded = False
+            else:
+                shopify_succeeded = False
 
-                if not fallback_success:
+            if not shopify_succeeded:
+                # Step 1: Resolve URL (use all available barcodes/SKUs)
+                # Pick the best barcode and SKU for search (try all, use first match)
+                search_barcode = input_row.barcode
+                search_sku = input_row.sku
+                # If we have variant data, try all barcodes/SKUs for better matching
+                all_barcodes = input_row.all_barcodes
+                all_skus = input_row.all_skus
+                if all_barcodes:
+                    search_barcode = all_barcodes[0]  # Primary, but resolver will try title too
+                if all_skus:
+                    search_sku = all_skus[0]
+
+                handle_log.entries.append(
+                    LogEntry(
+                        message="Resolving product URL",
+                        data={
+                            "barcodes": len(all_barcodes),
+                            "skus": len(all_skus),
+                            "known_colors": known_colors[:5] if known_colors else [],
+                        },
+                    )
+                )
+                resolver_output = await self.resolver.resolve(
+                    handle=handle,
+                    vendor=vendor,
+                    vendor_config=vendor_config,
+                    hints=input_row.gaps or input_row.suggestions or "",
+                    title=input_row.title,
+                    barcode=search_barcode,
+                    sku=search_sku,
+                )
+
+                # Save resolver output
+                await self.resolver.save_output(resolver_output, artifacts_dir)
+
+                metadata["confidence"] = resolver_output.selected_confidence
+                metadata["warnings"].extend(resolver_output.warnings)
+
+                # Check confidence threshold
+                confidence_settings = self.vendors_config.settings.confidence
+                if resolver_output.selected_confidence < confidence_settings.reject_threshold:
+                    handle_log.entries.append(
+                        LogEntry(
+                            level="WARNING",
+                            message=f"URL confidence too low: {resolver_output.selected_confidence}",
+                        )
+                    )
+                    return None, ProcessingStatus.NO_MATCH, metadata
+
+                if not resolver_output.selected_url:
+                    handle_log.entries.append(LogEntry(level="WARNING", message="No URL found"))
+                    return None, ProcessingStatus.NO_MATCH, metadata
+
+                # Step 2: Scrape page via Firecrawl (markdown mode)
+                from .firecrawl_scraper import is_bot_blocked
+
+                scrape_url = resolver_output.selected_url
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Scraping via Firecrawl: {scrape_url}",
+                    )
+                )
+
+                markdown = await self.firecrawl.scrape_markdown(scrape_url)
+
+                # Check for bot block — try fallback domains if available
+                if not markdown or is_bot_blocked(markdown):
+                    block_reason = "bot blocked" if markdown else "no content"
+                    handle_log.entries.append(
+                        LogEntry(
+                            level="WARNING",
+                            message=f"Primary scrape {block_reason}: {scrape_url}",
+                        )
+                    )
+
+                    fallback_domains = vendor_config.fallback_domains
+                    fallback_success = False
+
+                    for fallback_domain in fallback_domains:
+                        handle_log.entries.append(
+                            LogEntry(
+                                message=f"Trying fallback domain: {fallback_domain}",
+                            )
+                        )
+                        # Re-resolve the product on the fallback domain
+                        fallback_resolver = URLResolver(http_client=self.http_client)
+                        fallback_vendor = VendorConfig(
+                            domain=fallback_domain,
+                            search=vendor_config.search,
+                        )
+                        fallback_output = await fallback_resolver.resolve(
+                            handle=handle,
+                            vendor=vendor,
+                            vendor_config=fallback_vendor,
+                            hints=input_row.gaps or input_row.suggestions or "",
+                            title=input_row.title,
+                        )
+
+                        if fallback_output and fallback_output.selected_url:
+                            fallback_md = await self.firecrawl.scrape_markdown(
+                                fallback_output.selected_url
+                            )
+                            if fallback_md and not is_bot_blocked(fallback_md):
+                                markdown = fallback_md
+                                scrape_url = fallback_output.selected_url
+                                fallback_success = True
+                                handle_log.entries.append(
+                                    LogEntry(
+                                        message=f"Fallback succeeded: {scrape_url}",
+                                    )
+                                )
+                                metadata["warnings"].append(
+                                    f"FALLBACK_USED: {fallback_domain}"
+                                )
+                                break
+                            else:
+                                handle_log.entries.append(
+                                    LogEntry(
+                                        level="WARNING",
+                                        message=f"Fallback {fallback_domain} also blocked",
+                                    )
+                                )
+
+                    if not fallback_success:
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="ERROR",
+                                message="All scrape sources blocked or failed",
+                            )
+                        )
+                        metadata["error"] = "Scrape blocked (primary + fallbacks)"
+                        return None, ProcessingStatus.FAILED, metadata
+
+                # Save raw markdown
+                md_path = artifacts_dir / "source.md"
+                md_path.parent.mkdir(parents=True, exist_ok=True)
+                md_path.write_text(markdown)
+
+                # Step 3: Extract structured facts via Claude
+                handle_log.entries.append(LogEntry(message="Extracting facts from markdown"))
+
+                facts_dict = await self.llm_client.extract_facts_from_markdown(
+                    markdown, scrape_url
+                )
+
+                if not facts_dict or not facts_dict.get("product_name"):
                     handle_log.entries.append(
                         LogEntry(
                             level="ERROR",
-                            message="All scrape sources blocked or failed",
+                            message="LLM extraction returned no usable data",
                         )
                     )
-                    metadata["error"] = "Scrape blocked (primary + fallbacks)"
+                    metadata["error"] = "Fact extraction failed"
                     return None, ProcessingStatus.FAILED, metadata
 
-            # Save raw markdown
-            md_path = artifacts_dir / "source.md"
-            md_path.parent.mkdir(parents=True, exist_ok=True)
-            md_path.write_text(markdown)
+                # Map to ExtractedFacts model
+                from .firecrawl_scraper import _firecrawl_json_to_facts
+                facts = _firecrawl_json_to_facts(facts_dict, scrape_url)
 
-            # Step 3: Extract structured facts via Claude
-            handle_log.entries.append(LogEntry(message="Extracting facts from markdown"))
-
-            facts_dict = await self.llm_client.extract_facts_from_markdown(
-                markdown, scrape_url
-            )
-
-            if not facts_dict or not facts_dict.get("product_name"):
-                handle_log.entries.append(
-                    LogEntry(
-                        level="ERROR",
-                        message="LLM extraction returned no usable data",
-                    )
-                )
-                metadata["error"] = "Fact extraction failed"
-                return None, ProcessingStatus.FAILED, metadata
-
-            # Map to ExtractedFacts model
-            from .firecrawl_scraper import _firecrawl_json_to_facts
-            facts = _firecrawl_json_to_facts(facts_dict, scrape_url)
-
-            # Save extraction outputs
-            facts_path = artifacts_dir / "extracted_facts.json"
-            facts_path.write_text(facts.model_dump_json(indent=2))
+                # Save extraction outputs
+                facts_path = artifacts_dir / "extracted_facts.json"
+                facts_path.write_text(facts.model_dump_json(indent=2))
 
             # Step 3b: Content quality check
             quality = _assess_extraction_quality(facts)
