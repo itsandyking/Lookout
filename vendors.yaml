@@ -27,6 +27,8 @@ vendors:
 
   Altra:
     domain: "altrarunning.com"
+    fallback_domains:
+      - "zappos.com"
     blocked_paths:
       - "/blog"
       - "/stories"
