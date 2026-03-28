@@ -1,0 +1,41 @@
+services:
+  playwright-service:
+    image: ghcr.io/firecrawl/playwright-service:latest
+    environment:
+      PORT: 3000
+    deploy:
+      resources:
+        limits:
+          cpus: "2"
+          memory: 4G
+    networks:
+      - backend
+
+  api:
+    image: ghcr.io/firecrawl/firecrawl:latest
+    environment:
+      REDIS_URL: redis://redis:6379
+      REDIS_RATE_LIMIT_URL: redis://redis:6379
+      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000
+      USE_DB_AUTHENTICATION: "false"
+      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS:-2}
+      HOST: 0.0.0.0
+      PORT: 3002
+      BULL_AUTH_KEY: ${BULL_AUTH_KEY:-lookout-local}
+    ports:
+      - "${FIRECRAWL_PORT:-3002}:3002"
+    depends_on:
+      - redis
+      - playwright-service
+    command: pnpm run start:workers-and-api
+    networks:
+      - backend
+
+  redis:
+    image: redis:alpine
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
