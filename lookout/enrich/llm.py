@@ -370,6 +370,88 @@ class LLMClient:
             logger.warning("Structured fact extraction failed, returning raw facts")
             return raw_facts
 
+    async def extract_facts_from_markdown(
+        self,
+        markdown: str,
+        url: str,
+    ) -> dict[str, Any]:
+        """Extract structured product facts from markdown content.
+
+        Uses Claude to parse Firecrawl's clean markdown output into
+        structured product data matching ExtractedFacts fields.
+        """
+        prompt_template = self.load_prompt("extract_facts")
+
+        # Format the markdown as source_text, with empty raw_facts
+        # since we don't have a prior HTML parsing pass
+        prompt = prompt_template.format(
+            source_text=markdown,
+            raw_facts="{}",
+        )
+
+        system = (
+            "You are a product data extraction assistant. Your task is to "
+            "structure product information from markdown content scraped from "
+            "a vendor product page. "
+            "IMPORTANT: You must NEVER invent or fabricate information. "
+            "If information is not present in the source, leave the field empty "
+            "or return an empty list."
+        )
+
+        try:
+            return await self.provider.complete_structured(
+                prompt,
+                output_schema={
+                    "type": "object",
+                    "properties": {
+                        "product_name": {"type": "string"},
+                        "brand": {"type": "string"},
+                        "description_blocks": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Product description paragraphs",
+                        },
+                        "feature_bullets": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Key feature bullet points",
+                        },
+                        "specs": {
+                            "type": "object",
+                            "additionalProperties": {"type": "string"},
+                            "description": "Specifications as key-value pairs",
+                        },
+                        "materials": {"type": "string"},
+                        "care": {"type": "string"},
+                        "fit_dimensions": {"type": "string"},
+                        "images": {
+                            "type": "array",
+                            "items": {"type": "string", "format": "uri"},
+                            "description": "All product image URLs found",
+                        },
+                        "colors": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Available color options",
+                        },
+                        "evidence_snippets": {
+                            "type": "object",
+                            "additionalProperties": {"type": "string"},
+                        },
+                        "extraction_warnings": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                },
+                tool_name="extract_product_facts",
+                tool_description="Extract structured product facts from markdown content",
+                system=system,
+            )
+        except Exception:
+            logger.warning("Markdown fact extraction failed for %s", url)
+            return {}
+
     async def generate_body_html(
         self,
         facts: dict[str, Any],
