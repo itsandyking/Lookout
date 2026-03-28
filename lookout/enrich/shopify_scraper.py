@@ -243,6 +243,30 @@ async def scrape_shopify_product(
                 product_url = f"https://{domain}/products/{handle}"
                 return _shopify_json_to_facts(product, product_url)
 
+        # Try 1b: Strip common product-type suffixes and retry
+        # Your store: "strand-sunglasses", vendor store: "strand"
+        suffixes_to_strip = [
+            "-sunglasses", "-goggles", "-helmet", "-ski", "-skis",
+            "-snowboard", "-jacket", "-boot", "-boots", "-shoe", "-shoes",
+            "-gloves", "-pants", "-rope",
+        ]
+        for suffix in suffixes_to_strip:
+            if handle.endswith(suffix):
+                short_handle = handle[: -len(suffix)]
+                url = f"https://{domain}/products/{short_handle}.json"
+                resp = await http_client.get(url)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    product = data.get("product")
+                    if product:
+                        logger.info(
+                            "Shopify handle suffix strip matched: %s → %s",
+                            handle, short_handle,
+                        )
+                        product_url = f"https://{domain}/products/{short_handle}"
+                        return _shopify_json_to_facts(product, product_url)
+                break  # Only try one suffix
+
         # Try 2: Title-based search
         if title:
             logger.info("Handle mismatch on %s, searching by title: %s", domain, title)

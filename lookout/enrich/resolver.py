@@ -125,26 +125,8 @@ class URLResolver:
             if clean_title.lower().startswith(vendor_lower):
                 clean_title = clean_title[len(vendor):].strip(" -")
 
-        # Strategy 0: Direct URL probe (fastest — no search needed)
-        # Many vendor sites use predictable URL patterns like /product/{handle}.html
-        # If the probe succeeds, this is the most reliable match.
-        queries_used.append("direct_probe")
-        try:
-            probe_candidates = await self._probe_direct_urls(handle, vendor_config)
-            for c in probe_candidates:
-                c.confidence = 90  # High confidence — direct URL match
-                c.reasoning = f"Direct URL probe (early): {c.reasoning}"
-            all_candidates.extend(probe_candidates)
-        except Exception as e:
-            logger.debug(f"Early direct probe failed for {handle}: {e}")
-
-        # If direct probe found a match, skip search strategies
-        probe_hit = bool(all_candidates)
-        if probe_hit:
-            logger.info(f"Direct URL probe hit for {handle}, skipping search")
-
         # Strategy 1: Barcode on vendor site (most precise — but only if barcode appears in results)
-        if not probe_hit and barcode and barcode.strip():
+        if barcode and barcode.strip():
             barcode_clean = barcode.strip()
             query = f"site:{domain} {barcode_clean}"
             queries_used.append(f"barcode: {query}")
@@ -165,7 +147,7 @@ class URLResolver:
                 logger.warning(f"Barcode search failed for {handle}: {e}")
 
         # Strategy 2: SKU on vendor site (very precise — same verification logic)
-        if not probe_hit and sku and sku.strip():
+        if sku and sku.strip():
             sku_clean = sku.strip()
             # Also try SKU prefix (vendor style code) which is more likely to appear on pages
             sku_prefix = sku_clean.split("-")[0] if "-" in sku_clean else sku_clean[:8]
@@ -185,7 +167,7 @@ class URLResolver:
                 logger.warning(f"SKU search failed for {handle}: {e}")
 
         # Strategy 3: Title on vendor site (primary discovery)
-        if not probe_hit and clean_title:
+        if clean_title:
             query = f"site:{domain} {clean_title}"
             queries_used.append(f"title: {query}")
             try:
@@ -197,8 +179,9 @@ class URLResolver:
             except Exception as e:
                 logger.warning(f"Title search failed for {handle}: {e}")
 
-        # Strategy 4: Handle on vendor site (fallback discovery)
-        if not probe_hit:
+        # Strategy 4: Handle on vendor site (fallback discovery — handle is unreliable
+        # since it's our Shopify store's handle, not the vendor's)
+        if not all_candidates:
             handle_query = self._build_query(handle, vendor, domain, hints)
             queries_used.append(f"handle: {handle_query}")
             try:
@@ -284,7 +267,37 @@ class URLResolver:
                 overlap_ratio = len(overlap) / len(title_words)
                 seq_ratio = SequenceMatcher(None, title_lower, candidate_title).ratio()
 
-                if overlap_ratio >= 0.6 or seq_ratio >= 0.5:
+                # Check for critical word mismatches — model numbers and
+                # product types that distinguish similar products
+                # e.g., "99Ti Skis" vs "95 Boots"
+                critical_mismatch = False
+                # Words in expected title NOT in candidate
+                missing_words = title_words - candidate_words
+                # Words in candidate NOT in expected title
+                extra_words = candidate_words - title_words
+                # Product type words that indicate wrong product entirely
+                type_words = {"ski", "skis", "boot", "boots", "shoe", "shoes",
+                             "jacket", "pants", "helmet", "goggles", "sunglasses",
+                             "gloves", "pole", "poles", "binding", "bindings",
+                             "board", "snowboard"}
+                missing_types = missing_words & type_words
+                extra_types = extra_words & type_words
+                if missing_types and extra_types:
+                    # Candidate has a different product type than expected
+                    critical_mismatch = True
+
+                # Model numbers — if expected has a number not in candidate
+                import re as _re
+                expected_numbers = set(_re.findall(r'\d+', title_lower))
+                candidate_numbers = set(_re.findall(r'\d+', candidate_title))
+                if expected_numbers and candidate_numbers:
+                    if not expected_numbers & candidate_numbers:
+                        critical_mismatch = True
+
+                if critical_mismatch:
+                    candidate.confidence = max(0, candidate.confidence - 30)
+                    candidate.reasoning += f" -critical_mismatch(type/model)"
+                elif overlap_ratio >= 0.6 or seq_ratio >= 0.5:
                     # Strong title match — this is likely the right product
                     boost = int(20 * max(overlap_ratio, seq_ratio))
                     candidate.confidence = min(100, candidate.confidence + boost)
@@ -297,6 +310,22 @@ class URLResolver:
                     # Moderate mismatch
                     candidate.confidence = max(0, candidate.confidence - 10)
                     candidate.reasoning += f" -title_weak({seq_ratio:.0%})"
+
+        # Strategy 6: Direct URL probe (last resort — only works when our handle
+        # happens to match the vendor's URL structure, e.g., Patagonia)
+        if not seen_urls:
+            queries_used.append("direct_probe")
+            try:
+                probe_candidates = await self._probe_direct_urls(handle, vendor_config)
+                for c in probe_candidates:
+                    c.confidence = 75
+                    c.reasoning = f"Direct URL probe: {c.reasoning}"
+                for c in probe_candidates:
+                    url_key = c.url.lower().rstrip("/")
+                    if url_key not in seen_urls:
+                        seen_urls[url_key] = c
+            except Exception as e:
+                logger.debug(f"Direct URL probe failed for {handle}: {e}")
 
         deduplicated = sorted(seen_urls.values(), key=lambda c: c.confidence, reverse=True)
 
