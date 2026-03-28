@@ -133,3 +133,21 @@ class TestCheckRequiredAttributes:
         missing = check_required_attributes(product)
         assert len(missing) > 0
         assert any("image" in m.lower() for m in missing)
+
+
+class TestMerchOutputGmcFlags:
+    def test_merch_output_has_gmc_flags_field(self):
+        from lookout.enrich.models import MerchOutput
+
+        output = MerchOutput(handle="test-product")
+        assert hasattr(output, "gmc_flags")
+        assert output.gmc_flags == []
+
+    def test_gmc_flags_stores_violations(self):
+        from lookout.enrich.models import MerchOutput
+
+        output = MerchOutput(
+            handle="test-product",
+            gmc_flags=["Title exceeds 150 characters", "Superlative: 'best'"],
+        )
+        assert len(output.gmc_flags) == 2

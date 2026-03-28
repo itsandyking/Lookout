@@ -22,6 +22,7 @@ from typing import Any
 import httpx
 
 from .extractor import ContentExtractor, extract_content
+from .gmc_rules import check_prohibited_terms, validate_title
 from .generator import Generator
 from .io import parse_input_csv
 from .llm import LLMClient, get_llm_client
@@ -571,6 +572,22 @@ class ProductProcessor:
 
             merch_output = await self.generator.generate_output(input_row, facts)
             metadata["warnings"].extend(merch_output.warnings)
+
+            # Step 4a: GMC compliance check
+            gmc_flags = []
+            if merch_output.body_html:
+                gmc_flags.extend(check_prohibited_terms(merch_output.body_html))
+            if input_row.title:
+                gmc_flags.extend(validate_title(input_row.title))
+            if gmc_flags:
+                merch_output.gmc_flags = gmc_flags
+                handle_log.entries.append(
+                    LogEntry(
+                        level="WARNING",
+                        message=f"GMC flags: {', '.join(gmc_flags[:3])}",
+                        data={"gmc_flags": gmc_flags},
+                    )
+                )
 
             # Step 4b: Validate image URLs (HEAD request)
             if merch_output.images:

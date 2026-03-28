@@ -349,6 +349,7 @@ class MerchOutput(BaseModel):
     images: list[OutputImage] = Field(default_factory=list)
     variant_image_map: dict[str, str | list[str]] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
+    gmc_flags: list[str] = Field(default_factory=list)
     confidence: int = Field(ge=0, le=100, default=0)
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
