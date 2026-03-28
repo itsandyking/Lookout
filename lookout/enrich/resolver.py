@@ -297,6 +297,27 @@ class URLResolver:
                     if not expected_numbers & candidate_numbers:
                         critical_mismatch = True
 
+                # Check for foreign product names — words in the candidate
+                # that aren't in our title and aren't generic. If a candidate
+                # says "Protac" and our product is "BWII", that's a different product.
+                generic_words = type_words | {
+                    "rope", "ropes", "cord", "ski", "skis", "boot", "boots",
+                    "new", "sale", "mens", "womens", "men", "women", "kids",
+                    "2024", "2025", "2026", "2027",
+                }
+                # Also treat the vendor name and common size/measurement words as generic
+                vendor_words = set(_re.findall(r'[a-z0-9]+', vendor.lower())) if vendor else set()
+                generic_words |= vendor_words
+
+                foreign_names = extra_words - generic_words - set(_re.findall(r'\d+', candidate_title))
+                missing_names = missing_words - generic_words - set(_re.findall(r'\d+', title_lower))
+
+                if foreign_names and missing_names:
+                    # Candidate has a different product name AND is missing ours
+                    # e.g., candidate="Protac" but we want "BWII"
+                    candidate.confidence = max(0, candidate.confidence - 20)
+                    candidate.reasoning += f" -foreign_product({','.join(sorted(foreign_names)[:2])})"
+
                 if critical_mismatch:
                     candidate.confidence = max(0, candidate.confidence - 30)
                     candidate.reasoning += f" -critical_mismatch(type/model)"
