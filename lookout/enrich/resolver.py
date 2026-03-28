@@ -250,15 +250,18 @@ class URLResolver:
         if clean_title:
             from difflib import SequenceMatcher
 
+            import re as _re
+
             title_lower = clean_title.lower()
-            title_words = set(title_lower.split())
-            # Remove common filler words for better matching
-            filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with", "-", "|"}
+            # Normalize: strip punctuation, split into words
+            title_words = set(_re.findall(r'[a-z0-9]+', title_lower))
+            # Remove common filler words
+            filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with"}
             title_words -= filler
 
             for candidate in seen_urls.values():
                 candidate_title = candidate.title.lower()
-                candidate_words = set(candidate_title.split()) - filler
+                candidate_words = set(_re.findall(r'[a-z0-9]+', candidate_title)) - filler
 
                 if not title_words or not candidate_words:
                     continue
@@ -298,10 +301,17 @@ class URLResolver:
                     candidate.confidence = max(0, candidate.confidence - 30)
                     candidate.reasoning += f" -critical_mismatch(type/model)"
                 elif overlap_ratio >= 0.6 or seq_ratio >= 0.5:
-                    # Strong title match — this is likely the right product
-                    boost = int(20 * max(overlap_ratio, seq_ratio))
+                    # Strong title match — boost based on word overlap
+                    boost = int(20 * overlap_ratio)
+                    # Check URL for title words too — product URLs often contain
+                    # the model name (e.g., /product/10-5mm-2764-bwii/)
+                    url_words = set(_re.findall(r'[a-z0-9]+', candidate.url.lower()))
+                    url_title_overlap = title_words & url_words
+                    title_in_url = len(url_title_overlap) / len(title_words) if title_words else 0
+                    if title_in_url > 0.5:
+                        boost += 5
                     candidate.confidence = min(100, candidate.confidence + boost)
-                    candidate.reasoning += f" +title_match({seq_ratio:.0%})"
+                    candidate.reasoning += f" +title_match({overlap_ratio:.0%})"
                 elif overlap_ratio < 0.2 and seq_ratio < 0.3:
                     # Weak match — likely a category page or wrong product
                     candidate.confidence = max(0, candidate.confidence - 25)
