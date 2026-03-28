@@ -123,6 +123,8 @@ vendors:
 
   Burton:
     domain: "burton.com"
+    swatch_selector: "a.variant-swatch.variationColor"
+    gallery_selector: ".product-image img"
     blocked_paths:
       - "/blog"
       - "/stories"
