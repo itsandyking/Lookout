@@ -26,6 +26,7 @@ enrich = [
     "playwright>=1.40",
     "anthropic>=0.30",
     "tenacity>=8.0",
+    "firecrawl-py>=1.0",
 ]
 web = [
     "fastapi",
