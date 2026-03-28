@@ -139,14 +139,12 @@ class URLResolver:
             logger.debug(f"Early direct probe failed for {handle}: {e}")
 
         # If direct probe found a match, skip search strategies
-        if all_candidates:
+        probe_hit = bool(all_candidates)
+        if probe_hit:
             logger.info(f"Direct URL probe hit for {handle}, skipping search")
-        else:
-            # Proceed to search strategies
-            pass
 
         # Strategy 1: Barcode on vendor site (most precise — but only if barcode appears in results)
-        if not all_candidates and barcode and barcode.strip():
+        if not probe_hit and barcode and barcode.strip():
             barcode_clean = barcode.strip()
             query = f"site:{domain} {barcode_clean}"
             queries_used.append(f"barcode: {query}")
@@ -167,7 +165,7 @@ class URLResolver:
                 logger.warning(f"Barcode search failed for {handle}: {e}")
 
         # Strategy 2: SKU on vendor site (very precise — same verification logic)
-        if not all_candidates and sku and sku.strip():
+        if not probe_hit and sku and sku.strip():
             sku_clean = sku.strip()
             # Also try SKU prefix (vendor style code) which is more likely to appear on pages
             sku_prefix = sku_clean.split("-")[0] if "-" in sku_clean else sku_clean[:8]
@@ -187,7 +185,7 @@ class URLResolver:
                 logger.warning(f"SKU search failed for {handle}: {e}")
 
         # Strategy 3: Title on vendor site (primary discovery)
-        if not all_candidates and clean_title:
+        if not probe_hit and clean_title:
             query = f"site:{domain} {clean_title}"
             queries_used.append(f"title: {query}")
             try:
@@ -200,7 +198,7 @@ class URLResolver:
                 logger.warning(f"Title search failed for {handle}: {e}")
 
         # Strategy 4: Handle on vendor site (fallback discovery)
-        if not all_candidates:
+        if not probe_hit:
             handle_query = self._build_query(handle, vendor, domain, hints)
             queries_used.append(f"handle: {handle_query}")
             try:
