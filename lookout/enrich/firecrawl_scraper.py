@@ -260,3 +260,55 @@ class FirecrawlScraper:
         except Exception:
             logger.exception("Firecrawl markdown scrape failed for %s", url)
             return None
+
+    async def scrape_variant_images(
+        self,
+        url: str,
+        swatch_selector: str | None = None,
+        gallery_selector: str | None = None,
+        playwright_url: str = "http://localhost:3003",
+        timeout: int = 30000,
+        wait_after_click: int = 1500,
+    ) -> dict[str, list[str]] | None:
+        """Scrape color variant images by clicking swatches.
+
+        Calls the /scrape-variants endpoint on the Playwright service.
+        Returns {color: [image_urls]} or None on failure.
+        """
+        import httpx
+
+        payload: dict = {"url": url, "timeout": timeout, "wait_after_click": wait_after_click}
+        if swatch_selector:
+            payload["swatch_selector"] = swatch_selector
+        if gallery_selector:
+            payload["gallery_selector"] = gallery_selector
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout / 1000 + 30) as client:
+                resp = await client.post(
+                    f"{playwright_url}/scrape-variants",
+                    json=payload,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+            variant_images = data.get("variant_images", {})
+            swatch_count = data.get("swatch_count", 0)
+            method = data.get("method", "unknown")
+
+            if variant_images:
+                logger.info(
+                    "Swatch scrape found %d colors (%d swatches, method=%s) for %s",
+                    len(variant_images), swatch_count, method, url,
+                )
+                return variant_images
+            else:
+                logger.info(
+                    "Swatch scrape found no variant images (%d swatches) for %s",
+                    swatch_count, url,
+                )
+                return None
+
+        except Exception:
+            logger.warning("Swatch scrape failed for %s", url, exc_info=True)
+            return None

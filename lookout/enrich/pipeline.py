@@ -631,7 +631,30 @@ class ProductProcessor:
                     )
                 )
 
-            # Step 3d: Color-specific image search (if colors found but no variant images)
+            # Step 3d: Swatch-based variant image extraction
+            # Only for non-Shopify vendors when HTML extraction found nothing
+            if (
+                not vendor_config.is_shopify
+                and not facts.variant_image_candidates
+            ):
+                handle_log.entries.append(
+                    LogEntry(message="Attempting swatch scrape for variant images")
+                )
+                swatch_images = await self.firecrawl.scrape_variant_images(
+                    url=scrape_url,
+                    swatch_selector=getattr(vendor_config, 'swatch_selector', None),
+                    gallery_selector=getattr(vendor_config, 'gallery_selector', None),
+                )
+                if swatch_images:
+                    facts.variant_image_candidates = swatch_images
+                    handle_log.entries.append(
+                        LogEntry(
+                            message=f"Swatch scrape found images for {len(swatch_images)} colors",
+                            data={"colors": list(swatch_images.keys())},
+                        )
+                    )
+
+            # Step 3e: Color-specific image search fallback (if swatch scrape didn't find anything)
             if facts.variants and not facts.variant_image_candidates:
                 color_variant = next(
                     (v for v in facts.variants if v.option_name.lower() in ("color", "colour")),
