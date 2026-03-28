@@ -418,65 +418,58 @@ class ProductProcessor:
                 handle_log.entries.append(LogEntry(level="WARNING", message="No URL found"))
                 return None, ProcessingStatus.NO_MATCH, metadata
 
-            # Step 2+3: Scrape and extract via Firecrawl (structured extraction)
+            # Step 2: Scrape page via Firecrawl (markdown mode)
             handle_log.entries.append(
                 LogEntry(
-                    message=f"Extracting via Firecrawl: {resolver_output.selected_url}",
+                    message=f"Scraping via Firecrawl: {resolver_output.selected_url}",
                 )
             )
 
-            facts = await self.firecrawl.extract(resolver_output.selected_url)
+            markdown = await self.firecrawl.scrape_markdown(resolver_output.selected_url)
 
-            if facts is None:
+            if not markdown:
                 handle_log.entries.append(
                     LogEntry(
                         level="ERROR",
-                        message="Firecrawl extraction returned no data",
+                        message="Firecrawl returned no content",
                     )
                 )
-                metadata["error"] = "Firecrawl extraction failed"
+                metadata["error"] = "Firecrawl scrape failed"
                 return None, ProcessingStatus.FAILED, metadata
+
+            # Save raw markdown
+            md_path = artifacts_dir / "source.md"
+            md_path.parent.mkdir(parents=True, exist_ok=True)
+            md_path.write_text(markdown)
+
+            # Step 3: Extract structured facts via Claude
+            handle_log.entries.append(LogEntry(message="Extracting facts from markdown"))
+
+            facts_dict = await self.llm_client.extract_facts_from_markdown(
+                markdown, resolver_output.selected_url
+            )
+
+            if not facts_dict or not facts_dict.get("product_name"):
+                handle_log.entries.append(
+                    LogEntry(
+                        level="ERROR",
+                        message="LLM extraction returned no usable data",
+                    )
+                )
+                metadata["error"] = "Fact extraction failed"
+                return None, ProcessingStatus.FAILED, metadata
+
+            # Map to ExtractedFacts model
+            from .firecrawl_scraper import _firecrawl_json_to_facts
+            facts = _firecrawl_json_to_facts(facts_dict, resolver_output.selected_url)
 
             # Save extraction outputs
             facts_path = artifacts_dir / "extracted_facts.json"
-            facts_path.parent.mkdir(parents=True, exist_ok=True)
             facts_path.write_text(facts.model_dump_json(indent=2))
 
             # Step 3b: Content quality check
             quality = _assess_extraction_quality(facts)
             if not quality["usable"]:
-                handle_log.entries.append(
-                    LogEntry(
-                        level="WARNING",
-                        message=f"Low quality extraction: {quality['reason']}",
-                        data=quality,
-                    )
-                )
-                # If we used static scraping, retry with Playwright
-                if not vendor_config.use_playwright:
-                    handle_log.entries.append(
-                        LogEntry(message="Retrying with Playwright")
-                    )
-                    playwright_page = await self.scraper._scrape_dynamic(
-                        resolver_output.selected_url,
-                        vendor_config.playwright_config,
-                    )
-                    if playwright_page.success:
-                        source_text, facts = extract_content(
-                            playwright_page.html,
-                            playwright_page.final_url,
-                            vendor_config.selectors,
-                        )
-                        await extractor.save_outputs(source_text, facts, artifacts_dir)
-                        quality = _assess_extraction_quality(facts)
-                        handle_log.entries.append(
-                            LogEntry(
-                                message=f"Playwright retry quality: {quality['reason']}",
-                                data=quality,
-                            )
-                        )
-
-                if not quality["usable"]:
                     metadata["warnings"].append(
                         f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
                     )
