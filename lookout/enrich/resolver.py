@@ -251,25 +251,42 @@ class URLResolver:
             if url_key not in seen_urls or candidate.confidence > seen_urls[url_key].confidence:
                 seen_urls[url_key] = candidate
 
-        # Title-match validation: if we know the product title, penalize
-        # candidates that clearly don't match (e.g., "4D MAG" vs "Shoutout Core")
+        # Title-match scoring: boost candidates that match the product title,
+        # penalize those that don't. This is the strongest signal for
+        # distinguishing product pages from category pages.
         if clean_title:
             from difflib import SequenceMatcher
 
             title_lower = clean_title.lower()
             title_words = set(title_lower.split())
+            # Remove common filler words for better matching
+            filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with", "-", "|"}
+            title_words -= filler
 
             for candidate in seen_urls.values():
                 candidate_title = candidate.title.lower()
-                # Check word overlap between expected title and candidate title
-                candidate_words = set(candidate_title.split())
+                candidate_words = set(candidate_title.split()) - filler
+
+                if not title_words or not candidate_words:
+                    continue
+
                 overlap = title_words & candidate_words
-                # If less than 30% of title words appear in candidate, penalize
-                if title_words and len(overlap) / len(title_words) < 0.3:
-                    ratio = SequenceMatcher(None, title_lower, candidate_title).ratio()
-                    if ratio < 0.3:
-                        candidate.confidence = max(0, candidate.confidence - 20)
-                        candidate.reasoning += f" -title_mismatch({ratio:.0%})"
+                overlap_ratio = len(overlap) / len(title_words)
+                seq_ratio = SequenceMatcher(None, title_lower, candidate_title).ratio()
+
+                if overlap_ratio >= 0.6 or seq_ratio >= 0.5:
+                    # Strong title match — this is likely the right product
+                    boost = int(20 * max(overlap_ratio, seq_ratio))
+                    candidate.confidence = min(100, candidate.confidence + boost)
+                    candidate.reasoning += f" +title_match({seq_ratio:.0%})"
+                elif overlap_ratio < 0.2 and seq_ratio < 0.3:
+                    # Weak match — likely a category page or wrong product
+                    candidate.confidence = max(0, candidate.confidence - 25)
+                    candidate.reasoning += f" -title_mismatch({seq_ratio:.0%})"
+                elif overlap_ratio < 0.3:
+                    # Moderate mismatch
+                    candidate.confidence = max(0, candidate.confidence - 10)
+                    candidate.reasoning += f" -title_weak({seq_ratio:.0%})"
 
         deduplicated = sorted(seen_urls.values(), key=lambda c: c.confidence, reverse=True)
 
@@ -630,46 +647,86 @@ class URLResolver:
         parsed = urlparse(url)
         path = parsed.path.lower()
 
-        # Boost for product path patterns
-        product_patterns = ["/product/", "/products/", "/p/", "/shop/", "/item/"]
-        if any(p in path for p in product_patterns):
-            score += 15
+        # Strong boost for product-specific path patterns (has a slug/ID after the pattern)
+        # e.g., /product/alpine-jacket or /products/alpine-jacket.html
+        product_page_patterns = ["/product/", "/products/", "/p/", "/item/"]
+        path_segments = [s for s in path.split("/") if s]
 
-        # Penalize non-product patterns
-        non_product_patterns = [
-            "/blog",
-            "/news",
-            "/support",
-            "/help",
-            "/about",
-            "/category",
-            "/collection",
-            "/search",
-            "/tag",
+        is_product_page = False
+        for pattern in product_page_patterns:
+            if pattern in path:
+                # Check there's a slug after the pattern (not just /products/ alone)
+                idx = path.find(pattern)
+                after = path[idx + len(pattern):]
+                if after and after.strip("/"):
+                    is_product_page = True
+                    score += 20
+                    break
+
+        if not is_product_page:
+            # /shop/ with a deep path could be a product or category
+            if "/shop/" in path:
+                if len(path_segments) >= 4:
+                    # Likely a category: /shop/womens/tops/t-shirts
+                    score -= 10
+                else:
+                    score += 5
+
+        # Penalize category/listing patterns
+        category_patterns = [
+            "/blog", "/news", "/support", "/help", "/about",
+            "/category", "/collection", "/collections",
+            "/search", "/tag", "/tags",
         ]
-        if any(p in path for p in non_product_patterns):
+        if any(p in path for p in category_patterns):
             score -= 20
 
-        # Boost for reasonable path depth (product pages usually 2-4 segments)
-        path_segments = [s for s in path.split("/") if s]
-        if 1 <= len(path_segments) <= 4:
+        # Penalize URLs that look like category browsing paths
+        # e.g., /shop/womens/tops/t-shirts, /shop/mens/jackets
+        category_segments = {"shop", "mens", "womens", "tops", "bottoms",
+                           "jackets", "shoes", "accessories", "gear", "all",
+                           "new", "sale", "clearance"}
+        if path_segments:
+            category_count = sum(1 for s in path_segments if s in category_segments)
+            if category_count >= 2:
+                score -= 15
+
+        # Boost for reasonable path depth
+        if 1 <= len(path_segments) <= 3:
             score += 10
-        elif len(path_segments) > 6:
+        elif len(path_segments) > 5:
             score -= 10
 
-        # Boost if title looks like a product name (not too generic)
+        # Penalize generic titles (category pages)
         title_lower = title.lower()
-        if len(title.split()) >= 2 and len(title.split()) <= 10:
-            score += 10
+        generic_markers = [
+            "by patagonia", "by altra", "by burton", "by rossignol",
+            "| official", "shop all", "all products",
+        ]
+        if any(m in title_lower for m in generic_markers):
+            score -= 15
 
-        # Penalize generic titles
         generic_titles = ["home", "shop", "search", "products", "all products"]
-        if title_lower in generic_titles:
+        if title_lower.strip() in generic_titles:
             score -= 25
+
+        # Boost if title has specific product words (model names, numbers)
+        title_words = title.split()
+        if len(title_words) >= 2 and len(title_words) <= 10:
+            score += 5
+        # Extra boost for titles with model numbers or specific identifiers
+        if any(c.isdigit() for c in title):
+            score += 5
 
         # Penalize if URL has query parameters suggesting search/filter
         if "?" in url and any(p in url.lower() for p in ["search=", "filter=", "page=", "sort="]):
             score -= 15
+
+        # Boost if URL path contains a product-like slug (has hyphens, alphanumeric)
+        if path_segments:
+            last_segment = path_segments[-1]
+            if "-" in last_segment and len(last_segment) > 10:
+                score += 5  # Looks like a product slug
 
         # Ensure score is in valid range
         return max(0, min(100, score))
