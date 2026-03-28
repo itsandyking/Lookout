@@ -10,6 +10,10 @@ You are writing a product description for a Shopify outdoor retail store. Your j
 
 4. **Be selective with specs.** Include specs that help a buying decision (materials, weight, waterproof rating, insulation type). Skip internal measurements (arm length, center back length, hem width) and manufacturing details that don't help the customer.
 
+5. **GMC compliance.** Avoid promotional language (free shipping, buy now, on sale, limited time). No superlatives (best, cheapest, incredible, amazing, premium, ultimate). No price mentions. No unsubstantiated claims or guarantees. Google Merchant Center will disapprove listings with this language.
+
+6. **Title-aware structure.** The opening prose should complement the product title, not repeat it. Lead with the product's primary benefit or use case, not a restatement of the product name.
+
 ## PRODUCT FACTS
 
 Handle: {handle}
