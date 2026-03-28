@@ -50,7 +50,7 @@ def cli() -> None:
     """Lookout — merchandising command center for TMA."""
 
 
-FIRECRAWL_COMPOSE_DIR = Path(__file__).parent.parent / "infra" / "firecrawl"
+FIRECRAWL_SRC_DIR = Path.home() / "firecrawl-src"
 
 
 @cli.group()
@@ -61,14 +61,17 @@ def infra():
 @infra.command()
 def up():
     """Start Firecrawl services via Docker Compose."""
-    compose_file = FIRECRAWL_COMPOSE_DIR / "docker-compose.yml"
+    compose_file = FIRECRAWL_SRC_DIR / "docker-compose.yaml"
     if not compose_file.exists():
-        console.print(f"[red]docker-compose.yml not found at {compose_file}[/red]")
+        console.print(
+            f"[red]Firecrawl source not found at {FIRECRAWL_SRC_DIR}[/red]\n"
+            "Clone it first: git clone https://github.com/firecrawl/firecrawl.git ~/firecrawl-src"
+        )
         raise SystemExit(1)
     console.print("[bold]Starting Firecrawl...[/bold]")
     result = subprocess.run(
         ["docker", "compose", "up", "-d"],
-        cwd=FIRECRAWL_COMPOSE_DIR,
+        cwd=FIRECRAWL_SRC_DIR,
     )
     if result.returncode == 0:
         console.print("[green]Firecrawl running at http://localhost:3002[/green]")
@@ -81,7 +84,7 @@ def down():
     console.print("[bold]Stopping Firecrawl...[/bold]")
     result = subprocess.run(
         ["docker", "compose", "down"],
-        cwd=FIRECRAWL_COMPOSE_DIR,
+        cwd=FIRECRAWL_SRC_DIR,
     )
     raise SystemExit(result.returncode)
 

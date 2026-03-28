@@ -1,41 +1,14 @@
-services:
-  playwright-service:
-    image: ghcr.io/firecrawl/playwright-service:latest
-    environment:
-      PORT: 3000
-    deploy:
-      resources:
-        limits:
-          cpus: "2"
-          memory: 4G
-    networks:
-      - backend
-
-  api:
-    image: ghcr.io/firecrawl/firecrawl:latest
-    environment:
-      REDIS_URL: redis://redis:6379
-      REDIS_RATE_LIMIT_URL: redis://redis:6379
-      PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000
-      USE_DB_AUTHENTICATION: "false"
-      NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS:-2}
-      HOST: 0.0.0.0
-      PORT: 3002
-      BULL_AUTH_KEY: ${BULL_AUTH_KEY:-lookout-local}
-    ports:
-      - "${FIRECRAWL_PORT:-3002}:3002"
-    depends_on:
-      - redis
-      - playwright-service
-    command: pnpm run start:workers-and-api
-    networks:
-      - backend
-
-  redis:
-    image: redis:alpine
-    networks:
-      - backend
-
-networks:
-  backend:
-    driver: bridge
+# Firecrawl self-hosted stack
+#
+# This compose file is a thin wrapper that points to the upstream
+# Firecrawl repo build. To use:
+#
+#   1. Clone firecrawl: git clone https://github.com/firecrawl/firecrawl.git ~/firecrawl-src
+#   2. cd ~/firecrawl-src && cp .env.example .env
+#   3. docker compose build
+#   4. docker compose up -d
+#
+# Or use `lookout infra up` which does the same from ~/firecrawl-src.
+#
+# The pre-built ghcr.io images require Docker-in-Docker and don't work
+# standalone. Building from source is the supported self-hosting method.

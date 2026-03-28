@@ -136,8 +136,8 @@ class FirecrawlScraper:
                 return None
 
             final_url = url
-            if doc.metadata and doc.metadata.get("sourceURL"):
-                final_url = doc.metadata["sourceURL"]
+            if doc.metadata:
+                final_url = getattr(doc.metadata, "source_url", None) or getattr(doc.metadata, "sourceURL", None) or url
 
             return _firecrawl_json_to_facts(doc.json, final_url)
 
@@ -156,8 +156,8 @@ class FirecrawlScraper:
         try:
             doc = await self._client.scrape(url, formats=["html"])
             final_url = url
-            if doc.metadata and doc.metadata.get("sourceURL"):
-                final_url = doc.metadata["sourceURL"]
+            if doc.metadata:
+                final_url = getattr(doc.metadata, "source_url", None) or getattr(doc.metadata, "sourceURL", None) or url
             return ScrapedPage(
                 url=url,
                 html=doc.html or "",
