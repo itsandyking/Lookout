@@ -6,9 +6,35 @@ from unittest.mock import AsyncMock, MagicMock
 from lookout.enrich.firecrawl_scraper import (
     EXTRACTION_SCHEMA,
     FirecrawlScraper,
+    _clean_image_url,
     _firecrawl_json_to_facts,
 )
 from lookout.enrich.models import ExtractedFacts, ImageInfo
+
+
+class TestCleanImageUrl:
+    def test_strips_resize_params(self):
+        url = "https://cdn.example.com/img.jpg?impolicy=bglt&imwidth=246"
+        assert _clean_image_url(url) == "https://cdn.example.com/img.jpg"
+
+    def test_strips_common_params(self):
+        url = "https://cdn.example.com/img.jpg?w=300&h=400&fit=crop&q=80"
+        assert _clean_image_url(url) == "https://cdn.example.com/img.jpg"
+
+    def test_preserves_non_resize_params(self):
+        url = "https://cdn.example.com/img.jpg?v=1234&id=abc"
+        assert _clean_image_url(url) == "https://cdn.example.com/img.jpg?v=1234&id=abc"
+
+    def test_no_params_unchanged(self):
+        url = "https://cdn.example.com/img.jpg"
+        assert _clean_image_url(url) == url
+
+    def test_mixed_params(self):
+        url = "https://cdn.example.com/img.jpg?v=1&imwidth=246&format=webp"
+        result = _clean_image_url(url)
+        assert "imwidth" not in result
+        assert "format" not in result
+        assert "v=1" in result
 
 
 class TestExtractionSchema:

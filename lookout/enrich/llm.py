@@ -387,19 +387,24 @@ class LLMClient:
             "1. Only include facts explicitly stated in the text.\n"
             "2. Prefer empty fields over guessing.\n"
             "3. Copy feature bullets and specs verbatim.\n"
-            "4. Include ALL product image URLs you find.\n\n"
+            "4. For images: include ONLY product photo URLs (not logos, icons, "
+            "badges, or UI elements). Prefer the largest/original version — "
+            "if a URL has resize params like ?w=300 or ?imwidth=246, strip them.\n"
+            "5. IGNORE: navigation menus, footer links, customer service info, "
+            "promotional banners ('Up to 30% Off'), pre-order FAQs, related "
+            "products, and any internal system debug text.\n"
+            "6. For colors: list only the color option names as shown in the "
+            "product's variant selector, not colors mentioned in descriptions.\n\n"
             f"## SOURCE (markdown from {url})\n\n"
             f"{markdown}\n\n"
             "Extract the product data now."
         )
 
         system = (
-            "You are a product data extraction assistant. Your task is to "
-            "structure product information from markdown content scraped from "
-            "a vendor product page. "
-            "IMPORTANT: You must NEVER invent or fabricate information. "
-            "If information is not present in the source, leave the field empty "
-            "or return an empty list."
+            "You are a product data extraction assistant. Extract only product "
+            "information — ignore navigation, footers, promotions, and boilerplate. "
+            "NEVER invent or fabricate information. Empty fields are preferred "
+            "over guesses."
         )
 
         try:

@@ -10,6 +10,8 @@ Supports three modes:
 import asyncio
 import logging
 import random
+import re
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
 
 from firecrawl import AsyncFirecrawl
 from tenacity import (
@@ -72,12 +74,43 @@ EXTRACTION_PROMPT = (
 )
 
 
+# Query params that indicate resized/thumbnail images.
+# Stripping these typically yields the full-size original.
+_RESIZE_PARAMS = {
+    "imwidth", "imheight", "impolicy", "width", "height",
+    "w", "h", "resize", "size", "fit", "crop", "quality",
+    "q", "fmt", "format", "auto", "dpr",
+}
+
+
+def _clean_image_url(url: str) -> str:
+    """Strip resize/thumbnail query params from image URLs.
+
+    Vendor CDNs often serve thumbnails via query params like
+    ?imwidth=246 or ?w=300. Removing these gives the full-size image.
+    """
+    parsed = urlparse(url)
+    if not parsed.query:
+        return url
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    cleaned = {k: v for k, v in params.items() if k.lower() not in _RESIZE_PARAMS}
+    if cleaned:
+        new_query = urlencode(cleaned, doseq=True)
+    else:
+        new_query = ""
+    return urlunparse(parsed._replace(query=new_query))
+
+
 def _firecrawl_json_to_facts(data: dict, url: str) -> ExtractedFacts:
     """Convert Firecrawl structured extraction output to ExtractedFacts."""
     images = []
+    seen_urls = set()
     for img_url in data.get("images", []):
         if isinstance(img_url, str) and img_url.startswith("http"):
-            images.append(ImageInfo(url=img_url, source_hint="firecrawl"))
+            cleaned = _clean_image_url(img_url)
+            if cleaned not in seen_urls:
+                seen_urls.add(cleaned)
+                images.append(ImageInfo(url=cleaned, source_hint="firecrawl"))
 
     return ExtractedFacts(
         canonical_url=url,
@@ -174,10 +207,27 @@ class FirecrawlScraper:
         retry=retry_if_exception_type((ConnectionError, TimeoutError)),
     )
     async def scrape_markdown(self, url: str) -> str | None:
-        """Markdown mode — returns clean markdown text."""
+        """Markdown mode — returns clean markdown text.
+
+        Uses only_main_content and exclude_tags to strip navigation,
+        footers, sidebars, and other non-product content.
+        """
         await self._polite_delay()
         try:
-            doc = await self._client.scrape(url, formats=["markdown"])
+            doc = await self._client.scrape(
+                url,
+                formats=["markdown"],
+                only_main_content=True,
+                exclude_tags=[
+                    "nav", "footer", "header",
+                    "[role='navigation']",
+                    "[role='banner']",
+                    "[role='contentinfo']",
+                    ".site-footer", ".site-header", ".site-nav",
+                    "#cookie-banner", ".cookie-notice",
+                    ".announcement-bar",
+                ],
+            )
             return doc.markdown
         except Exception:
             logger.exception("Firecrawl markdown scrape failed for %s", url)
