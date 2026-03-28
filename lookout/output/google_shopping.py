@@ -12,10 +12,15 @@ LookoutStore dict-based API.
 from __future__ import annotations
 
 import csv
+import logging
 import re
 from html.parser import HTMLParser
 
 from openpyxl import Workbook
+
+from lookout.enrich.gmc_rules import map_color_for_gmc, validate_gtin
+
+logger = logging.getLogger(__name__)
 
 from lookout.store import LookoutStore
 from lookout.taxonomy.mappings import (
@@ -488,11 +493,12 @@ def generate_google_shopping(output_path, store: LookoutStore) -> dict:
             stats["has_age_group"] += 1  # always set
 
             # Color + size + size_system
-            color = extract_color(option1_name, option1_value, option2_value)
+            color_internal = extract_color(option1_name, option1_value, option2_value)
+            color_gmc = map_color_for_gmc(color_internal)
             size = extract_size(option1_name, option1_value, option2_value)
             size_system = detect_size_system(vendor, product_type, size) if size else ""
 
-            if color:
+            if color_internal:
                 stats["has_color"] += 1
             if size:
                 stats["has_size"] += 1
@@ -514,6 +520,10 @@ def generate_google_shopping(output_path, store: LookoutStore) -> dict:
                 if seo_desc:
                     stats["has_seo_desc"] += 1
 
+            barcode = variant.get("barcode", "")
+            if barcode and not validate_gtin(barcode):
+                logger.warning("Invalid GTIN for %s: %s", handle, barcode)
+
             ws.append(
                 [
                     product["id"],
@@ -523,7 +533,7 @@ def generate_google_shopping(output_path, store: LookoutStore) -> dict:
                     gender,
                     age_group,
                     "new",
-                    color,
+                    color_gmc,
                     size,
                     size_system,
                     season,

@@ -19,10 +19,14 @@ VALID_GTIN_LENGTHS = (8, 12, 13, 14)
 
 def validate_gtin(gtin: str) -> bool:
     """Validate a GTIN (UPC/EAN/JAN) check digit.
-    Supports 8, 12, 13, and 14 digit GTINs."""
+    Supports 8, 12, 13, and 14 digit GTINs.
+    All-zeros barcodes are rejected as placeholder/null values."""
     if not gtin or not gtin.isdigit():
         return False
     if len(gtin) not in VALID_GTIN_LENGTHS:
+        return False
+    # Reject all-zeros placeholder barcodes
+    if all(c == "0" for c in gtin):
         return False
     digits = [int(d) for d in gtin]
     check = digits[-1]
