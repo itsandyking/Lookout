@@ -1,7 +1,7 @@
 # Variant Image Swatch Scraping — Design Spec
 
 **Date:** 2026-03-28
-**Status:** Draft
+**Status:** Revised (v2 — integrated into Playwright `/scrape` flow)
 
 ## Problem
 
@@ -9,60 +9,87 @@ Firecrawl captures product descriptions well from JS-heavy vendor sites (Burton,
 
 Result: the pipeline falls back to Tier 0 (hero image for all variants) or Tier 2 (LLM guessing from URL patterns), neither of which reliably produces per-color images.
 
-## Approach
+## V1 Learnings
 
-Add a new `/scrape-variants` endpoint to Firecrawl's existing Playwright service (`~/firecrawl-src/apps/playwright-service-ts/api.ts`). This reuses the already-hardened browser (Patchright + Apify fingerprints) with zero new infrastructure. The endpoint navigates to a product page, finds color swatches, clicks each one, and collects the resulting gallery images per color.
+The initial approach added a standalone `/scrape-variants` endpoint to the Playwright service and called it directly from the Python pipeline. This worked for Burton (7 colors, 4 images each) but failed for SPA vendors (Patagonia, K2, Arc'teryx) because the endpoint's basic `page.goto()` doesn't render SPA content the same way Firecrawl's full scrape pipeline does.
 
-Called from `firecrawl_scraper.py` after the regular Firecrawl scrape, gated so it only fires when needed. Results flow into `ExtractedFacts.variant_image_candidates` — no downstream changes.
+Key insight: Firecrawl already renders these SPA pages successfully for descriptions. The swatch-clicking logic should run on the same live page that Firecrawl renders, before the browser context is torn down.
+
+## Approach (v2)
+
+Extend the Playwright service's existing `/scrape` endpoint to accept optional swatch parameters. When present, after the page is fully rendered and HTML is captured, the swatch-clicking logic runs on the same live page — same browser context, same fingerprint, same session. Variant images are returned alongside the normal HTML response.
+
+The Firecrawl API passes these swatch parameters through to the Playwright service and returns the variant images in its response. The Python pipeline requests swatch extraction as part of the normal Firecrawl scrape call.
+
+**One page load. One browser context. All data.**
 
 ## Architecture
 
-### New Endpoint: `POST /scrape-variants`
+### Layer 1: Playwright Service `/scrape` Extension
 
-Lives in `~/firecrawl-src/apps/playwright-service-ts/api.ts` alongside the existing `/scrape` endpoint.
+Extend the existing `/scrape` endpoint in `~/firecrawl-src/apps/playwright-service-ts/api.ts`.
 
-**Request:**
+**New optional request fields:**
 ```json
 {
-  "url": "https://www.burton.com/us/en/p/...",
-  "swatch_selector": ".color-chip",
-  "gallery_selector": ".product-gallery img",
+  "url": "https://www.burton.com/...",
+  "wait_after_load": 0,
   "timeout": 30000,
+  "swatch_selector": ".color-chip",
+  "gallery_selector": ".product-image img",
   "wait_after_click": 1500
 }
 ```
 
-- `swatch_selector` — optional vendor-specific CSS selector override. Omit to use generic cascade.
-- `gallery_selector` — optional vendor-specific gallery area. Omit to use generic detection.
-- `timeout` — page navigation timeout.
-- `wait_after_click` — ms to wait after each swatch click for gallery to update.
+When `swatch_selector` or any swatch field is present, after the normal page scrape completes:
+1. Run `findSwatches()` (vendor selector → generic cascade)
+2. Capture initial color's images
+3. Click each swatch, wait, collect gallery images per color
+4. Return variant_images in the response
 
-**Behavior:**
-1. Create browser context via existing `createContext()` (Patchright + fingerprint hardening).
-2. Navigate to URL, wait for load.
-3. Find swatch elements — vendor selectors first, then generic cascade.
-4. Capture initial gallery state (first color, already selected on page load).
-5. For each remaining swatch: read color name, click, wait, collect gallery images.
-6. Return color→image mapping.
-
-**Response:**
+**Extended response:**
 ```json
 {
+  "content": "<html>...</html>",
+  "pageStatusCode": 200,
   "variant_images": {
-    "Kelp": ["https://burton.com/.../img1.png", "..."],
-    "True Black": ["https://burton.com/.../img2.png", "..."]
+    "True Black": ["https://...", "..."],
+    "Kelp": ["https://...", "..."]
   },
   "swatch_count": 7,
-  "method": "generic"
+  "swatch_method": "vendor_override"
 }
 ```
 
-Returns empty `variant_images` on failure — never errors out. Includes `method` ("generic" or "vendor_override") for diagnostics.
+When no swatch fields are in the request, behavior is identical to today — no variant_images in response.
 
-### Generic Swatch Detection
+### Layer 2: Firecrawl API Pass-Through
 
-Selectors tried in priority order, first match wins:
+Extend `scrapeURLWithPlaywright()` in `~/firecrawl-src/apps/api/src/scraper/scrapeURL/engines/playwright/index.ts`.
 
+**Changes:**
+1. Pass `swatch_selector`, `gallery_selector`, `wait_after_click` from `meta.options` to the Playwright request body
+2. Include `variant_images`, `swatch_count`, `swatch_method` in the response schema (all optional)
+3. Return variant data in `EngineScrapeResult` (add optional field)
+
+**How options flow:**
+- Add optional swatch fields to `ScrapeOptionsBase` in `types.ts`
+- These flow through `meta.options` to the Playwright handler
+- The Python SDK passes arbitrary kwargs through to the API
+
+### Layer 3: Python Pipeline Integration
+
+In `lookout/enrich/firecrawl_scraper.py`, modify `scrape_markdown()` to accept and pass swatch parameters. When the response includes `variant_images`, return them alongside the markdown.
+
+In `lookout/enrich/pipeline.py`, pass vendor swatch config when calling `scrape_markdown()`. If variant_images come back from Firecrawl, inject them into `facts.variant_image_candidates` immediately — no separate HTTP call needed.
+
+**Fallback:** The existing `/scrape-variants` standalone endpoint remains as a fallback for cases where the integrated approach doesn't work (e.g., when the pipeline needs to retry variant extraction with different parameters without re-scraping the whole page).
+
+### Swatch Logic (unchanged from v1)
+
+The swatch-clicking logic is already implemented and tested:
+
+**Generic selector cascade:**
 1. `[data-color]`
 2. `[data-variant-color]`
 3. `.color-swatch, .color-chip, .color-option`
@@ -70,91 +97,47 @@ Selectors tried in priority order, first match wins:
 5. `input[name*="color" i][type="radio"] + label`
 6. `[data-option-name="Color" i] [data-option-value]`
 
-**Color name extraction** (per swatch, first non-empty wins):
-1. `data-color` or `data-variant-color` attribute
-2. `aria-label` attribute
-3. `title` attribute
-4. Visible text content
+**Color name extraction:** `data-color` → `data-variant-color` → `data-value` → `aria-label` → `title` → text content
 
-### Gallery Change Detection
+**Gallery detection:** vendor selector → generic cascade (`[class*="gallery"] img`, `[class*="carousel"] img`, etc.)
 
-1. Before first click: snapshot all `img[src]` in gallery area → first color's images.
-2. Click swatch, wait up to `wait_after_click` ms.
-3. Collect all `img[src]` in gallery area → that color's images (full set, not diff).
-
-**Gallery area detection** (generic, overridable via `gallery_selector`):
-1. Vendor-provided selector if configured
-2. `[class*="gallery"], [class*="carousel"], [class*="product-image"], [class*="pdp-image"]`
-3. Fall back to all images within `main` or `.pdp` container
-
-**Edge cases:**
-- Swatch already selected on load → captured before any clicks as first color.
-- Swatches that are navigation links → detect URL change, abort, return partial results.
-- Lazy-loaded images → filter out `data:` URIs and 1x1 pixel placeholders.
-
-### Firecrawl Scraper Integration
-
-In `lookout/enrich/firecrawl_scraper.py`, after the regular Firecrawl scrape:
-
-```python
-if not vendor.is_shopify and not facts.variant_image_candidates:
-    variant_result = await self._scrape_variant_images(
-        url=url,
-        vendor=vendor,
-    )
-    if variant_result:
-        facts.variant_image_candidates = variant_result
-```
-
-**`_scrape_variant_images()` method:**
-- Builds request to `http://playwright-service:3000/scrape-variants`
-- Passes `swatch_selector` and `gallery_selector` from `vendors.yaml` if configured
-- Timeout + error handling — returns `None` on failure, logs diagnostics
-- Never blocks the pipeline
+**Edge cases:** active swatch detection, link-based swatches (navigate via href), same-domain navigation allowed, placeholder filtering, lazy-load handling.
 
 ### Vendor Config (`vendors.yaml`)
 
-Optional per-vendor swatch configuration:
+Unchanged — optional `swatch_selector` and `gallery_selector` per vendor:
 
 ```yaml
 Burton:
   domain: "burton.com"
-  swatch_selector: ".color-chip"
-  gallery_selector: ".product-gallery img"
+  swatch_selector: "a.variant-swatch.variationColor"
+  gallery_selector: ".product-image img"
 ```
-
-Most vendors won't need these fields — generic selectors handle common patterns. Overrides only needed for unusual markup. Hybrid approach: generic first, vendor override as fallback when generic fails.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `~/firecrawl-src/apps/playwright-service-ts/api.ts` | New `/scrape-variants` endpoint |
-| `lookout/enrich/firecrawl_scraper.py` | New `_scrape_variant_images()` method, called after regular scrape |
-| `vendors.yaml` | Optional `swatch_selectors` config per vendor |
-
-**No changes to:** `generator.py`, `extractor.py`, `models.py`, review UI, or any downstream code. Variant images land in `ExtractedFacts.variant_image_candidates` through the existing data path.
+| `~/firecrawl-src/apps/playwright-service-ts/api.ts` | Extend `/scrape` to accept swatch params and return variant_images. Keep `/scrape-variants` as standalone fallback. |
+| `~/firecrawl-src/apps/api/src/scraper/scrapeURL/engines/playwright/index.ts` | Pass swatch fields to Playwright, include variant_images in response |
+| `~/firecrawl-src/apps/api/src/controllers/v2/types.ts` | Add optional swatch fields to ScrapeOptionsBase |
+| `lookout/enrich/firecrawl_scraper.py` | Pass swatch params in `scrape_markdown()`, return variant_images |
+| `lookout/enrich/pipeline.py` | Pass vendor swatch config, handle variant_images from Firecrawl response |
 
 ## Testing & Validation
 
-**Primary test product:** Burton Reserve 2L Jacket — 7 color variants, known image URLs from prior URL pattern analysis.
+**Primary test:** Burton Reserve 2L Jacket — already proven with 7 colors, 4 images each.
+
+**SPA vendor tests:** K2, Patagonia, Arc'teryx — these should now work because the page is rendered by Firecrawl's full pipeline before swatch clicking happens.
 
 **Acceptance criteria:**
-1. `/scrape-variants` returns 7 color entries for Reserve 2L jacket
-2. Each color has at least 1 valid image URL (HEAD check returns 200)
-3. Color names are recognizable (match or closely match Shopify store variant data)
-4. Full pipeline run on a Burton product populates `variant_image_candidates` where previously empty
-
-**Test sequence:**
-1. Direct HTTP test against Playwright service (curl/pytest)
-2. Integration test through `firecrawl_scraper.py`
-3. Full `lookout enrich run` on Burton Reserve 2L
-
-**Follow-up vendors:** K2, Patagonia, Arc'teryx — validate generic selectors work or add vendor overrides.
+1. Burton still returns 7 colors with correct images via integrated path
+2. At least one SPA vendor (K2 or Arc'teryx) returns variant images where standalone `/scrape-variants` returned 0
+3. Full pipeline run populates `variant_image_candidates` without a separate HTTP call
+4. Non-swatch scrapes (no swatch params) are unaffected — same response as before
 
 ## Out of Scope
 
-- Review UI image editing (drop/reassign) — deferred, tracked separately
-- Burton URL pattern construction (Approach B from prior session) — fallback if swatch scraping doesn't work for Burton specifically
-- Altra (PerimeterX blocked) — needs residential proxy, separate effort
+- Review UI image editing (drop/reassign) — deferred
 - Writing images to Shopify via apply step — separate feature
+- Altra (PerimeterX blocked) — needs residential proxy

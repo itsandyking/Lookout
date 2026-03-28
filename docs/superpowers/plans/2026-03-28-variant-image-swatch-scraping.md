@@ -1,748 +1,485 @@
-# Variant Image Swatch Scraping — Implementation Plan
+# Variant Image Swatch Scraping — Implementation Plan (v2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extract per-color variant images from JS-heavy vendor sites by clicking color swatches in a headless browser.
+**Goal:** Extract per-color variant images by integrating swatch-clicking into Firecrawl's existing page rendering — one page load, one browser context, all data.
 
-**Architecture:** New `/scrape-variants` endpoint on Firecrawl's existing Playwright service. Called from `pipeline.py` after the Firecrawl markdown scrape when `variant_image_candidates` is empty and the vendor isn't Shopify JSON. The Playwright service port (3000) is exposed to the host so the Python pipeline can call it directly. Results flow into `ExtractedFacts.variant_image_candidates` — no downstream changes.
+**Architecture:** Extend the Playwright service's `/scrape` endpoint to accept optional swatch parameters. After Firecrawl renders the page, the swatch logic runs on the same live page before context teardown. Results flow through Firecrawl API back to the Python pipeline.
 
-**Tech Stack:** TypeScript (Playwright/Patchright endpoint), Python (caller in pipeline), Docker Compose (port exposure)
+**Tech Stack:** TypeScript (Playwright service), TypeScript (Firecrawl API), Python (pipeline caller), Docker
 
----
-
-### Task 1: Expose Playwright Service Port to Host
-
-The Playwright service currently runs on Docker's internal `backend` network with no host port mapping. The Python pipeline runs on the host and needs to reach `/scrape-variants` directly.
-
-**Files:**
-- Modify: `~/firecrawl-src/docker-compose.yaml:60-87` (playwright-service section)
-
-- [ ] **Step 1: Add port mapping to docker-compose**
-
-In `~/firecrawl-src/docker-compose.yaml`, add a `ports` entry to the `playwright-service` section:
-
-```yaml
-  playwright-service:
-    build: apps/playwright-service-ts
-    environment:
-      PORT: 3000
-      PROXY_SERVER: ${PROXY_SERVER}
-      PROXY_USERNAME: ${PROXY_USERNAME}
-      PROXY_PASSWORD: ${PROXY_PASSWORD}
-      ALLOW_LOCAL_WEBHOOKS: ${ALLOW_LOCAL_WEBHOOKS}
-      BLOCK_MEDIA: ${BLOCK_MEDIA}
-      MAX_CONCURRENT_PAGES: ${CRAWL_CONCURRENT_REQUESTS:-10}
-    ports:
-      - "3003:3000"
-    networks:
-      - backend
-```
-
-Port 3003 on the host maps to port 3000 in the container. This avoids conflicting with Firecrawl API on 3002.
-
-- [ ] **Step 2: Restart the stack and verify**
-
-```bash
-cd ~/firecrawl-src && docker compose up -d --build playwright-service
-```
-
-Expected: Playwright service rebuilds and starts with port 3003 exposed.
-
-- [ ] **Step 3: Test health endpoint from host**
-
-```bash
-curl -s http://localhost:3003/health | python3 -m json.tool
-```
-
-Expected:
-```json
-{
-    "status": "healthy",
-    "maxConcurrentPages": 10,
-    "activePages": 0
-}
-```
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd ~/firecrawl-src && git add docker-compose.yaml && git commit -m "infra: expose playwright service on host port 3003"
-```
+**Prior work:** The swatch-clicking logic (helpers, selectors, constants) is already implemented in `api.ts` and tested on Burton. The standalone `/scrape-variants` endpoint works. This plan integrates that logic into the `/scrape` flow.
 
 ---
 
-### Task 2: Implement `/scrape-variants` Endpoint
+### Task 1: Extend Playwright `/scrape` to Support Swatch Extraction
 
-The core swatch-clicking logic. Navigates to a product page, finds color swatches, clicks each one, collects gallery images per color.
+Add optional swatch fields to the existing `/scrape` endpoint. When present, run swatch extraction on the rendered page before returning.
 
 **Files:**
-- Modify: `~/firecrawl-src/apps/playwright-service-ts/api.ts:468` (before `app.listen`)
+- Modify: `~/firecrawl-src/apps/playwright-service-ts/api.ts`
 
-- [ ] **Step 1: Add the VariantScrapeRequest interface**
+- [ ] **Step 1: Extend the UrlModel interface**
 
-Add this after the existing `UrlModel` interface (line ~186) in `api.ts`:
+Add optional swatch fields to the existing `UrlModel` interface:
 
 ```typescript
-interface VariantScrapeRequest {
+interface UrlModel {
   url: string;
+  wait_after_load?: number;
+  timeout?: number;
+  headers?: { [key: string]: string };
+  check_selector?: string;
+  skip_tls_verification?: boolean;
+  // Swatch extraction (optional — when present, runs after page render)
   swatch_selector?: string;
   gallery_selector?: string;
-  timeout?: number;
   wait_after_click?: number;
 }
 ```
 
-- [ ] **Step 2: Add the generic selector constants**
+- [ ] **Step 2: Add swatch extraction to the `/scrape` endpoint**
 
-Add these after the `AD_SERVING_DOMAINS` array (line ~177):
-
-```typescript
-const GENERIC_SWATCH_SELECTORS = [
-  '[data-color]',
-  '[data-variant-color]',
-  '.color-swatch, .color-chip, .color-option',
-  'button[aria-label*="color" i]',
-  'input[name*="color" i][type="radio"] + label',
-  '[data-option-name="Color" i] [data-option-value]',
-];
-
-const GENERIC_GALLERY_SELECTORS = [
-  '[class*="gallery"] img',
-  '[class*="carousel"] img',
-  '[class*="product-image"] img',
-  '[class*="pdp-image"] img',
-  'main img',
-  '.pdp img',
-];
-
-const PLACEHOLDER_PATTERNS = [
-  /^data:/,
-  /placeholder/i,
-  /1x1/,
-  /spacer/i,
-  /blank\.(gif|png)/i,
-];
-```
-
-- [ ] **Step 3: Add helper functions for swatch scraping**
-
-Add these before the `/scrape-variants` endpoint:
+In the existing `app.post('/scrape', ...)` handler, after the `scrapePage()` call succeeds and before `res.json(...)`, add the swatch extraction logic:
 
 ```typescript
-/**
- * Find swatch elements on the page using vendor-specific or generic selectors.
- * Returns the selector that matched and the elements found.
- */
-const findSwatches = async (
-  page: Page,
-  vendorSelector?: string,
-): Promise<{ selector: string; method: 'vendor_override' | 'generic' } | null> => {
-  // Try vendor-specific selector first
-  if (vendorSelector) {
-    const count = await page.locator(vendorSelector).count();
-    if (count > 0) {
-      console.log(`Found ${count} swatches via vendor selector: ${vendorSelector}`);
-      return { selector: vendorSelector, method: 'vendor_override' };
-    }
-    console.log(`Vendor selector "${vendorSelector}" found 0 swatches, trying generic`);
-  }
+    // Swatch extraction (if requested)
+    let variantImages: Record<string, string[]> | undefined;
+    let swatchCount: number | undefined;
+    let swatchMethod: string | undefined;
 
-  // Try generic selectors in priority order
-  for (const selector of GENERIC_SWATCH_SELECTORS) {
-    const count = await page.locator(selector).count();
-    if (count > 0) {
-      console.log(`Found ${count} swatches via generic selector: ${selector}`);
-      return { selector, method: 'generic' };
-    }
-  }
-
-  return null;
-};
-
-/**
- * Extract the color name from a swatch element.
- */
-const extractColorName = async (swatch: any): Promise<string> => {
-  const dataColor = await swatch.getAttribute('data-color');
-  if (dataColor) return dataColor.trim();
-
-  const dataVariantColor = await swatch.getAttribute('data-variant-color');
-  if (dataVariantColor) return dataVariantColor.trim();
-
-  const ariaLabel = await swatch.getAttribute('aria-label');
-  if (ariaLabel) return ariaLabel.trim();
-
-  const title = await swatch.getAttribute('title');
-  if (title) return title.trim();
-
-  const text = await swatch.textContent();
-  if (text && text.trim().length > 0 && text.trim().length < 50) return text.trim();
-
-  return '';
-};
-
-/**
- * Collect all visible product image URLs in the gallery area.
- * Filters out placeholders, icons, and data URIs.
- */
-const collectGalleryImages = async (
-  page: Page,
-  gallerySelector?: string,
-): Promise<string[]> => {
-  let imgSelector: string | null = null;
-
-  // Try vendor-specific gallery selector
-  if (gallerySelector) {
-    const count = await page.locator(gallerySelector).count();
-    if (count > 0) imgSelector = gallerySelector;
-  }
-
-  // Try generic gallery selectors
-  if (!imgSelector) {
-    for (const selector of GENERIC_GALLERY_SELECTORS) {
-      const count = await page.locator(selector).count();
-      if (count > 0) {
-        imgSelector = selector;
-        break;
-      }
-    }
-  }
-
-  if (!imgSelector) return [];
-
-  const images = await page.locator(imgSelector).evaluateAll((imgs: HTMLImageElement[]) => {
-    return imgs
-      .map(img => img.src || img.dataset.src || img.dataset.lazySrc || '')
-      .filter(src => src.startsWith('http'));
-  });
-
-  // Filter out placeholders
-  return images.filter(url => !PLACEHOLDER_PATTERNS.some(p => p.test(url)));
-};
-```
-
-- [ ] **Step 4: Add the `/scrape-variants` endpoint**
-
-Add this before `app.listen(...)` (line ~470):
-
-```typescript
-app.post('/scrape-variants', async (req: Request, res: Response) => {
-  const {
-    url,
-    swatch_selector,
-    gallery_selector,
-    timeout = 30000,
-    wait_after_click = 1500,
-  }: VariantScrapeRequest = req.body;
-
-  console.log(`================= Variant Scrape Request =================`);
-  console.log(`URL: ${url}`);
-  console.log(`Swatch Selector: ${swatch_selector || 'generic'}`);
-  console.log(`Gallery Selector: ${gallery_selector || 'generic'}`);
-  console.log(`Timeout: ${timeout}`);
-  console.log(`Wait After Click: ${wait_after_click}`);
-  console.log(`==========================================================`);
-
-  if (!url) {
-    return res.status(400).json({ error: 'URL is required' });
-  }
-
-  if (!isValidUrl(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
-  }
-
-  try {
-    await assertSafeTargetUrl(url);
-  } catch (error) {
-    if (error instanceof InsecureConnectionError) {
-      return res.json({ variant_images: {}, swatch_count: 0, error: error.message });
-    }
-    throw error;
-  }
-
-  if (!browser) {
-    await initializeBrowser();
-  }
-
-  await pageSemaphore.acquire();
-
-  let requestContext: BrowserContext | null = null;
-  let page: Page | null = null;
-
-  try {
-    const contextBundle = await createContext();
-    requestContext = contextBundle.context;
-    const securityState = contextBundle.securityState;
-    page = await requestContext.newPage();
-
-    // Navigate to the product page
-    await scrapePage(page, url, 'load', 1000, timeout, undefined, securityState);
-
-    // Find swatches
-    const swatchResult = await findSwatches(page, swatch_selector);
-    if (!swatchResult) {
-      console.log('No swatches found on page');
-      return res.json({ variant_images: {}, swatch_count: 0, method: 'none' });
-    }
-
-    const swatches = page.locator(swatchResult.selector);
-    const swatchCount = await swatches.count();
-    const variantImages: Record<string, string[]> = {};
-
-    // Capture the initially-selected color's images (before any clicks)
-    const initialImages = await collectGalleryImages(page, gallery_selector);
-
-    // Try to get the initially-selected color name
-    // Many sites visually indicate which swatch is active
-    let initialColorCaptured = false;
-    for (let i = 0; i < swatchCount; i++) {
-      const swatch = swatches.nth(i);
-      const isActive = await swatch.evaluate((el: Element) => {
-        return el.classList.contains('active') ||
-               el.classList.contains('selected') ||
-               el.getAttribute('aria-checked') === 'true' ||
-               el.getAttribute('aria-selected') === 'true' ||
-               el.closest('.active, .selected') !== null;
-      });
-
-      if (isActive) {
-        const colorName = await extractColorName(swatch);
-        if (colorName && initialImages.length > 0) {
-          variantImages[colorName] = initialImages;
-          initialColorCaptured = true;
-          console.log(`Initial color: "${colorName}" — ${initialImages.length} images`);
-        }
-        break;
-      }
-    }
-
-    // Click each swatch and collect images
-    for (let i = 0; i < swatchCount; i++) {
-      const swatch = swatches.nth(i);
-      const colorName = await extractColorName(swatch);
-
-      if (!colorName) {
-        console.log(`Swatch ${i}: no color name found, skipping`);
-        continue;
-      }
-
-      // Skip if we already captured this color as the initial selection
-      if (variantImages[colorName]) {
-        continue;
-      }
-
+    if (swatch_selector || gallery_selector || wait_after_click) {
       try {
-        // Check if clicking will navigate away
-        const currentUrl = page.url();
-        await swatch.click({ timeout: 5000 });
-        await page.waitForTimeout(wait_after_click);
+        const swatchResult = await findSwatches(page, swatch_selector);
+        if (swatchResult) {
+          const swatches = page.locator(swatchResult.selector);
+          swatchCount = await swatches.count();
+          swatchMethod = swatchResult.method;
+          variantImages = {};
 
-        // Detect navigation — abort if URL changed
-        if (page.url() !== currentUrl) {
-          console.log(`Swatch "${colorName}" navigated away — aborting`);
-          break;
-        }
+          const waitMs = wait_after_click ?? 1500;
 
-        const images = await collectGalleryImages(page, gallery_selector);
-        if (images.length > 0) {
-          variantImages[colorName] = images;
-          console.log(`Color "${colorName}": ${images.length} images`);
+          // Capture initial color's images
+          const initialImages = await collectGalleryImages(page, gallery_selector);
+
+          let initialColorCaptured = false;
+          for (let i = 0; i < swatchCount; i++) {
+            const swatch = swatches.nth(i);
+            const isActive = await swatch.evaluate((el: Element) => {
+              return el.classList.contains('active') ||
+                     el.classList.contains('selected') ||
+                     el.getAttribute('aria-checked') === 'true' ||
+                     el.getAttribute('aria-selected') === 'true' ||
+                     el.closest('.active, .selected') !== null;
+            });
+            if (isActive) {
+              const colorName = await extractColorName(swatch);
+              if (colorName && initialImages.length > 0) {
+                variantImages[colorName] = initialImages;
+                initialColorCaptured = true;
+                console.log(`Initial color: "${colorName}" — ${initialImages.length} images`);
+              }
+              break;
+            }
+          }
+
+          // Click each swatch and collect images
+          for (let i = 0; i < swatchCount; i++) {
+            const swatch = swatches.nth(i);
+            const colorName = await extractColorName(swatch);
+            if (!colorName || variantImages[colorName]) continue;
+
+            try {
+              const href = await swatch.getAttribute('href');
+              const currentUrl = page.url();
+
+              if (href && href.startsWith('http')) {
+                await page.goto(href, { waitUntil: 'load', timeout });
+                await page.waitForTimeout(waitMs);
+              } else {
+                await swatch.click({ timeout: 5000 });
+                await page.waitForTimeout(waitMs);
+                const newUrl = page.url();
+                if (newUrl !== currentUrl) {
+                  const currentHost = new URL(currentUrl).hostname;
+                  const newHost = new URL(newUrl).hostname;
+                  if (currentHost !== newHost) {
+                    console.log(`Swatch "${colorName}" navigated to different domain — aborting`);
+                    break;
+                  }
+                }
+              }
+
+              const images = await collectGalleryImages(page, gallery_selector);
+              if (images.length > 0) {
+                variantImages[colorName] = images;
+                console.log(`Color "${colorName}": ${images.length} images`);
+              }
+            } catch (clickError) {
+              console.log(`Failed to click swatch "${colorName}": ${clickError}`);
+            }
+          }
+
+          // Assign initial images to first swatch if not captured
+          if (!initialColorCaptured && initialImages.length > 0 && swatchCount > 0) {
+            const firstColor = await extractColorName(swatches.nth(0));
+            if (firstColor && !variantImages[firstColor]) {
+              variantImages[firstColor] = initialImages;
+            }
+          }
+
+          console.log(`Swatch extraction: ${Object.keys(variantImages).length} colors from ${swatchCount} swatches`);
         } else {
-          console.log(`Color "${colorName}": no images found after click`);
+          swatchCount = 0;
+          swatchMethod = 'none';
         }
-      } catch (clickError) {
-        console.log(`Failed to click swatch "${colorName}": ${clickError}`);
+      } catch (swatchError) {
+        console.error('Swatch extraction error (non-fatal):', swatchError);
       }
     }
-
-    // If we got images but didn't capture the initial color, assign first swatch's images
-    if (!initialColorCaptured && initialImages.length > 0 && swatchCount > 0) {
-      const firstColor = await extractColorName(swatches.nth(0));
-      if (firstColor && !variantImages[firstColor]) {
-        variantImages[firstColor] = initialImages;
-        console.log(`Assigned initial images to first swatch: "${firstColor}"`);
-      }
-    }
-
-    console.log(`Variant scrape complete: ${Object.keys(variantImages).length} colors from ${swatchCount} swatches`);
-
-    res.json({
-      variant_images: variantImages,
-      swatch_count: swatchCount,
-      method: swatchResult.method,
-    });
-
-  } catch (error) {
-    console.error('Variant scrape error:', error);
-    res.json({
-      variant_images: {},
-      swatch_count: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    });
-  } finally {
-    if (page) await page.close();
-    if (requestContext) await requestContext.close();
-    pageSemaphore.release();
-  }
-});
 ```
 
-- [ ] **Step 5: Rebuild the Playwright service**
+Then update the `res.json(...)` response to include the swatch data:
+
+```typescript
+    res.json({
+      content: result.content,
+      pageStatusCode: result.status,
+      contentType: result.contentType,
+      ...(pageError && { pageError }),
+      ...(variantImages !== undefined && { variant_images: variantImages }),
+      ...(swatchCount !== undefined && { swatch_count: swatchCount }),
+      ...(swatchMethod !== undefined && { swatch_method: swatchMethod }),
+    });
+```
+
+- [ ] **Step 3: Destructure new fields from request body**
+
+Update the destructuring at the top of the `/scrape` handler to include the new fields:
+
+```typescript
+  const { url, wait_after_load = 0, timeout = 15000, headers, check_selector, skip_tls_verification = false, swatch_selector, gallery_selector, wait_after_click }: UrlModel = req.body;
+```
+
+- [ ] **Step 4: Rebuild and test**
 
 ```bash
 cd ~/firecrawl-src && docker compose up -d --build playwright-service
 ```
 
-Expected: Service rebuilds and restarts without errors.
-
-- [ ] **Step 6: Smoke test the endpoint with curl**
-
+Test with Burton (swatch params):
 ```bash
-curl -s -X POST http://localhost:3003/scrape-variants \
+curl -s -X POST http://localhost:3003/scrape \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html", "timeout": 30000, "wait_after_click": 2000}' \
-  | python3 -m json.tool
+  -d '{"url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html", "timeout": 30000, "wait_after_load": 2000, "swatch_selector": "a.variant-swatch.variationColor", "gallery_selector": ".product-image img", "wait_after_click": 3000}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'HTML: {len(d.get(\"content\",\"\"))} chars, variant_images: {len(d.get(\"variant_images\",{}))}, swatches: {d.get(\"swatch_count\")}')"
 ```
 
-Expected: JSON response with `variant_images` containing multiple color entries, each with image URLs. `swatch_count` > 0. If Burton's swatch markup doesn't match generic selectors, the response will have `swatch_count: 0` — that's OK, we'll add vendor overrides in Task 4.
+Expected: HTML content + 7 variant_images colors.
 
-- [ ] **Step 7: Commit**
+Test without swatch params (unchanged behavior):
+```bash
+curl -s -X POST http://localhost:3003/scrape \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html", "timeout": 30000}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'HTML: {len(d.get(\"content\",\"\"))} chars, has variant_images: {\"variant_images\" in d}')"
+```
+
+Expected: HTML content, no variant_images field.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-cd ~/firecrawl-src && git add apps/playwright-service-ts/api.ts && git commit -m "feat: add /scrape-variants endpoint for color swatch image extraction"
+cd ~/firecrawl-src && git add apps/playwright-service-ts/api.ts && git commit -m "feat: integrate swatch extraction into /scrape endpoint"
 ```
 
 ---
 
-### Task 3: Add `_scrape_variant_images()` to Firecrawl Scraper + Pipeline Integration
+### Task 2: Thread Swatch Options Through Firecrawl API
 
-Connect the Python pipeline to the new endpoint. Call it from `pipeline.py` when variant images are missing.
+Pass swatch parameters from the Firecrawl API to the Playwright service and include variant_images in the response.
 
 **Files:**
-- Modify: `lookout/enrich/firecrawl_scraper.py:159` (FirecrawlScraper class)
-- Modify: `lookout/enrich/pipeline.py:634` (Step 3d section)
+- Modify: `~/firecrawl-src/apps/api/src/controllers/v2/types.ts`
+- Modify: `~/firecrawl-src/apps/api/src/scraper/scrapeURL/engines/playwright/index.ts`
 
-- [ ] **Step 1: Add `_scrape_variant_images` method to FirecrawlScraper**
+- [ ] **Step 1: Add swatch fields to ScrapeOptionsBase**
 
-Add this method to the `FirecrawlScraper` class in `lookout/enrich/firecrawl_scraper.py`, after the `scrape_markdown` method:
+In `types.ts`, add optional swatch fields to the `baseScrapeOptions` schema (around line 570, after `waitFor`):
+
+```typescript
+  waitFor: z.int().nonnegative().max(60000).prefault(0),
+  // Swatch extraction (variant color images)
+  swatchSelector: z.string().optional(),
+  gallerySelector: z.string().optional(),
+  waitAfterClick: z.int().nonnegative().max(30000).optional(),
+```
+
+- [ ] **Step 2: Pass swatch fields to Playwright service**
+
+In `playwright/index.ts`, add the swatch fields to the request body:
+
+```typescript
+export async function scrapeURLWithPlaywright(
+  meta: Meta,
+): Promise<EngineScrapeResult> {
+  const response = await robustFetch({
+    url: config.PLAYWRIGHT_MICROSERVICE_URL!,
+    headers: { "Content-Type": "application/json" },
+    body: {
+      url: meta.rewrittenUrl ?? meta.url,
+      wait_after_load: meta.options.waitFor,
+      timeout: meta.abort.scrapeTimeout(),
+      headers: meta.options.headers,
+      skip_tls_verification: meta.options.skipTlsVerification,
+      // Swatch extraction
+      ...(meta.options.swatchSelector && { swatch_selector: meta.options.swatchSelector }),
+      ...(meta.options.gallerySelector && { gallery_selector: meta.options.gallerySelector }),
+      ...(meta.options.waitAfterClick && { wait_after_click: meta.options.waitAfterClick }),
+    },
+    method: "POST",
+    logger: meta.logger.child("scrapeURLWithPlaywright/robustFetch"),
+    schema: z.object({
+      content: z.string(),
+      pageStatusCode: z.number(),
+      pageError: z.string().optional(),
+      contentType: z.string().optional(),
+      variant_images: z.record(z.array(z.string())).optional(),
+      swatch_count: z.number().optional(),
+      swatch_method: z.string().optional(),
+    }),
+    mock: meta.mock,
+    abort: meta.abort.asSignal(),
+  });
+```
+
+- [ ] **Step 3: Include variant_images in EngineScrapeResult**
+
+After the response handling, pass through variant data. First check if `EngineScrapeResult` needs a new field:
+
+```typescript
+  return {
+    url: meta.rewrittenUrl ?? meta.url,
+    html: response.content,
+    statusCode: response.pageStatusCode,
+    error: response.pageError,
+    contentType: response.contentType,
+    proxyUsed: "basic",
+    // Pass through variant images if present
+    ...(response.variant_images && { variantImages: response.variant_images }),
+    ...(response.swatch_count !== undefined && { swatchCount: response.swatch_count }),
+    ...(response.swatch_method && { swatchMethod: response.swatch_method }),
+  };
+```
+
+Check and update the `EngineScrapeResult` type to accept these optional fields.
+
+- [ ] **Step 4: Rebuild Firecrawl API**
+
+```bash
+cd ~/firecrawl-src && docker compose up -d --build api
+```
+
+- [ ] **Step 5: Test via Firecrawl API**
+
+```bash
+curl -s -X POST http://localhost:3002/v1/scrape \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html", "waitFor": 2000, "swatchSelector": "a.variant-swatch.variationColor", "gallerySelector": ".product-image img", "waitAfterClick": 3000}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print(json.dumps({k:v for k,v in d.items() if k != 'content'}, indent=2)[:2000])"
+```
+
+Expected: Response includes variant_images alongside normal scrape data.
+
+- [ ] **Step 6: Commit**
+
+```bash
+cd ~/firecrawl-src && git add apps/api/src/controllers/v2/types.ts apps/api/src/scraper/scrapeURL/engines/playwright/index.ts && git commit -m "feat: thread swatch extraction options through Firecrawl API"
+```
+
+---
+
+### Task 3: Update Python Pipeline to Use Integrated Scrape
+
+Modify the Python pipeline to pass swatch parameters via the Firecrawl scrape call and handle variant_images in the response.
+
+**Files:**
+- Modify: `lookout/enrich/firecrawl_scraper.py`
+- Modify: `lookout/enrich/pipeline.py`
+
+- [ ] **Step 1: Update `scrape_markdown()` to accept and pass swatch params**
+
+Modify the `scrape_markdown` method in `FirecrawlScraper` to accept optional swatch parameters and return variant images alongside markdown:
 
 ```python
-    async def scrape_variant_images(
+    async def scrape_markdown(
         self,
         url: str,
         swatch_selector: str | None = None,
         gallery_selector: str | None = None,
-        playwright_url: str = "http://localhost:3003",
-        timeout: int = 30000,
-        wait_after_click: int = 1500,
-    ) -> dict[str, list[str]] | None:
-        """Scrape color variant images by clicking swatches.
+        wait_after_click: int | None = None,
+    ) -> tuple[str | None, dict[str, list[str]] | None]:
+        """Markdown mode — returns (markdown, variant_images).
 
-        Calls the /scrape-variants endpoint on the Playwright service.
-        Returns {color: [image_urls]} or None on failure.
+        When swatch params are provided, the Playwright service runs
+        swatch extraction on the same rendered page. variant_images is
+        None if no swatch params or no swatches found.
         """
-        import httpx
-
-        payload: dict = {"url": url, "timeout": timeout, "wait_after_click": wait_after_click}
-        if swatch_selector:
-            payload["swatch_selector"] = swatch_selector
-        if gallery_selector:
-            payload["gallery_selector"] = gallery_selector
-
+        await self._polite_delay()
         try:
-            async with httpx.AsyncClient(timeout=timeout / 1000 + 30) as client:
-                resp = await client.post(
-                    f"{playwright_url}/scrape-variants",
-                    json=payload,
-                )
-                resp.raise_for_status()
-                data = resp.json()
+            kwargs = {
+                "formats": ["markdown"],
+                "only_main_content": True,
+                "exclude_tags": [
+                    "nav", "footer", "header",
+                    "[role='navigation']",
+                    "[role='banner']",
+                    "[role='contentinfo']",
+                    ".site-footer", ".site-header", ".site-nav",
+                    "#cookie-banner", ".cookie-notice",
+                    ".announcement-bar",
+                ],
+            }
+            if swatch_selector:
+                kwargs["swatchSelector"] = swatch_selector
+            if gallery_selector:
+                kwargs["gallerySelector"] = gallery_selector
+            if wait_after_click:
+                kwargs["waitAfterClick"] = wait_after_click
 
-            variant_images = data.get("variant_images", {})
-            swatch_count = data.get("swatch_count", 0)
-            method = data.get("method", "unknown")
+            doc = await self._client.scrape(url, **kwargs)
 
-            if variant_images:
+            # Extract variant images from response if present
+            variant_images = None
+            if hasattr(doc, 'variant_images') and doc.variant_images:
+                variant_images = doc.variant_images
                 logger.info(
-                    "Swatch scrape found %d colors (%d swatches, method=%s) for %s",
-                    len(variant_images), swatch_count, method, url,
+                    "Firecrawl returned variant images for %d colors from %s",
+                    len(variant_images), url,
                 )
-                return variant_images
-            else:
-                logger.info(
-                    "Swatch scrape found no variant images (%d swatches) for %s",
-                    swatch_count, url,
-                )
-                return None
 
+            return doc.markdown, variant_images
         except Exception:
-            logger.warning("Swatch scrape failed for %s", url, exc_info=True)
-            return None
+            logger.exception("Firecrawl markdown scrape failed for %s", url)
+            return None, None
 ```
 
-- [ ] **Step 2: Add swatch scrape call to pipeline.py**
+- [ ] **Step 2: Update all `scrape_markdown` callers in pipeline.py**
 
-In `lookout/enrich/pipeline.py`, find the comment `# Step 3d: Color-specific image search` (around line 634). Insert the swatch scrape **before** the existing color-specific image search so it gets first crack:
+The `scrape_markdown` signature changed from returning `str | None` to `tuple[str | None, dict | None]`. Update all callers:
+
+In `pipeline.py`, find the main scrape call (around line 479):
+```python
+                markdown, variant_images = await self.firecrawl.scrape_markdown(
+                    scrape_url,
+                    swatch_selector=vendor_config.swatch_selector,
+                    gallery_selector=vendor_config.gallery_selector,
+                    wait_after_click=1500 if vendor_config.swatch_selector else None,
+                )
+```
+
+Also find the fallback scrape call (around line 515):
+```python
+                            fallback_md, _ = await self.firecrawl.scrape_markdown(
+                                fallback_output.selected_url
+                            )
+```
+
+And update the `is_bot_blocked` check line to use `markdown` instead of the old variable name.
+
+- [ ] **Step 3: Inject Firecrawl variant images into facts**
+
+After the LLM fact extraction step (around the catalog image injection), add:
 
 ```python
-            # Step 3d: Swatch-based variant image extraction
-            # Only for non-Shopify vendors when HTML extraction found nothing
+            # Step 3c-pre: Inject variant images from Firecrawl swatch extraction
+            if variant_images and not facts.variant_image_candidates:
+                facts.variant_image_candidates = {
+                    color: urls if isinstance(urls, list) else [urls]
+                    for color, urls in variant_images.items()
+                }
+                handle_log.entries.append(
+                    LogEntry(
+                        message=f"Firecrawl swatch extraction found images for {len(variant_images)} colors",
+                        data={"colors": list(variant_images.keys())},
+                    )
+                )
+```
+
+- [ ] **Step 4: Remove or gate the standalone swatch scrape call (Step 3d)**
+
+The Step 3d block that calls `self.firecrawl.scrape_variant_images()` should now only fire as a fallback — when Firecrawl's integrated swatch extraction returned nothing but we still have no variant images:
+
+```python
+            # Step 3d: Standalone swatch scrape fallback
+            # Only if Firecrawl's integrated extraction didn't find anything
             if (
                 not vendor_config.is_shopify
                 and not facts.variant_image_candidates
+                and (vendor_config.swatch_selector or vendor_config.gallery_selector)
             ):
-                handle_log.entries.append(
-                    LogEntry(message="Attempting swatch scrape for variant images")
-                )
-                swatch_images = await self.firecrawl.scrape_variant_images(
-                    url=scrape_url,
-                    swatch_selector=getattr(vendor_config, 'swatch_selector', None),
-                    gallery_selector=getattr(vendor_config, 'gallery_selector', None),
-                )
-                if swatch_images:
-                    facts.variant_image_candidates = swatch_images
-                    handle_log.entries.append(
-                        LogEntry(
-                            message=f"Swatch scrape found images for {len(swatch_images)} colors",
-                            data={"colors": list(swatch_images.keys())},
-                        )
-                    )
-
-            # Step 3e: Color-specific image search (fallback if swatch scrape didn't find anything)
 ```
 
-Also update the existing comment from `# Step 3d:` to `# Step 3e:` on the color-specific image search block that follows.
+This gates the standalone call to only run when the vendor has explicit selectors configured, since generic selectors already ran during the Firecrawl scrape.
 
-- [ ] **Step 3: Test with a Burton product**
-
-```bash
-cd /Users/andyking/Lookout && uv run python -c "
-import asyncio
-from lookout.enrich.firecrawl_scraper import FirecrawlScraper
-
-async def test():
-    scraper = FirecrawlScraper()
-    result = await scraper.scrape_variant_images(
-        'https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html',
-        wait_after_click=2000,
-    )
-    if result:
-        for color, imgs in result.items():
-            print(f'{color}: {len(imgs)} images')
-            for img in imgs[:2]:
-                print(f'  {img[:80]}')
-    else:
-        print('No variant images found')
-
-asyncio.run(test())
-"
-```
-
-Expected: Multiple colors printed with image URLs. If 0 colors, check Playwright service logs (`docker compose logs playwright-service`) to see which selectors were tried.
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /Users/andyking/Lookout && git add lookout/enrich/firecrawl_scraper.py lookout/enrich/pipeline.py && git commit -m "feat: integrate swatch scrape into enrichment pipeline"
-```
-
----
-
-### Task 4: Add Vendor Config Support for Swatch Selectors
-
-Add optional `swatch_selector` and `gallery_selector` fields to `VendorConfig` and `vendors.yaml`.
-
-**Files:**
-- Modify: `lookout/enrich/models.py:179` (VendorConfig class)
-- Modify: `vendors.yaml` (vendor template)
-
-- [ ] **Step 1: Add optional fields to VendorConfig**
-
-In `lookout/enrich/models.py`, add two fields to the `VendorConfig` class:
-
-```python
-class VendorConfig(BaseModel):
-    """Configuration for a single vendor."""
-
-    domain: str
-    is_shopify: bool = False
-    fallback_domains: list[str] = Field(default_factory=list)
-    blocked_paths: list[str] = Field(default_factory=list)
-    product_url_patterns: list[str] = Field(default_factory=list)
-    search: SearchConfig = Field(default_factory=SearchConfig)
-    swatch_selector: str | None = None
-    gallery_selector: str | None = None
-```
-
-- [ ] **Step 2: Update pipeline.py to use VendorConfig fields directly**
-
-In `pipeline.py`, replace the `getattr` calls from Task 3 with direct attribute access now that the fields exist:
-
-```python
-                swatch_images = await self.firecrawl.scrape_variant_images(
-                    url=scrape_url,
-                    swatch_selector=vendor_config.swatch_selector,
-                    gallery_selector=vendor_config.gallery_selector,
-                )
-```
-
-- [ ] **Step 3: Update vendors.yaml template comment**
-
-Add the new fields to the vendor template at the bottom of `vendors.yaml`:
-
-```yaml
-  # Template for adding new vendors
-  # VendorName:
-  #   domain: "vendor-domain.com"
-  #   swatch_selector: ".custom-color-swatch"  # optional, for variant image extraction
-  #   gallery_selector: ".product-gallery img"  # optional, for variant image extraction
-  #   blocked_paths:
-  #     - "/blog"
-  #     - "/support"
-  #   product_url_patterns:
-  #     - "/product/"
-  #   search:
-  #     method: "site_search"
-  #     query_template: "site:{domain} {query}"
-```
-
-- [ ] **Step 4: Commit**
-
-```bash
-cd /Users/andyking/Lookout && git add lookout/enrich/models.py lookout/enrich/pipeline.py vendors.yaml && git commit -m "feat: add swatch_selector and gallery_selector to vendor config"
-```
-
----
-
-### Task 5: Validate on Burton Reserve 2L Jacket
-
-End-to-end validation with the primary test product. This tests the full flow: pipeline → swatch scrape → variant_image_candidates → generator → review.
-
-**Files:**
-- No new files — this is a validation task
-
-- [ ] **Step 1: Check Docker service is running**
-
-```bash
-curl -s http://localhost:3003/health | python3 -m json.tool
-```
-
-Expected: `{"status": "healthy", ...}`
-
-- [ ] **Step 2: Direct endpoint test**
-
-```bash
-curl -s -X POST http://localhost:3003/scrape-variants \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html", "timeout": 30000, "wait_after_click": 2000}' \
-  | python3 -m json.tool
-```
-
-Check:
-- `swatch_count` should be ≥ 5 (Burton Reserve has 7 color variants)
-- `variant_images` should have multiple color keys
-- Each color should have ≥ 1 image URL starting with `https://`
-
-If `swatch_count` is 0: inspect Burton's page source to find the actual swatch selector and add it to `vendors.yaml` as `swatch_selector`.
-
-- [ ] **Step 3: Validate image URLs**
-
-```bash
-# Take the first image URL from the curl output and HEAD-check it
-curl -sI "FIRST_IMAGE_URL" | head -5
-```
-
-Expected: `HTTP/2 200` with `content-type: image/...`
-
-- [ ] **Step 4: Run enrichment on the Burton product**
+- [ ] **Step 5: Test end-to-end**
 
 ```bash
 cd /Users/andyking/Lookout && uv run lookout enrich run --handle mens-burton-reserve-2l-insulated-jacket --vendor Burton
 ```
 
-Check the output for:
-- "Attempting swatch scrape for variant images" in log
-- "Swatch scrape found images for N colors" in log
-- `extracted_facts.json` should have `variant_image_candidates` populated
-- `merch_output.json` should have `variant_image_map` with per-color entries (not `__all__`)
+Check logs for:
+- "Firecrawl swatch extraction found images for N colors"
+- `variant_image_map` in `merch_output.json` has per-color entries
 
-- [ ] **Step 5: If generic selectors fail, add Burton-specific config**
-
-If Step 2 returned 0 swatches, inspect the page to find the right selector:
+- [ ] **Step 6: Commit**
 
 ```bash
-curl -s -X POST http://localhost:3003/scrape \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://www.burton.com/us/en/p/mens-burton-reserve-2l-insulated-jacket/W26-3025310EWZRGXXX.html", "timeout": 30000, "wait_after_load": 2000}' \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['content'][:5000])"
-```
-
-Look for color swatch elements in the HTML and add the selector to `vendors.yaml`:
-
-```yaml
-  Burton:
-    domain: "burton.com"
-    swatch_selector: ".the-actual-selector"
-    gallery_selector: ".the-actual-gallery-selector"
-```
-
-Then rebuild and retest.
-
-- [ ] **Step 6: Commit any vendor config additions**
-
-```bash
-cd /Users/andyking/Lookout && git add vendors.yaml && git commit -m "config: add Burton swatch selectors (if needed)"
+cd /Users/andyking/Lookout && git add lookout/enrich/firecrawl_scraper.py lookout/enrich/pipeline.py && git commit -m "feat: use integrated Firecrawl swatch extraction in pipeline"
 ```
 
 ---
 
-### Task 6: Validate on Additional Vendors
+### Task 4: Validate SPA Vendors
 
-Test generic selectors on K2, Patagonia, and Arc'teryx. Add vendor-specific overrides where needed.
+The key test — do SPA vendors (K2, Patagonia, Arc'teryx) now return variant images when swatch extraction runs on Firecrawl's rendered page?
 
 **Files:**
-- Possibly modify: `vendors.yaml` (vendor-specific overrides)
+- Possibly modify: `vendors.yaml` (add vendor-specific selectors)
 
-- [ ] **Step 1: Test K2**
+- [ ] **Step 1: Test K2 via Firecrawl API with swatch params**
 
 ```bash
-# Find a K2 product URL first, then test
-curl -s -X POST http://localhost:3003/scrape-variants \
+curl -s -X POST http://localhost:3002/v1/scrape \
   -H "Content-Type: application/json" \
-  -d '{"url": "K2_PRODUCT_URL", "timeout": 30000, "wait_after_click": 2000}' \
-  | python3 -m json.tool
+  -d '{"url": "https://k2snow.com/en-us/product/standard-snowboard", "waitFor": 5000, "swatchSelector": "", "gallerySelector": "", "waitAfterClick": 2000}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); vi=d.get('variant_images',{}); print(f'K2: {len(vi)} colors, swatch_count={d.get(\"swatch_count\",\"N/A\")}')"
 ```
-
-Record: swatch_count, number of colors found, method used.
 
 - [ ] **Step 2: Test Patagonia**
 
 ```bash
-curl -s -X POST http://localhost:3003/scrape-variants \
+curl -s -X POST http://localhost:3002/v1/scrape \
   -H "Content-Type: application/json" \
-  -d '{"url": "PATAGONIA_PRODUCT_URL", "timeout": 30000, "wait_after_click": 2000}' \
-  | python3 -m json.tool
+  -d '{"url": "https://www.patagonia.com/product/mens-nano-puff-jacket/84212.html", "waitFor": 5000, "swatchSelector": "", "gallerySelector": "", "waitAfterClick": 2000}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); vi=d.get('variant_images',{}); print(f'Patagonia: {len(vi)} colors')"
 ```
-
-Record results.
 
 - [ ] **Step 3: Test Arc'teryx**
 
 ```bash
-curl -s -X POST http://localhost:3003/scrape-variants \
+curl -s -X POST http://localhost:3002/v1/scrape \
   -H "Content-Type: application/json" \
-  -d '{"url": "ARCTERYX_PRODUCT_URL", "timeout": 30000, "wait_after_click": 2000}' \
-  | python3 -m json.tool
+  -d '{"url": "https://arcteryx.com/us/en/shop/mens/beta-ar-jacket", "waitFor": 5000, "swatchSelector": "", "gallerySelector": "", "waitAfterClick": 2000}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); vi=d.get('variant_images',{}); print(f'Arcteryx: {len(vi)} colors')"
 ```
 
-Record results.
+- [ ] **Step 4: Inspect HTML and add vendor selectors for any that need them**
 
-- [ ] **Step 4: Add vendor overrides for any that need them**
+For vendors that returned 0 swatches, inspect the Firecrawl-rendered HTML for swatch patterns and add `swatch_selector` / `gallery_selector` to `vendors.yaml`.
 
-For each vendor where generic selectors returned 0 swatches, inspect the HTML and add `swatch_selector` and/or `gallery_selector` to `vendors.yaml`.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Commit vendor config updates**
 
 ```bash
-cd /Users/andyking/Lookout && git add vendors.yaml && git commit -m "config: add vendor-specific swatch selectors where needed"
+cd /Users/andyking/Lookout && git add vendors.yaml && git commit -m "config: add swatch selectors for additional vendors"
 ```
