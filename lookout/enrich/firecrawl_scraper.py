@@ -26,6 +26,34 @@ from .scraper import ScrapedPage
 
 logger = logging.getLogger(__name__)
 
+# Markers that indicate bot protection blocked the request
+_BOT_BLOCK_MARKERS = [
+    "verify you are a human",
+    "access denied",
+    "checking your browser",
+    "perimeterx",
+    "powered and protected by",
+    "sit tight",
+    "hands full at the moment",
+    "just a moment",
+    "ray id",
+    "enable javascript",
+    "captcha",
+    "document_antibot",
+]
+
+
+def is_bot_blocked(content: str) -> bool:
+    """Check if scraped content is a bot protection page."""
+    if not content or len(content) < 500:
+        lower = (content or "").lower()
+        return any(marker in lower for marker in _BOT_BLOCK_MARKERS)
+    # For longer content, only check the first 2000 chars
+    # (bot blocks are typically full-page replacements)
+    lower = content[:2000].lower()
+    return any(marker in lower for marker in _BOT_BLOCK_MARKERS)
+
+
 EXTRACTION_SCHEMA = {
     "type": "object",
     "properties": {

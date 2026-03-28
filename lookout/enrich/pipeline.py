@@ -33,6 +33,7 @@ from .models import (
     LogEntry,
     MerchOutput,
     ProcessingStatus,
+    VendorConfig,
     VendorsConfig,
 )
 from .resolver import URLResolver
@@ -419,23 +420,84 @@ class ProductProcessor:
                 return None, ProcessingStatus.NO_MATCH, metadata
 
             # Step 2: Scrape page via Firecrawl (markdown mode)
+            from .firecrawl_scraper import is_bot_blocked
+
+            scrape_url = resolver_output.selected_url
             handle_log.entries.append(
                 LogEntry(
-                    message=f"Scraping via Firecrawl: {resolver_output.selected_url}",
+                    message=f"Scraping via Firecrawl: {scrape_url}",
                 )
             )
 
-            markdown = await self.firecrawl.scrape_markdown(resolver_output.selected_url)
+            markdown = await self.firecrawl.scrape_markdown(scrape_url)
 
-            if not markdown:
+            # Check for bot block — try fallback domains if available
+            if not markdown or is_bot_blocked(markdown):
+                block_reason = "bot blocked" if markdown else "no content"
                 handle_log.entries.append(
                     LogEntry(
-                        level="ERROR",
-                        message="Firecrawl returned no content",
+                        level="WARNING",
+                        message=f"Primary scrape {block_reason}: {scrape_url}",
                     )
                 )
-                metadata["error"] = "Firecrawl scrape failed"
-                return None, ProcessingStatus.FAILED, metadata
+
+                fallback_domains = vendor_config.fallback_domains
+                fallback_success = False
+
+                for fallback_domain in fallback_domains:
+                    handle_log.entries.append(
+                        LogEntry(
+                            message=f"Trying fallback domain: {fallback_domain}",
+                        )
+                    )
+                    # Re-resolve the product on the fallback domain
+                    fallback_resolver = URLResolver(http_client=self.http_client)
+                    fallback_vendor = VendorConfig(
+                        domain=fallback_domain,
+                        search=vendor_config.search,
+                    )
+                    fallback_output = await fallback_resolver.resolve(
+                        handle=handle,
+                        vendor=vendor,
+                        vendor_config=fallback_vendor,
+                        hints=input_row.gaps or input_row.suggestions or "",
+                        title=input_row.title,
+                    )
+
+                    if fallback_output and fallback_output.selected_url:
+                        fallback_md = await self.firecrawl.scrape_markdown(
+                            fallback_output.selected_url
+                        )
+                        if fallback_md and not is_bot_blocked(fallback_md):
+                            markdown = fallback_md
+                            scrape_url = fallback_output.selected_url
+                            fallback_success = True
+                            handle_log.entries.append(
+                                LogEntry(
+                                    message=f"Fallback succeeded: {scrape_url}",
+                                )
+                            )
+                            metadata["warnings"].append(
+                                f"FALLBACK_USED: {fallback_domain}"
+                            )
+                            break
+                        else:
+                            handle_log.entries.append(
+                                LogEntry(
+                                    level="WARNING",
+                                    message=f"Fallback {fallback_domain} also blocked",
+                                )
+                            )
+
+                if not fallback_success:
+                    handle_log.entries.append(
+                        LogEntry(
+                            level="ERROR",
+                            message="All scrape sources blocked or failed",
+                        )
+                    )
+                    metadata["error"] = "Scrape blocked (primary + fallbacks)"
+                    return None, ProcessingStatus.FAILED, metadata
 
             # Save raw markdown
             md_path = artifacts_dir / "source.md"
@@ -446,7 +508,7 @@ class ProductProcessor:
             handle_log.entries.append(LogEntry(message="Extracting facts from markdown"))
 
             facts_dict = await self.llm_client.extract_facts_from_markdown(
-                markdown, resolver_output.selected_url
+                markdown, scrape_url
             )
 
             if not facts_dict or not facts_dict.get("product_name"):
@@ -461,7 +523,7 @@ class ProductProcessor:
 
             # Map to ExtractedFacts model
             from .firecrawl_scraper import _firecrawl_json_to_facts
-            facts = _firecrawl_json_to_facts(facts_dict, resolver_output.selected_url)
+            facts = _firecrawl_json_to_facts(facts_dict, scrape_url)
 
             # Save extraction outputs
             facts_path = artifacts_dir / "extracted_facts.json"
