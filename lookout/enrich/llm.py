@@ -380,13 +380,17 @@ class LLMClient:
         Uses Claude to parse Firecrawl's clean markdown output into
         structured product data matching ExtractedFacts fields.
         """
-        prompt_template = self.load_prompt("extract_facts")
-
-        # Format the markdown as source_text, with empty raw_facts
-        # since we don't have a prior HTML parsing pass
-        prompt = prompt_template.format(
-            source_text=markdown,
-            raw_facts="{}",
+        prompt = (
+            "Extract structured product facts from the following markdown "
+            "content scraped from a vendor product page.\n\n"
+            "## RULES\n\n"
+            "1. Only include facts explicitly stated in the text.\n"
+            "2. Prefer empty fields over guessing.\n"
+            "3. Copy feature bullets and specs verbatim.\n"
+            "4. Include ALL product image URLs you find.\n\n"
+            f"## SOURCE (markdown from {url})\n\n"
+            f"{markdown}\n\n"
+            "Extract the product data now."
         )
 
         system = (
