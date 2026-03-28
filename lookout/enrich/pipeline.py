@@ -378,6 +378,7 @@ class ProductProcessor:
                     domain=vendor_config.domain,
                     handle=handle,
                     http_client=self.http_client,
+                    title=input_row.title,
                 )
 
                 if shopify_facts and shopify_facts.product_name:
