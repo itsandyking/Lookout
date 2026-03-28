@@ -22,6 +22,7 @@ from typing import Any
 import httpx
 
 from .extractor import ContentExtractor, extract_content
+from .firecrawl_scraper import FirecrawlScraper
 from .gmc_rules import check_prohibited_terms, validate_title
 from .generator import Generator
 from .io import parse_input_csv
@@ -246,7 +247,7 @@ class ProductProcessor:
         self.only_mode = only_mode
 
         self.resolver = URLResolver(http_client=http_client)
-        self.scraper = WebScraper(http_client=http_client)
+        self.firecrawl = FirecrawlScraper()
         self.generator = Generator(llm_client=llm_client)
 
     async def process(
@@ -417,44 +418,29 @@ class ProductProcessor:
                 handle_log.entries.append(LogEntry(level="WARNING", message="No URL found"))
                 return None, ProcessingStatus.NO_MATCH, metadata
 
-            # Step 2: Scrape page
+            # Step 2+3: Scrape and extract via Firecrawl (structured extraction)
             handle_log.entries.append(
                 LogEntry(
-                    message=f"Scraping {resolver_output.selected_url}",
-                    data={"use_playwright": vendor_config.use_playwright},
+                    message=f"Extracting via Firecrawl: {resolver_output.selected_url}",
                 )
             )
 
-            scraped_page = await self.scraper.scrape(
-                resolver_output.selected_url,
-                vendor_config,
-            )
+            facts = await self.firecrawl.extract(resolver_output.selected_url)
 
-            if not scraped_page.success:
+            if facts is None:
                 handle_log.entries.append(
                     LogEntry(
                         level="ERROR",
-                        message=f"Scrape failed: {scraped_page.error}",
+                        message="Firecrawl extraction returned no data",
                     )
                 )
-                metadata["error"] = scraped_page.error or "Scrape failed"
+                metadata["error"] = "Firecrawl extraction failed"
                 return None, ProcessingStatus.FAILED, metadata
 
-            # Save HTML
-            await self.scraper.save_html(scraped_page, artifacts_dir)
-
-            # Step 3: Extract content
-            handle_log.entries.append(LogEntry(message="Extracting content"))
-
-            extractor = ContentExtractor(vendor_config.selectors)
-            source_text, facts = extract_content(
-                scraped_page.html,
-                scraped_page.final_url,
-                vendor_config.selectors,
-            )
-
             # Save extraction outputs
-            await extractor.save_outputs(source_text, facts, artifacts_dir)
+            facts_path = artifacts_dir / "extracted_facts.json"
+            facts_path.parent.mkdir(parents=True, exist_ok=True)
+            facts_path.write_text(facts.model_dump_json(indent=2))
 
             # Step 3b: Content quality check
             quality = _assess_extraction_quality(facts)
