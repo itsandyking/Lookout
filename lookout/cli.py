@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import subprocess
 import sys
 from pathlib import Path
 
@@ -47,6 +48,42 @@ def find_vendors_yaml(explicit_path: Path | None = None) -> Path | None:
 @click.version_option(version="0.1.0")
 def cli() -> None:
     """Lookout — merchandising command center for TMA."""
+
+
+FIRECRAWL_COMPOSE_DIR = Path(__file__).parent.parent / "infra" / "firecrawl"
+
+
+@cli.group()
+def infra():
+    """Manage infrastructure services (Firecrawl, etc.)."""
+
+
+@infra.command()
+def up():
+    """Start Firecrawl services via Docker Compose."""
+    compose_file = FIRECRAWL_COMPOSE_DIR / "docker-compose.yml"
+    if not compose_file.exists():
+        console.print(f"[red]docker-compose.yml not found at {compose_file}[/red]")
+        raise SystemExit(1)
+    console.print("[bold]Starting Firecrawl...[/bold]")
+    result = subprocess.run(
+        ["docker", "compose", "up", "-d"],
+        cwd=FIRECRAWL_COMPOSE_DIR,
+    )
+    if result.returncode == 0:
+        console.print("[green]Firecrawl running at http://localhost:3002[/green]")
+    raise SystemExit(result.returncode)
+
+
+@infra.command()
+def down():
+    """Stop Firecrawl services."""
+    console.print("[bold]Stopping Firecrawl...[/bold]")
+    result = subprocess.run(
+        ["docker", "compose", "down"],
+        cwd=FIRECRAWL_COMPOSE_DIR,
+    )
+    raise SystemExit(result.returncode)
 
 
 # ---------------------------------------------------------------------------
