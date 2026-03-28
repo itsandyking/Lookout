@@ -125,8 +125,28 @@ class URLResolver:
             if clean_title.lower().startswith(vendor_lower):
                 clean_title = clean_title[len(vendor):].strip(" -")
 
+        # Strategy 0: Direct URL probe (fastest — no search needed)
+        # Many vendor sites use predictable URL patterns like /product/{handle}.html
+        # If the probe succeeds, this is the most reliable match.
+        queries_used.append("direct_probe")
+        try:
+            probe_candidates = await self._probe_direct_urls(handle, vendor_config)
+            for c in probe_candidates:
+                c.confidence = 90  # High confidence — direct URL match
+                c.reasoning = f"Direct URL probe (early): {c.reasoning}"
+            all_candidates.extend(probe_candidates)
+        except Exception as e:
+            logger.debug(f"Early direct probe failed for {handle}: {e}")
+
+        # If direct probe found a match, skip search strategies
+        if all_candidates:
+            logger.info(f"Direct URL probe hit for {handle}, skipping search")
+        else:
+            # Proceed to search strategies
+            pass
+
         # Strategy 1: Barcode on vendor site (most precise — but only if barcode appears in results)
-        if barcode and barcode.strip():
+        if not all_candidates and barcode and barcode.strip():
             barcode_clean = barcode.strip()
             query = f"site:{domain} {barcode_clean}"
             queries_used.append(f"barcode: {query}")
@@ -147,7 +167,7 @@ class URLResolver:
                 logger.warning(f"Barcode search failed for {handle}: {e}")
 
         # Strategy 2: SKU on vendor site (very precise — same verification logic)
-        if sku and sku.strip():
+        if not all_candidates and sku and sku.strip():
             sku_clean = sku.strip()
             # Also try SKU prefix (vendor style code) which is more likely to appear on pages
             sku_prefix = sku_clean.split("-")[0] if "-" in sku_clean else sku_clean[:8]
@@ -167,7 +187,7 @@ class URLResolver:
                 logger.warning(f"SKU search failed for {handle}: {e}")
 
         # Strategy 3: Title on vendor site (primary discovery)
-        if clean_title:
+        if not all_candidates and clean_title:
             query = f"site:{domain} {clean_title}"
             queries_used.append(f"title: {query}")
             try:
@@ -180,15 +200,16 @@ class URLResolver:
                 logger.warning(f"Title search failed for {handle}: {e}")
 
         # Strategy 4: Handle on vendor site (fallback discovery)
-        handle_query = self._build_query(handle, vendor, domain, hints)
-        queries_used.append(f"handle: {handle_query}")
-        try:
-            candidates = await self._search_candidates(handle_query, domain, vendor_config)
-            for c in candidates:
-                c.reasoning = f"Handle search: {c.reasoning}"
-            all_candidates.extend(candidates)
-        except Exception as e:
-            logger.warning(f"Handle search failed for {handle}: {e}")
+        if not all_candidates:
+            handle_query = self._build_query(handle, vendor, domain, hints)
+            queries_used.append(f"handle: {handle_query}")
+            try:
+                candidates = await self._search_candidates(handle_query, domain, vendor_config)
+                for c in candidates:
+                    c.reasoning = f"Handle search: {c.reasoning}"
+                all_candidates.extend(candidates)
+            except Exception as e:
+                logger.warning(f"Handle search failed for {handle}: {e}")
 
         # Strategy 5: Broad vendor+title search (validation signal)
         # Not restricted to vendor site — cross-retailer presence boosts confidence,
@@ -234,15 +255,6 @@ class URLResolver:
                         c.reasoning += " -no_broad_validation"
             except Exception as e:
                 logger.debug(f"Broad validation search failed: {e}")
-
-        # Strategy 6: Direct URL probe (last resort)
-        if not all_candidates:
-            queries_used.append("direct_probe")
-            try:
-                probe_candidates = await self._probe_direct_urls(handle, vendor_config)
-                all_candidates.extend(probe_candidates)
-            except Exception as e:
-                logger.warning(f"Direct URL probe failed for {handle}: {e}")
 
         # Deduplicate candidates by URL, keeping highest confidence
         seen_urls: dict[str, URLCandidate] = {}
