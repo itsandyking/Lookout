@@ -165,6 +165,8 @@ async def _search_shopify_by_title(
 
     # Try 2: Scan /products.json with title similarity
     try:
+        import re as _re
+
         resp = await http_client.get(
             f"https://{domain}/products.json",
             params={"limit": 50},
@@ -174,20 +176,35 @@ async def _search_shopify_by_title(
 
         products = resp.json().get("products", [])
         title_lower = title.lower()
-        title_words = set(title_lower.split())
+        title_words = set(_re.findall(r'[a-z0-9]+', title_lower))
+        filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with",
+                 "mens", "womens", "men", "women", "kids"}
+        title_words -= filler
 
         best_match = None
         best_score = 0
 
         for product in products:
             product_title = product.get("title", "").lower()
-            product_words = set(product_title.split())
+            product_words = set(_re.findall(r'[a-z0-9]+', product_title)) - filler
 
             if not title_words or not product_words:
                 continue
             intersection = title_words & product_words
             union = title_words | product_words
             score = len(intersection) / len(union)
+
+            # Penalize candidates with foreign product names
+            # e.g., "Dancer 1 Verbier" has "verbier" which isn't in "Dancer 1 Skis"
+            generic = {"ski", "skis", "boot", "boots", "shoe", "shoes",
+                      "jacket", "rope", "helmet", "goggles", "sunglasses",
+                      "new", "sale", "2024", "2025", "2026", "2027"}
+            foreign = product_words - title_words - generic
+            missing = title_words - product_words - generic
+            if foreign and missing:
+                # Different product — has words we don't expect AND
+                # is missing words we do expect
+                score *= 0.5  # Halve the score
 
             if score > best_score:
                 best_score = score
