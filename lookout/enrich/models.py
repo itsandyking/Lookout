@@ -180,10 +180,7 @@ class VendorConfig(BaseModel):
     """Configuration for a single vendor."""
 
     domain: str
-    use_playwright: bool = False
-    playwright_config: PlaywrightConfig = Field(default_factory=PlaywrightConfig)
     blocked_paths: list[str] = Field(default_factory=list)
-    selectors: SelectorsConfig = Field(default_factory=SelectorsConfig)
     product_url_patterns: list[str] = Field(default_factory=list)
     search: SearchConfig = Field(default_factory=SearchConfig)
 

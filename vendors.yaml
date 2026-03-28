@@ -4,11 +4,6 @@
 vendors:
   Patagonia:
     domain: "patagonia.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "h1, .product-hero__title, [data-testid='product-title']"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 3000
     # Paths that should be excluded from product matching
     blocked_paths:
       - "/blog"
@@ -21,14 +16,6 @@ vendors:
       - "/account"
       - "/cart"
       - "/search"
-    # Optional: CSS selectors for content extraction
-    selectors:
-      product_name: "h1.product-hero__title, h1[data-testid='product-title']"
-      description: ".product-hero__description, .pdp-details__description"
-      features: ".pdp-features__list, .product-features ul"
-      specs: ".pdp-specs table, .product-specs dl"
-      images: ".product-hero__gallery img, .pdp-gallery img"
-      price: ".product-hero__price, .price--sale"
     # URL patterns that indicate a product page
     product_url_patterns:
       - "/product/"
@@ -40,11 +27,6 @@ vendors:
 
   Altra:
     domain: "altrarunning.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "#productTitle, .l-pdp"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -54,12 +36,6 @@ vendors:
       - "/cart"
       - "/support"
       - "/ambassadors"
-    selectors:
-      product_name: "h1.product-name, h1[data-testid='product-name']"
-      description: ".product-description, .pdp-description"
-      features: ".product-features ul, .feature-list"
-      specs: ".product-specs table, .specs-table"
-      images: ".product-gallery img, .pdp-gallery img, [data-testid='product-image']"
     product_url_patterns:
       - "/shop/"
       - "/products/"
@@ -69,11 +45,6 @@ vendors:
 
   Rossignol:
     domain: "rossignol.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: ".product-detail-page, h1.product-name"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -90,11 +61,6 @@ vendors:
 
   "K2 Sports":
     domain: "k2snow.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "section.pdp, .product-main"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -110,7 +76,6 @@ vendors:
 
   BlueWater:
     domain: "bluewaterropes.com"
-    use_playwright: false
     blocked_paths:
       - "/blog"
       - "/about"
@@ -124,19 +89,12 @@ vendors:
 
   "Smith Optics":
     domain: "smithoptics.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "main#MainContent, product-info"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
       - "/about"
       - "/help"
       - "/account"
-    selectors:
-      content_area: "product-info, .product__info-container"
     product_url_patterns:
       - "/products/"
       - "/p/"
@@ -146,11 +104,6 @@ vendors:
 
   Nordica:
     domain: "nordica.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "main.product-detail"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -165,11 +118,6 @@ vendors:
 
   Burton:
     domain: "burton.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "#pdp-size-finder-intro-content, main#main-content"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -186,11 +134,6 @@ vendors:
 
   "Black Crows":
     domain: "black-crows.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "section#pdp-main-content, .product-info-container"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -204,11 +147,6 @@ vendors:
 
   Faction:
     domain: "factionskis.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "#pdp-gallery, .pdp-details"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -222,11 +160,6 @@ vendors:
 
   Blizzard:
     domain: "blizzard-tecnica.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "section.product-overview, #product-overview"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -241,11 +174,6 @@ vendors:
 
   Arc'teryx:
     domain: "arcteryx.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: ".product-data-loaded, .qa--primary-product-name"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 3000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -261,11 +189,6 @@ vendors:
 
   "Jones Snowboards":
     domain: "jonessnowboards.com"
-    use_playwright: true
-    playwright_config:
-      wait_for_selector: "body.page-product, .product--medium"
-      wait_timeout_ms: 8000
-      extra_wait_ms: 2000
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -280,16 +203,9 @@ vendors:
   # Template for adding new vendors
   # VendorName:
   #   domain: "vendor-domain.com"
-  #   use_playwright: false  # Set to true for JS-heavy sites
   #   blocked_paths:
   #     - "/blog"
   #     - "/support"
-  #   selectors:
-  #     product_name: "h1.product-title"
-  #     description: ".product-description"
-  #     features: ".feature-list"
-  #     specs: ".specs-table"
-  #     images: ".product-images img"
   #   product_url_patterns:
   #     - "/product/"
   #   search:

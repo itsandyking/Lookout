@@ -17,16 +17,11 @@ class TestVendorConfig:
             "vendors": {
                 "TestVendor": {
                     "domain": "test.com",
-                    "use_playwright": False,
                     "blocked_paths": ["/blog", "/support"],
                 },
-                "PlaywrightVendor": {
+                "AnotherVendor": {
                     "domain": "dynamic.com",
-                    "use_playwright": True,
-                    "playwright_config": {
-                        "wait_for_selector": ".product",
-                        "wait_timeout_ms": 10000,
-                    },
+                    "product_url_patterns": ["/products/"],
                 },
             },
             "settings": {
@@ -45,12 +40,10 @@ class TestVendorConfig:
 
         assert "TestVendor" in config.vendors
         assert config.vendors["TestVendor"].domain == "test.com"
-        assert config.vendors["TestVendor"].use_playwright is False
         assert "/blog" in config.vendors["TestVendor"].blocked_paths
 
-        assert "PlaywrightVendor" in config.vendors
-        assert config.vendors["PlaywrightVendor"].use_playwright is True
-        assert config.vendors["PlaywrightVendor"].playwright_config.wait_for_selector == ".product"
+        assert "AnotherVendor" in config.vendors
+        assert "/products/" in config.vendors["AnotherVendor"].product_url_patterns
 
         assert config.settings.confidence.auto_proceed == 85
 
@@ -97,13 +90,12 @@ class TestVendorConfig:
         assert config.settings.rate_limiting.min_delay_ms == 500
         assert config.settings.retries.max_attempts == 3
 
-    def test_playwright_config_defaults(self, tmp_path: Path):
-        """Test Playwright config has default values."""
+    def test_search_config_defaults(self, tmp_path: Path):
+        """Test search config has default values."""
         config_content = {
             "vendors": {
                 "TestVendor": {
                     "domain": "test.com",
-                    "use_playwright": True,
                 },
             },
         }
@@ -114,8 +106,7 @@ class TestVendorConfig:
 
         config = load_vendors_config(config_path)
 
-        # Check default Playwright config
+        # Check default search config
         vendor = config.vendors["TestVendor"]
-        assert vendor.playwright_config.wait_timeout_ms == 5000
-        assert vendor.playwright_config.extra_wait_ms == 0
-        assert vendor.playwright_config.wait_for_selector is None
+        assert vendor.search.method == "site_search"
+        assert vendor.search.query_template == "site:{domain} {query}"
