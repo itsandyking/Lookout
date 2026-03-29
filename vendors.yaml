@@ -493,6 +493,10 @@ vendors:
 
   "Topo Athletic":
     domain: "topoathletic.com"
+    wait_for: 3000  # SuiteCommerce SPA — images load via JS API calls
+    product_url_patterns:
+      - "/mens-"
+      - "/womens-"
 
   "Hot Chillys":
     domain: "hotchillys.com"

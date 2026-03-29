@@ -165,6 +165,122 @@ def _firecrawl_json_to_facts(data: dict, url: str) -> ExtractedFacts:
     )
 
 
+def _markdown_has_images(markdown: str) -> bool:
+    """Check if markdown contains any image references.
+
+    Looks for markdown image syntax ![...](url) and bare image URLs
+    with common image extensions.
+    """
+    # Markdown image syntax
+    if re.search(r"!\[.*?\]\(https?://[^)]+\)", markdown):
+        return True
+    # Bare image URLs with common extensions
+    if re.search(r"https?://\S+\.(?:jpg|jpeg|png|webp|avif)", markdown, re.I):
+        return True
+    return False
+
+
+def _extract_images_from_html(html: str, base_url: str) -> list[str]:
+    """Extract product image URLs from rendered HTML.
+
+    Uses BeautifulSoup to find images in the DOM that JS may have loaded.
+    Filters out icons, logos, placeholders, and duplicates.
+    Returns a list of absolute image URLs.
+    """
+    from urllib.parse import urljoin
+
+    from bs4 import BeautifulSoup, Tag
+
+    soup = BeautifulSoup(html, "lxml")
+
+    # Focus on main content area
+    main = (
+        soup.find("main")
+        or soup.find("article")
+        or soup.find("div", class_=re.compile(r"product|pdp|gallery|item", re.I))
+    )
+    search_area = main or soup.body or soup
+    if not search_area:
+        return []
+
+    images: list[str] = []
+    seen: set[str] = set()
+
+    skip_patterns = {
+        "placeholder", "loading", "spinner", "icon", "logo",
+        "badge", "banner", "1x1", "pixel", "blank", "spacer",
+        "transparent", "svg+xml",
+    }
+
+    for img in search_area.find_all("img"):
+        if not isinstance(img, Tag):
+            continue
+
+        # Try multiple source attributes (handles lazy-load patterns)
+        src = (
+            img.get("src")
+            or img.get("data-src")
+            or img.get("data-lazy-src")
+            or img.get("data-original")
+        )
+
+        # Also check srcset for highest-res image
+        srcset = img.get("srcset") or img.get("data-srcset")
+        if srcset and isinstance(srcset, str):
+            parts = srcset.split(",")
+            best_url, best_w = None, 0
+            for part in parts:
+                match = re.match(r"\s*(\S+)\s+(\d+)w", part.strip())
+                if match:
+                    w = int(match.group(2))
+                    if w > best_w:
+                        best_w = w
+                        best_url = match.group(1)
+            if best_url:
+                src = best_url
+
+        if not src or not isinstance(src, str) or src.startswith("data:"):
+            continue
+
+        full_url = urljoin(base_url, src)
+
+        # Skip non-product images
+        url_lower = full_url.lower()
+        if any(p in url_lower for p in skip_patterns):
+            continue
+        # Skip tiny images (icons)
+        if re.search(r"[/_-](\d{1,2})x(\d{1,2})[/_.]", url_lower):
+            continue
+
+        # Deduplicate by base URL (strip resize params)
+        cleaned = _clean_image_url(full_url)
+        normalized = cleaned.split("?")[0]
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        images.append(cleaned)
+
+    return images[:20]
+
+
+def _append_images_to_markdown(markdown: str, image_urls: list[str]) -> str:
+    """Append extracted image URLs to markdown so the LLM can see them.
+
+    Adds a section at the end with markdown image references.
+    """
+    lines = [
+        "",
+        "---",
+        "",
+        "**Product Images (extracted from page):**",
+        "",
+    ]
+    for i, url in enumerate(image_urls, 1):
+        lines.append(f"![Product image {i}]({url})")
+    lines.append("")
+    return markdown + "\n".join(lines)
+
+
 class FirecrawlScraper:
     """Scraper that delegates to a self-hosted Firecrawl instance."""
 
@@ -249,12 +365,18 @@ class FirecrawlScraper:
         swatch_selector: str | None = None,
         gallery_selector: str | None = None,
         wait_after_click: int | None = None,
+        wait_for: int | None = None,
     ) -> tuple[str | None, dict[str, list[str]] | None]:
         """Markdown mode — returns (markdown, variant_images).
 
         When swatch params are provided, calls the Firecrawl API directly
         (bypassing the SDK) to get variant_images alongside markdown.
         The SDK's Document model drops unknown fields, so we need the raw response.
+
+        When wait_for is set, the scraper waits that many ms for JS rendering
+        (useful for SPA sites). Also requests HTML alongside markdown so that
+        images loaded by JS (but absent from the markdown conversion) can be
+        extracted from the rendered DOM and appended to the markdown.
         """
         await self._polite_delay()
         has_swatch_params = bool(swatch_selector or gallery_selector)
@@ -266,11 +388,15 @@ class FirecrawlScraper:
 
         # Standard path via SDK (no swatch extraction)
         try:
-            doc = await self._client.scrape(
-                url,
-                formats=["markdown"],
-                only_main_content=True,
-                exclude_tags=[
+            # Request HTML alongside markdown so we can extract images from the
+            # rendered DOM when the markdown conversion drops them (common with
+            # SPA frameworks like SuiteCommerce, React storefronts, etc.)
+            formats = ["markdown", "html"] if wait_for else ["markdown"]
+
+            kwargs: dict = {
+                "formats": formats,
+                "only_main_content": True,
+                "exclude_tags": [
                     "nav", "footer", "header",
                     "[role='navigation']",
                     "[role='banner']",
@@ -279,8 +405,24 @@ class FirecrawlScraper:
                     "#cookie-banner", ".cookie-notice",
                     ".announcement-bar",
                 ],
-            )
-            return doc.markdown, None
+            }
+            if wait_for:
+                kwargs["wait_for"] = wait_for
+
+            doc = await self._client.scrape(url, **kwargs)
+            markdown = doc.markdown
+
+            # If markdown has no image references, try to extract them from HTML
+            if markdown and doc.html and not _markdown_has_images(markdown):
+                html_images = _extract_images_from_html(doc.html, url)
+                if html_images:
+                    logger.info(
+                        "Supplemented markdown with %d images from HTML for %s",
+                        len(html_images), url,
+                    )
+                    markdown = _append_images_to_markdown(markdown, html_images)
+
+            return markdown, None
         except Exception:
             logger.exception("Firecrawl markdown scrape failed for %s", url)
             return None, None

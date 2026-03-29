@@ -188,6 +188,7 @@ class VendorConfig(BaseModel):
     search_brand_name: str | None = None
     swatch_selector: str | None = None
     gallery_selector: str | None = None
+    wait_for: int | None = None  # ms to wait for JS rendering (SPA sites)
 
 
 class ConfidenceSettings(BaseModel):

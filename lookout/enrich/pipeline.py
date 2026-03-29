@@ -483,6 +483,7 @@ class ProductProcessor:
                     swatch_selector=vendor_config.swatch_selector,
                     gallery_selector=vendor_config.gallery_selector,
                     wait_after_click=1500 if (vendor_config.swatch_selector or vendor_config.gallery_selector) else None,
+                    wait_for=vendor_config.wait_for,
                 )
 
                 # Check for bot block — try fallback domains if available
