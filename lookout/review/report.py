@@ -255,7 +255,7 @@ _PRODUCT_TEMPLATE = """
      data-has-description="{has_description}" data-has-images="{has_images}">
   <div class="product-header">
     <div class="header-top">
-      <h3>{title}</h3>
+      <h3><a href="https://admin.shopify.com/store/the-mountain-air/products/{product_id}" target="_blank" style="color:inherit;text-decoration:none" title="Open in Shopify">{title}</a></h3>
       <span class="badge {conf_class}">{confidence}%</span>
     </div>
     <div class="header-meta">
