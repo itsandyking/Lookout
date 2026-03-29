@@ -58,7 +58,32 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):
-        if self.path == "/run-pipeline":
+        if self.path == "/dispositions":
+            # Handle review dispositions save
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length)
+            try:
+                dispositions = json.loads(body)
+                run_dir = _pipeline_state.get("run_dir", "")
+                if run_dir:
+                    disp_path = Path(run_dir) / "dispositions.json"
+                    disp_path.parent.mkdir(parents=True, exist_ok=True)
+                    disp_path.write_text(json.dumps(dispositions, indent=2))
+                    count = len(dispositions)
+                    logger.info("Saved %d dispositions to %s", count, disp_path)
+                    resp = json.dumps({"saved": count, "path": str(disp_path)}).encode()
+                else:
+                    resp = json.dumps({"saved": 0, "error": "No active run"}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(resp)))
+                self.end_headers()
+                self.wfile.write(resp)
+            except Exception as e:
+                logger.error("Failed to save dispositions: %s", e)
+                self.send_error(400, str(e))
+            return
+        elif self.path == "/run-pipeline":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length))
             handles = body.get("handles", [])
@@ -148,8 +173,11 @@ def _run_pipeline(csv_path: Path, run_dir: Path):
                 )
             except Exception:
                 pass
+            # Count how many products got merch output
+            enriched = sum(1 for d in run_dir.iterdir() if d.is_dir() and (d / "merch_output.json").exists())
+            total = sum(1 for d in run_dir.iterdir() if d.is_dir())
             _pipeline_state["status"] = "complete"
-            _pipeline_state["message"] = "Pipeline complete!"
+            _pipeline_state["message"] = f"{enriched} of {total} products enriched"
         else:
             _pipeline_state["status"] = "error"
             _pipeline_state["message"] = result.stderr[-500:] if result.stderr else "Pipeline failed"
