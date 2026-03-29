@@ -283,15 +283,46 @@ class URLResolver:
                 type_words = {"ski", "skis", "boot", "boots", "shoe", "shoes",
                              "jacket", "pants", "helmet", "goggles", "sunglasses",
                              "gloves", "pole", "poles", "binding", "bindings",
-                             "board", "snowboard"}
+                             "board", "snowboard",
+                             "pad", "bundle", "pack", "kit", "set", "system", "combo"}
                 missing_types = missing_words & type_words
                 extra_types = extra_words & type_words
                 if missing_types and extra_types:
                     # Candidate has a different product type than expected
                     critical_mismatch = True
 
+                # Height/fit words — "Low" vs "Mid" is a different product
+                height_fit_words = {"low", "mid", "high", "tall", "short",
+                                    "wide", "narrow"}
+                missing_height = missing_words & height_fit_words
+                extra_height = extra_words & height_fit_words
+                if missing_height and extra_height:
+                    critical_mismatch = True
+
+                # Edition/variant words — "Pro" vs "Lite" is a different SKU
+                edition_words = {"standard", "pro", "plus", "lite", "max",
+                                 "mini", "ultra", "evo", "comp"}
+                missing_edition = missing_words & edition_words
+                extra_edition = extra_words & edition_words
+                if missing_edition and extra_edition:
+                    critical_mismatch = True
+
+                # Collab/special edition detection — if candidate has collab
+                # markers not present in our title, penalize heavily
+                collab_markers = {"shf", "collab", "collaboration", "limited",
+                                  "edition", "special"}
+                # Also check for "×" or " x " crossover pattern in candidate but not title
+                candidate_has_collab = bool(extra_words & collab_markers)
+                if not candidate_has_collab:
+                    collab_pattern = r'(?:\s[x×]\s|×)'
+                    if (_re.search(collab_pattern, candidate_title)
+                            and not _re.search(collab_pattern, title_lower)):
+                        candidate_has_collab = True
+                if candidate_has_collab:
+                    candidate.confidence = max(0, candidate.confidence - 25)
+                    candidate.reasoning += " -collab_mismatch"
+
                 # Model numbers — if expected has a number not in candidate
-                import re as _re
                 expected_numbers = set(_re.findall(r'\d+', title_lower))
                 candidate_numbers = set(_re.findall(r'\d+', candidate_title))
                 if expected_numbers and candidate_numbers:
@@ -301,7 +332,7 @@ class URLResolver:
                 # Check for foreign product names — words in the candidate
                 # that aren't in our title and aren't generic. If a candidate
                 # says "Protac" and our product is "BWII", that's a different product.
-                generic_words = type_words | {
+                generic_words = type_words | height_fit_words | edition_words | {
                     "rope", "ropes", "cord", "ski", "skis", "boot", "boots",
                     "new", "sale", "mens", "womens", "men", "women", "kids",
                     "2024", "2025", "2026", "2027",
