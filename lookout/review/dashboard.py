@@ -34,6 +34,19 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(content)))
             self.end_headers()
             self.wfile.write(content)
+        elif self.path == "/review":
+            # Serve the review HTML for the latest pipeline run
+            run_dir = _pipeline_state.get("run_dir", "")
+            review_path = Path(run_dir) / "review.html" if run_dir else None
+            if review_path and review_path.exists():
+                content = review_path.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+            else:
+                self.send_error(404, "Review not ready yet — pipeline may still be running")
         elif self.path == "/pipeline-status":
             resp = json.dumps(_pipeline_state).encode()
             self.send_response(200)
@@ -127,6 +140,14 @@ def _run_pipeline(csv_path: Path, run_dir: Path):
             capture_output=True, text=True, timeout=1800,
         )
         if result.returncode == 0:
+            # Generate review HTML
+            try:
+                subprocess.run(
+                    ["uv", "run", "lookout", "enrich", "review", "-d", str(run_dir)],
+                    capture_output=True, text=True, timeout=60,
+                )
+            except Exception:
+                pass
             _pipeline_state["status"] = "complete"
             _pipeline_state["message"] = f"Done! Output in {run_dir}"
         else:
@@ -542,11 +563,12 @@ function pollStatus() {{
     }} else if (data.status === 'complete') {{
       btn.textContent = 'Done!';
       btn.style.background = '#2196F3';
+      status.innerHTML = data.message + ' — <a href="/review" target="_blank" style="color:#1976d2;font-weight:600">Open Review</a>';
       setTimeout(() => {{
         btn.disabled = false;
         btn.textContent = 'Run Pipeline';
         btn.style.background = '#4CAF50';
-      }}, 5000);
+      }}, 30000);
     }} else if (data.status === 'error') {{
       btn.textContent = 'Failed';
       btn.style.background = '#f44336';
