@@ -149,7 +149,7 @@ def _run_pipeline(csv_path: Path, run_dir: Path):
             except Exception:
                 pass
             _pipeline_state["status"] = "complete"
-            _pipeline_state["message"] = f"Done! Output in {run_dir}"
+            _pipeline_state["message"] = "Pipeline complete!"
         else:
             _pipeline_state["status"] = "error"
             _pipeline_state["message"] = result.stderr[-500:] if result.stderr else "Pipeline failed"
