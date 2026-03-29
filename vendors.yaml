@@ -66,6 +66,9 @@ vendors:
 
   "K2 Sports":
     domain: "k2snow.com"
+    swatch_selector: ".color-btns button.variant-btn"
+    gallery_selector: ".product-image-tiles .amp-image-container img"
+    wait_for: 5000
     blocked_paths:
       - "/blog"
       - "/stories"
