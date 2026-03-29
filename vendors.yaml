@@ -47,6 +47,7 @@ vendors:
 
   Rossignol:
     domain: "rossignol.com"
+    swatch_selector: "button.color-toggle.js-color-toggle"
     fallback_domains:
       - "zappos.com"
     blocked_paths:
@@ -183,6 +184,7 @@ vendors:
 
   Arc'teryx:
     domain: "arcteryx.com"
+    swatch_selector: "button[data-colour-value]"
     blocked_paths:
       - "/blog"
       - "/stories"
