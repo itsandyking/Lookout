@@ -542,6 +542,7 @@ class ProductProcessor:
                                 "resolver_confidence": candidate.confidence,
                                 "outcome": "reject_title_gate",
                                 "reason": gate["reason"],
+                                "title_extracted": page_title,
                                 "title_similarity": gate["title_similarity"],
                             })
                             continue

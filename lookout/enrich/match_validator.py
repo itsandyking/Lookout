@@ -72,12 +72,19 @@ def check_title_gate(
             "reason": f"demographic_mismatch: {catalog_demos} vs {page_demos}",
         }
 
-    if title_sim < 0.4:
+    # Word overlap — if key product words appear in page title, it's likely correct
+    # even if overall string similarity is low (e.g. SPA pages with short titles)
+    filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with", "s"}
+    catalog_meaningful = catalog_words - filler - DEMOGRAPHICS
+    page_meaningful = page_words - filler - DEMOGRAPHICS
+    word_overlap = len(catalog_meaningful & page_meaningful) / max(len(catalog_meaningful), 1)
+
+    if title_sim < 0.4 and word_overlap < 0.3:
         return {
             "pass": False,
             "title_similarity": title_sim,
             "demographic_match": demographic_match,
-            "reason": f"title_similarity_too_low: {title_sim:.2f}",
+            "reason": f"title_similarity_too_low: {title_sim:.2f}, word_overlap: {word_overlap:.2f}",
         }
 
     return {
