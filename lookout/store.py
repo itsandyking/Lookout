@@ -56,26 +56,20 @@ class LookoutStore:
         limit: int = 0,
     ) -> list[dict]:
         """List products. limit=0 means all products (no limit)."""
-        if limit <= 0:
-            # Paginate to get all products
-            all_products = []
-            page_size = 1000
-            offset = 0
-            while True:
-                batch = self._store.list_products(
-                    vendor=vendor, product_type=product_type,
-                    status=status, limit=page_size, offset=offset,
-                )
-                all_products.extend(batch)
-                if len(batch) < page_size:
-                    break
-                offset += page_size
-            return [self._product_to_dict(p) for p in all_products]
-        else:
-            products = self._store.list_products(
-                vendor=vendor, product_type=product_type,
-                status=status, limit=limit,
-            )
+        from sqlalchemy.orm import joinedload
+        from tvr.db.models import Product
+
+        with self._store.session() as s:
+            q = s.query(Product).options(joinedload(Product.images))
+            if vendor:
+                q = q.filter(Product.vendor == vendor)
+            if product_type:
+                q = q.filter(Product.product_type == product_type)
+            if status:
+                q = q.filter(Product.status == status)
+            if limit > 0:
+                q = q.limit(limit)
+            products = q.all()
             return [self._product_to_dict(p) for p in products]
 
     def get_product(self, handle: str) -> dict | None:
