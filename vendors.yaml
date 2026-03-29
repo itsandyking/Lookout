@@ -340,7 +340,7 @@ vendors:
   Sawyer:
     domain: "sawyer.com"
 
-  On:
+  "On":
     domain: "on.com"
 
   "Therm-a-Rest":
