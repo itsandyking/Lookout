@@ -33,12 +33,22 @@ _GENERIC_HEADINGS = frozenset({
     "materiales", "características",  # Spanish variants
 })
 
+# Patterns in headings that indicate non-product content
+_NON_PRODUCT_PATTERNS = re.compile(
+    r"(?i)"
+    r"(?:^color:|^colour:|^size:|^rating|^question|^review|^faq|^help"
+    r"|experts?\s+break|we\s+got\s+you|you\s+may\s+also"
+    r"|^share\b|^shop\s+(?:all|the)|^free\s+shipping"
+    r"|^sign\s+up|^subscribe|^newsletter)",
+)
+
 
 def extract_page_title(markdown: str) -> str | None:
     """Extract the primary product title from scraped markdown.
 
     Returns None if no heading found or if the first heading is a generic
-    section name (e.g. "Features", "Materials") rather than a product title.
+    section name rather than a product title. Uses both a static list and
+    pattern matching to filter non-product headings.
     """
     if not markdown:
         return None
@@ -46,8 +56,11 @@ def extract_page_title(markdown: str) -> str | None:
     if not match:
         return None
     title = match.group(1).strip()
-    # Skip generic section headings — these aren't product titles
+    # Skip generic section headings
     if title.lower() in _GENERIC_HEADINGS:
+        return None
+    # Skip headings matching non-product patterns
+    if _NON_PRODUCT_PATTERNS.search(title):
         return None
     return title
 
