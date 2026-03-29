@@ -119,9 +119,11 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 pos_data = html.escape(json.dumps(positions))
 
                 assignment_rows.append(
-                    f'<tr class="assign-row" onclick="highlightVariantImages(this)" data-images=\'{pos_data}\'>'
-                    f'<td class="assign-label">{html.escape(color)}</td>'
-                    f'<td class="assign-images">{img_cell}</td></tr>'
+                    f'<tr class="assign-row" data-images=\'{pos_data}\' data-color="{html.escape(color)}">'
+                    f'<td class="assign-label" onclick="highlightVariantImages(this.closest(\'tr\'))">{html.escape(color)}</td>'
+                    f'<td class="assign-images">{img_cell}'
+                    f'<button type="button" class="assign-paste" onclick="pasteImageUrl(this)" title="Paste image URL">&#128203; Paste URL</button>'
+                    f'</td></tr>'
                 )
 
             variants_html = (
@@ -545,6 +547,13 @@ _TEMPLATE = """<!DOCTYPE html>
     font-size: 0.8em; cursor: pointer; transition: all 0.15s;
   }}
   .assign-choose:hover {{ background: #bbdefb; }}
+  .assign-paste {{
+    display: inline-block; padding: 3px 8px; border-radius: 4px;
+    border: 1px solid #ddd; background: #fff; color: #666;
+    font-size: 0.75em; cursor: pointer; transition: all 0.15s;
+    margin-left: 4px;
+  }}
+  .assign-paste:hover {{ background: #f5f5f5; border-color: #999; }}
   .thumb.pick-mode {{ cursor: crosshair; border: 2px solid #1976d2; }}
   .thumb.pick-mode:hover {{ box-shadow: 0 0 0 3px rgba(25,118,210,0.3); }}
 
@@ -891,6 +900,41 @@ document.addEventListener('click', (e) => {{
     exitPickMode();
   }}
 }});
+
+function pasteImageUrl(btn) {{
+  const row = btn.closest('tr');
+  const product = row.closest('.product');
+  const handle = product.dataset.handle;
+  const color = row.dataset.color;
+  const imagesCell = row.querySelector('.assign-images');
+
+  const url = prompt('Paste image URL for "' + color + '":');
+  if (!url || !url.startsWith('http')) return;
+
+  // Add the pasted image as a new assignment thumbnail
+  const newThumb = document.createElement('div');
+  newThumb.className = 'assign-thumb';
+  newThumb.dataset.src = url;
+  newThumb.dataset.color = color;
+  newThumb.innerHTML = '<img src="' + url + '" loading="lazy" />'
+    + '<span class="assign-pos">pasted</span>'
+    + '<button type="button" class="assign-remove" onclick="removeVariantImage(this)" title="Remove assignment">&#10005;</button>';
+
+  // Insert before the paste button
+  imagesCell.insertBefore(newThumb, btn);
+
+  // Track in dispositions
+  if (!dispositions[handle]) dispositions[handle] = {{ status: 'mixed' }};
+  if (!dispositions[handle].reassigned_variants) dispositions[handle].reassigned_variants = {{}};
+  const existing = dispositions[handle].reassigned_variants[color];
+  if (Array.isArray(existing)) {{
+    existing.push(url);
+  }} else if (existing) {{
+    dispositions[handle].reassigned_variants[color] = [existing, url];
+  }} else {{
+    dispositions[handle].reassigned_variants[color] = url;
+  }}
+}}
 
 function updateProgress() {{
   const count = Object.keys(dispositions).length;
