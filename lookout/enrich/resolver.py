@@ -131,7 +131,7 @@ class URLResolver:
             query = f"site:{domain} {barcode_clean}"
             queries_used.append(f"barcode: {query}")
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config)
+                candidates = await self._search_candidates(query, domain, vendor_config, product_title=clean_title)
                 for c in candidates:
                     # Only boost if barcode actually appears in the result
                     if barcode_clean in c.snippet or barcode_clean in c.url or barcode_clean in c.title:
@@ -154,7 +154,7 @@ class URLResolver:
             query = f"site:{domain} {sku_clean}"
             queries_used.append(f"sku: {query}")
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config)
+                candidates = await self._search_candidates(query, domain, vendor_config, product_title=clean_title)
                 for c in candidates:
                     if sku_clean in c.snippet or sku_clean in c.url or sku_prefix in c.url:
                         c.confidence = min(100, c.confidence + 12)
@@ -171,7 +171,7 @@ class URLResolver:
             query = f"site:{domain} {clean_title}"
             queries_used.append(f"title: {query}")
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config)
+                candidates = await self._search_candidates(query, domain, vendor_config, product_title=clean_title)
                 for c in candidates:
                     c.confidence = min(100, c.confidence + 10)
                     c.reasoning = f"Title search: {c.reasoning}"
@@ -185,7 +185,7 @@ class URLResolver:
             handle_query = self._build_query(handle, vendor, domain, hints)
             queries_used.append(f"handle: {handle_query}")
             try:
-                candidates = await self._search_candidates(handle_query, domain, vendor_config)
+                candidates = await self._search_candidates(handle_query, domain, vendor_config, product_title=clean_title)
                 for c in candidates:
                     c.reasoning = f"Handle search: {c.reasoning}"
                 all_candidates.extend(candidates)
@@ -367,17 +367,41 @@ class URLResolver:
             candidates=deduplicated[:5],
         )
 
-        # Select best candidate
+        # Select best candidate, verifying URL is live
         if deduplicated:
-            best = deduplicated[0]
-            output.selected_url = best.url
-            output.selected_confidence = best.confidence
+            selected = None
+            for candidate in deduplicated:
+                # HEAD-check to verify the URL is live (not 404/redirect-to-404)
+                try:
+                    resp = await self._client.head(
+                        candidate.url, follow_redirects=True, timeout=10
+                    )
+                    if resp.status_code == 200:
+                        selected = candidate
+                        break
+                    else:
+                        logger.info(
+                            "URL probe returned %d, skipping: %s",
+                            resp.status_code, candidate.url[:80],
+                        )
+                        output.warnings.append(
+                            f"URL_NOT_LIVE: {candidate.url[:80]} → {resp.status_code}"
+                        )
+                except Exception as e:
+                    logger.debug("URL probe failed for %s: %s", candidate.url[:80], e)
+                    # If HEAD fails, still try this candidate (might work with full GET)
+                    selected = candidate
+                    break
 
-            # Add warnings based on confidence
-            if best.confidence < 70:
-                output.warnings.append("LOW_MATCH_CONFIDENCE")
-            elif best.confidence < 85:
-                output.warnings.append("MODERATE_MATCH_CONFIDENCE")
+            if selected:
+                output.selected_url = selected.url
+                output.selected_confidence = selected.confidence
+
+                # Add warnings based on confidence
+                if selected.confidence < 70:
+                    output.warnings.append("LOW_MATCH_CONFIDENCE")
+                elif selected.confidence < 85:
+                    output.warnings.append("MODERATE_MATCH_CONFIDENCE")
 
         return output
 
@@ -453,12 +477,13 @@ class URLResolver:
         query: str,
         domain: str,
         vendor_config: VendorConfig,
+        product_title: str = "",
     ) -> list[URLCandidate]:
         """Search for candidate URLs. Tries Brave Search first, falls back to DuckDuckGo."""
         await asyncio.sleep(random.uniform(self._min_delay, self._max_delay))
 
         # Try Brave Search first (if API key available)
-        candidates = await self._search_brave(query, domain, vendor_config)
+        candidates = await self._search_brave(query, domain, vendor_config, product_title=product_title)
         if candidates:
             return candidates
 
@@ -471,6 +496,7 @@ class URLResolver:
         query: str,
         domain: str,
         vendor_config: VendorConfig,
+        product_title: str = "",
     ) -> list[URLCandidate]:
         """Search using Brave Search API."""
         import os
@@ -513,7 +539,7 @@ class URLResolver:
                 ):
                     continue
 
-                confidence = self._score_candidate(url, title, snippet, domain)
+                confidence = self._score_candidate(url, title, snippet, domain, product_title=product_title)
                 candidates.append(
                     URLCandidate(
                         url=url,
@@ -631,6 +657,7 @@ class URLResolver:
         html: str,
         domain: str,
         vendor_config: VendorConfig,
+        product_title: str = "",
     ) -> list[URLCandidate]:
         """
         Parse DuckDuckGo HTML search results.
@@ -675,7 +702,7 @@ class URLResolver:
             snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
 
             # Score the candidate
-            confidence = self._score_candidate(url, title, snippet, domain)
+            confidence = self._score_candidate(url, title, snippet, domain, product_title=product_title)
 
             candidates.append(
                 URLCandidate(
@@ -699,6 +726,7 @@ class URLResolver:
         title: str,
         snippet: str,
         domain: str,
+        product_title: str = "",
     ) -> int:
         """
         Score a candidate URL for relevance.
@@ -708,6 +736,7 @@ class URLResolver:
             title: The page title.
             snippet: The search snippet.
             domain: The vendor domain.
+            product_title: Our product title (for word overlap scoring).
 
         Returns:
             Confidence score 0-100.
@@ -798,6 +827,25 @@ class URLResolver:
             if "-" in last_segment and len(last_segment) > 10:
                 score += 5  # Looks like a product slug
 
+        # Boost for product name word overlap with URL slug and page title
+        if product_title:
+            import re
+            product_words = {
+                w.lower() for w in re.split(r"[\s\-/]+", product_title)
+                if len(w) > 2 and w.lower() not in {"the", "and", "for", "ski", "skis"}
+            }
+            if product_words:
+                # Check overlap with URL slug
+                url_words = {
+                    w.lower() for w in re.split(r"[\s\-/]+", path)
+                    if len(w) > 2
+                }
+                url_overlap = len(product_words & url_words) / len(product_words)
+                if url_overlap >= 0.5:
+                    score += 10
+                elif url_overlap >= 0.3:
+                    score += 5
+
         # Ensure score is in valid range
         return max(0, min(100, score))
 
@@ -828,7 +876,7 @@ class URLResolver:
         for color in colors[:5]:  # Limit to 5 colors to control API costs
             query = f"site:{domain} {product_name} {color}"
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config)
+                candidates = await self._search_candidates(query, domain, vendor_config, product_title=product_name)
                 # Extract image-like URLs from snippets/results
                 for candidate in candidates[:2]:
                     # The candidate URL itself might be a color-specific product page
