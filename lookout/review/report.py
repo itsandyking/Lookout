@@ -255,16 +255,15 @@ _PRODUCT_TEMPLATE = """
     <div class="header-flags">{missing_flags}</div>
   </div>
 
-  <div class="bulk-actions">
-    <button type="button" class="btn btn-approve-all" onclick="approveAll(this)">Approve All Sections</button>
-    <button type="button" class="btn btn-reject-all" onclick="rejectAll(this)">Reject All Sections</button>
-  </div>
-
   {images_section}
   {variants_section}
   {description_section}
 
   <div class="actions">
+    <div class="bulk-actions">
+      <button type="button" class="btn btn-approve-all" onclick="approveAll(this)">Approve All Sections</button>
+      <button type="button" class="btn btn-reject-all" onclick="rejectAll(this)">Reject All Sections</button>
+    </div>
     <div class="action-buttons">
       <button type="button" class="btn btn-skip" onclick="setDisposition(this, 'skip')">Skip</button>
     </div>
