@@ -704,22 +704,32 @@ def score_facts_cmd(test_dir, verbose):
     default=Path("./test_set/optimize_log"), help="Directory for iteration logs",
 )
 @click.option("--max-iterations", "-n", default=5, help="Maximum optimization iterations")
+@click.option(
+    "--feedback-dir", "-f", "feedback_dir",
+    type=click.Path(exists=True, path_type=Path), default=None,
+    help="Directory with user feedback JSON files (rejections/edits feed the optimizer)",
+)
 @click.option("--verbose", is_flag=True)
-def optimize(test_dir, prompt_path, log_dir, max_iterations, verbose):
+def optimize(test_dir, prompt_path, log_dir, max_iterations, feedback_dir, verbose):
     """Run the Karpathy Loop to optimize the enrichment prompt.
 
     Iteratively modifies the prompt, regenerates descriptions for the
     test set using cached facts (no scraping), scores each iteration,
     and keeps the best-performing prompt.
+
+    With --feedback-dir, user review dispositions (rejections with reasons,
+    human-edited products) are injected into the meta-prompt so the optimizer
+    learns from real user signal. Rejected/edited products are weighted 2x.
     """
     setup_logging(verbose)
     from lookout.enrich.optimize import run_optimization_loop
 
+    feedback_info = f"\nFeedback: {feedback_dir}" if feedback_dir else ""
     console.print(Panel(
         f"[bold]Karpathy Loop: Prompt Optimization[/bold]\n"
         f"Test set: {test_dir}\n"
         f"Prompt: {prompt_path}\n"
-        f"Max iterations: {max_iterations}",
+        f"Max iterations: {max_iterations}{feedback_info}",
         title="Optimize",
     ))
 
@@ -729,6 +739,7 @@ def optimize(test_dir, prompt_path, log_dir, max_iterations, verbose):
             prompt_path=prompt_path,
             log_dir=log_dir,
             max_iterations=max_iterations,
+            feedback_dir=feedback_dir,
         ))
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
