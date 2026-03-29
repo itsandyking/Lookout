@@ -181,6 +181,7 @@ class VendorConfig(BaseModel):
 
     domain: str
     is_shopify: bool = False
+    blocked: bool = False  # Vendor is bot-blocked, skip enrichment
     fallback_domains: list[str] = Field(default_factory=list)
     blocked_paths: list[str] = Field(default_factory=list)
     product_url_patterns: list[str] = Field(default_factory=list)

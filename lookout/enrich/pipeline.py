@@ -315,6 +315,12 @@ class ProductProcessor:
                 metadata["warnings"].append(f"VENDOR_NOT_CONFIGURED: {vendor}")
                 return None, ProcessingStatus.SKIPPED_VENDOR_NOT_CONFIGURED, metadata
 
+            if vendor_config.blocked:
+                handle_log.entries.append(
+                    LogEntry(level="INFO", message=f"Vendor blocked (bot protection): {vendor}")
+                )
+                return None, ProcessingStatus.SKIPPED_VENDOR_NOT_CONFIGURED, metadata
+
             # Check cache
             if not self.force and self._is_cached(artifacts_dir):
                 handle_log.entries.append(LogEntry(level="INFO", message="Using cached artifacts"))
@@ -486,12 +492,12 @@ class ProductProcessor:
                 accepted_variant_images = None
 
                 for candidate in candidates[:3]:
-                    if candidate.confidence < confidence_settings.reject_threshold:
+                    if candidate.confidence < 50:
                         match_decisions.append({
                             "url": candidate.url,
                             "resolver_confidence": candidate.confidence,
                             "outcome": "skip_low_confidence",
-                            "reason": f"confidence {candidate.confidence} < threshold {confidence_settings.reject_threshold}",
+                            "reason": f"confidence {candidate.confidence} < threshold 50",
                         })
                         continue
 
@@ -572,8 +578,10 @@ class ProductProcessor:
                     cand_facts = _firecrawl_json_to_facts(facts_dict, candidate.url)
 
                     # Post-extraction validation
+                    swatch_colors = list(cand_variant_images.keys()) if cand_variant_images else None
                     post_check = check_post_extraction(
-                        cand_facts, catalog_title, _catalog_price, known_colors or []
+                        cand_facts, catalog_title, _catalog_price, known_colors or [],
+                        vendor_colors=swatch_colors,
                     )
                     if not post_check["pass"]:
                         handle_log.entries.append(

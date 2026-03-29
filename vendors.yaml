@@ -4,6 +4,7 @@
 vendors:
   Patagonia:
     domain: "patagonia.com"
+    blocked: true  # Akamai bot protection
     # Paths that should be excluded from product matching
     blocked_paths:
       - "/blog"
@@ -27,6 +28,7 @@ vendors:
 
   Altra:
     domain: "altrarunning.com"
+    blocked: true  # Bot protection
     fallback_domains:
       - "zappos.com"
     blocked_paths:
@@ -282,6 +284,7 @@ vendors:
 
   Smartwool:
     domain: "smartwool.com"
+    blocked: true  # Bot protection
 
   Prana:
     domain: "prana.com"
@@ -309,6 +312,7 @@ vendors:
 
   Teva:
     domain: "teva.com"
+    blocked: true  # Akamai bot protection
 
   MSR:
     domain: "msrgear.com"
