@@ -342,6 +342,7 @@ vendors:
 
   "On":
     domain: "on.com"
+    search_brand_name: "On Running"
 
   "Therm-a-Rest":
     domain: "thermarest.com"

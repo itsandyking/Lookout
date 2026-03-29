@@ -196,7 +196,8 @@ class URLResolver:
         # Not restricted to vendor site — cross-retailer presence boosts confidence,
         # absence or conflicting results reduces it
         if clean_title and all_candidates:
-            broad_query = f"{vendor} {clean_title}"
+            search_vendor = vendor_config.search_brand_name or vendor
+            broad_query = f"{search_vendor} {clean_title}"
             queries_used.append(f"broad: {broad_query}")
             try:
                 broad_html = await asyncio.to_thread(self._sync_ddg_search, broad_query)
