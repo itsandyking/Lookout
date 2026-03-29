@@ -437,6 +437,13 @@ class ProductProcessor:
                         },
                     )
                 )
+                # Get catalog price from variant data for resolver scoring
+                _catalog_price = None
+                if input_row.variant_data:
+                    _prices = [v.price for v in input_row.variant_data if v.price > 0]
+                    if _prices:
+                        _catalog_price = _prices[0]
+
                 resolver_output = await self.resolver.resolve(
                     handle=handle,
                     vendor=vendor,
@@ -445,6 +452,7 @@ class ProductProcessor:
                     title=input_row.title,
                     barcode=search_barcode,
                     sku=search_sku,
+                    catalog_price=_catalog_price,
                 )
 
                 # Save resolver output
@@ -517,6 +525,7 @@ class ProductProcessor:
                             vendor_config=fallback_vendor,
                             hints=input_row.gaps or input_row.suggestions or "",
                             title=input_row.title,
+                            catalog_price=_catalog_price,
                         )
 
                         if fallback_output and fallback_output.selected_url:
@@ -590,6 +599,52 @@ class ProductProcessor:
                     metadata["warnings"].append(
                         f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
                     )
+
+            # Step 3b1: Season signal detection
+            from .season_signals import check_season_match as _check_season
+
+            # Gather vendor colors from extracted facts
+            _vendor_colors: list[str] = []
+            for v in facts.variants:
+                if v.option_name.lower() in ("color", "colour", "style"):
+                    _vendor_colors = v.values
+                    break
+
+            _season_input = {
+                "colors": input_row.known_colors,
+                "tags": [],  # tags populated from store if available
+                "title": input_row.title or "",
+            }
+            if self.store:
+                _prod = self.store.get_product(handle)
+                if _prod:
+                    _season_input["tags"] = _prod.get("tags", "").split(", ") if isinstance(_prod.get("tags"), str) else _prod.get("tags", [])
+
+            _vendor_input = {
+                "colors": _vendor_colors,
+                "product_name": facts.product_name,
+            }
+            season_signals = _check_season(_season_input, _vendor_input, scrape_url)
+
+            if season_signals["flags"]:
+                for flag in season_signals["flags"]:
+                    metadata["warnings"].append(
+                        f"SEASON_{flag}: {season_signals['confidence_note']}"
+                    )
+                handle_log.entries.append(
+                    LogEntry(
+                        level="WARNING",
+                        message=f"Season signals: {season_signals['flags']}",
+                        data=season_signals,
+                    )
+                )
+            else:
+                handle_log.entries.append(
+                    LogEntry(
+                        message="Season check OK — no mismatch signals",
+                        data={"color_overlap": season_signals["color_overlap"]},
+                    )
+                )
 
             # Step 3b2: Inject variant images from Firecrawl swatch extraction
             if firecrawl_variant_images and not facts.variant_image_candidates:

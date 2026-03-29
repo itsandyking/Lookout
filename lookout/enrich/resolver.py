@@ -89,6 +89,7 @@ class URLResolver:
         title: str | None = None,
         barcode: str | None = None,
         sku: str | None = None,
+        catalog_price: float | None = None,
     ) -> ResolverOutput:
         """
         Resolve a product handle to a vendor URL.
@@ -373,6 +374,38 @@ class URLResolver:
                     # Moderate mismatch
                     candidate.confidence = max(0, candidate.confidence - 10)
                     candidate.reasoning += f" -title_weak({seq_ratio:.0%})"
+
+        # Price comparison scoring: compare catalog price to prices found in
+        # candidate snippets/titles (search results often include "$XX.XX")
+        if catalog_price and catalog_price > 0:
+            import re as _re_price
+
+            price_pattern = _re_price.compile(r'\$(\d+(?:[.,]\d{2})?)')
+
+            for candidate in seen_urls.values():
+                # Try to extract a price from snippet or title
+                candidate_price = None
+                for text in (candidate.snippet, candidate.title):
+                    if not text:
+                        continue
+                    matches = price_pattern.findall(text)
+                    if matches:
+                        try:
+                            candidate_price = float(matches[0].replace(",", ""))
+                            break
+                        except (ValueError, TypeError):
+                            continue
+
+                if candidate_price is None or candidate_price <= 0:
+                    continue  # No price data — don't penalize
+
+                price_diff = abs(candidate_price - catalog_price) / catalog_price
+                if price_diff <= 0.20:
+                    candidate.confidence = min(100, candidate.confidence + 10)
+                    candidate.reasoning += f" +price_match(${candidate_price:.0f}≈${catalog_price:.0f})"
+                elif price_diff > 0.50:
+                    candidate.confidence = max(0, candidate.confidence - 15)
+                    candidate.reasoning += f" -price_mismatch(${candidate_price:.0f}vs${catalog_price:.0f})"
 
         # Strategy 6: Direct URL probe (last resort — only works when our handle
         # happens to match the vendor's URL structure, e.g., Patagonia)
