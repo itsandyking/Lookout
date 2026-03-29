@@ -25,13 +25,31 @@ DEMOGRAPHICS = frozenset({
 
 _HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
+# Section headings that are NOT product titles — skip the title gate for these
+_GENERIC_HEADINGS = frozenset({
+    "features", "materials", "specifications", "specs", "details",
+    "description", "overview", "reviews", "shipping", "returns",
+    "related products", "you may also like", "similar products",
+    "materiales", "características",  # Spanish variants
+})
+
 
 def extract_page_title(markdown: str) -> str | None:
-    """Extract the primary title from scraped markdown."""
+    """Extract the primary product title from scraped markdown.
+
+    Returns None if no heading found or if the first heading is a generic
+    section name (e.g. "Features", "Materials") rather than a product title.
+    """
     if not markdown:
         return None
     match = _HEADING_RE.search(markdown)
-    return match.group(1).strip() if match else None
+    if not match:
+        return None
+    title = match.group(1).strip()
+    # Skip generic section headings — these aren't product titles
+    if title.lower() in _GENERIC_HEADINGS:
+        return None
+    return title
 
 
 def _extract_words(text: str) -> set[str]:
