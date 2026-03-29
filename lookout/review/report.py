@@ -113,7 +113,11 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                     if is_all:
                         img_cell += '<span class="assign-shared">shared</span>'
                 else:
-                    img_cell = '<span class="no-assign">No image assigned</span>'
+                    img_cell = (
+                        f'<span class="no-assign">No image assigned</span>'
+                        f'<button type="button" class="assign-choose" '
+                        f'onclick="enterPickMode(this.closest(\'.product\'), \'{html.escape(color)}\', this.closest(\'tr\'))">Choose image</button>'
+                    )
 
                 positions = variant_img_positions.get(color, variant_img_positions.get(full_label, variant_img_positions.get("__all__", [])))
                 pos_data = html.escape(json.dumps(positions))
