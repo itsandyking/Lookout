@@ -11,3 +11,8 @@ build/
 .worktrees/
 .env
 campaign/run_*/
+audit_optimize_log/
+firecrawl_validation_results.csv
+test_set/
+test_set_*.csv
+infra/searxng/data/
