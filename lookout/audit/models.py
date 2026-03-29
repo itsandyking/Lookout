@@ -203,6 +203,7 @@ class AuditResult:
         self,
         store: object | None = None,
         max_rows: int | None = None,
+        include_all: bool = False,
     ) -> list:
         """Convert priority items to InputRow objects with rich variant data.
 
@@ -213,13 +214,14 @@ class AuditResult:
         Args:
             store: Optional LookoutStore for catalog image lookups.
             max_rows: Limit number of rows returned.
+            include_all: If True, include all items (even gapless ones).
 
         Returns:
             List of InputRow objects with variant_data populated.
         """
         from lookout.enrich.models import InputRow, VariantInfo
 
-        items = self.priority_items
+        items = self.all_items if include_all else self.priority_items
         if max_rows:
             items = items[:max_rows]
 

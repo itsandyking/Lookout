@@ -430,6 +430,7 @@ def enrich():
     help="Input CSV (optional — audits internally if not provided)",
 )
 @click.option("--vendor", "-v", default=None, help="Filter by vendor (used with internal audit)")
+@click.option("--handle", "-h", "handles", multiple=True, help="Specific product handles to enrich (repeatable)")
 @click.option(
     "--out", "-o", "output_dir", type=click.Path(path_type=Path), default=Path("./output"),
     help="Output directory",
@@ -445,7 +446,7 @@ def enrich():
 @click.option("--verify", is_flag=True, help="Enable LLM fact-checking of generated descriptions")
 @click.option("--only", "only_mode", type=click.Choice(["images", "description", "variant-images"]), default=None, help="Only fill this specific gap type")
 @click.option("--verbose", is_flag=True)
-def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verify, only_mode, verbose):
+def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verify, only_mode, verbose):
     """Run the enrichment pipeline."""
     setup_logging(verbose)
     from lookout.enrich.pipeline import PipelineConfig, run_pipeline
@@ -455,9 +456,35 @@ def run(input_path, vendor, output_dir, vendors_path, concurrency, max_rows, for
         console.print("[red]Error:[/red] vendors.yaml not found")
         sys.exit(1)
 
-    # If no input CSV, run audit internally to get priorities with rich variant data
+    # If specific handles provided, build InputRows directly from Shopify API
     enriched_rows = None
-    if input_path is None:
+    if handles:
+        from lookout.audit.auditor import ContentAuditor
+        from lookout.store import LookoutStore
+
+        store = LookoutStore()
+        auditor = ContentAuditor(store, exclude_house_brands=False)
+        enriched_rows = []
+        for handle in handles:
+            product = store.get_product(handle)
+            if not product:
+                console.print(f"[yellow]Handle not found: {handle}[/yellow]")
+                continue
+            # Run audit on just this product to get gap analysis + variant data
+            score = auditor._score_product(product)
+            from lookout.audit.models import AuditResult
+            mini_result = AuditResult(scores=[score], vendor=product.get("vendor", ""))
+            # Use all_items (not priority_items) so handle mode works even for gapless products
+            rows = mini_result.to_input_rows(store=store, include_all=True)
+            enriched_rows.extend(rows)
+
+        if not enriched_rows:
+            console.print("[red]No valid handles found.[/red]")
+            return
+        console.print(f"[dim]Enriching {len(enriched_rows)} products by handle[/dim]")
+
+    # If no input CSV and no handles, run audit internally to get priorities with rich variant data
+    elif input_path is None:
         label = f"vendor: {vendor}" if vendor else "all vendors"
         console.print(f"[dim]Running internal audit for {label}[/dim]")
 
