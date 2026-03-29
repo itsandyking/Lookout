@@ -42,6 +42,9 @@ class ProductChange:
     edited_body_html: str | None = None
     confidence: int = 0
 
+    # Source info
+    source_url: str | None = None
+
     # Display metadata (not persisted)
     variant_labels: list[str] = field(default_factory=list)
     inventory_count: int = 0

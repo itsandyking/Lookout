@@ -222,6 +222,7 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 images_section=images_html,
                 has_description="true" if has_description else "false",
                 has_images="true" if has_images else "false",
+                source_url=html.escape(change.source_url or ""),
             )
         )
 
@@ -251,6 +252,7 @@ _PRODUCT_TEMPLATE = """
       <span class="vendor">{vendor}</span>
       {inventory_info}
       <span class="handle">{handle}</span>
+      <a class="source-link" href="{source_url}" target="_blank" rel="noopener">Source Page &#8599;</a>
     </div>
     <div class="header-flags">{missing_flags}</div>
   </div>
@@ -559,6 +561,14 @@ _TEMPLATE = """<!DOCTYPE html>
   .bulk-actions {{
     display: flex; gap: 8px; margin-bottom: 12px;
   }}
+  .source-link {{
+    font-size: 0.8em; color: #1976d2; text-decoration: none;
+    border: 1px solid #bbdefb; border-radius: 4px; padding: 2px 8px;
+    transition: all 0.15s;
+  }}
+  .source-link:hover {{ background: #e3f2fd; }}
+  .source-link[href=""] {{ display: none; }}
+
   .btn-approve-all, .btn-reject-all {{
     padding: 6px 14px; border-radius: 6px; border: 1px solid #ddd;
     background: #fff; font-size: 0.8em; font-weight: 600;

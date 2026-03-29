@@ -1035,6 +1035,16 @@ def review(run_dir, out, serve, port, verbose):
 
         merch = MerchOutput(**json_mod.loads(merch_path.read_text()))
 
+        # Get source URL from resolver output
+        source_url = None
+        resolver_path = handle_dir / "resolver.json"
+        if resolver_path.exists():
+            try:
+                resolver_data = json_mod.loads(resolver_path.read_text())
+                source_url = resolver_data.get("selected_url")
+            except Exception:
+                pass
+
         product = store.get_product(merch.handle)
         if not product:
             console.print(f"[yellow]Skipping {merch.handle}: not found in store[/yellow]")
@@ -1090,6 +1100,7 @@ def review(run_dir, out, serve, port, verbose):
             inventory_value=inventory_value,
             missing_fields=missing_fields,
             confidence=merch.confidence,
+            source_url=source_url,
         ))
 
     run_id = run_dir.name
