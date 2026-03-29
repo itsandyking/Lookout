@@ -258,7 +258,9 @@ _TEMPLATE = """<!DOCTYPE html>
     padding: 12px 16px; display: flex; align-items: center; gap: 16px;
     transition: border-color 0.15s;
   }}
+  .product-row {{ cursor: pointer; }}
   .product-row:hover {{ border-color: #999; }}
+  .product-row.selected {{ background: #e8f5e9; border-color: #4CAF50; }}
 
   .product-rank {{
     font-size: 1.2em; font-weight: 700; color: #999; min-width: 36px; text-align: center;
@@ -391,7 +393,7 @@ function renderProducts(products) {{
   }}
 
   list.innerHTML = products.slice(0, 200).map((p, i) => `
-    <div class="product-row" data-handle="${{p.handle}}">
+    <div class="product-row ${{selected.has(p.handle) ? 'selected' : ''}}" data-handle="${{p.handle}}" onclick="rowClick(event, '${{p.handle}}')">
       <div class="select-col">
         <input type="checkbox" ${{selected.has(p.handle) ? 'checked' : ''}}
                onchange="toggleSelect('${{p.handle}}', this.checked)" />
@@ -456,6 +458,19 @@ function toggleSelect(handle, checked) {{
   if (checked) selected.add(handle); else selected.delete(handle);
   document.getElementById('selected-count').textContent = selected.size;
   document.getElementById('batch-bar').classList.toggle('visible', selected.size > 0);
+  // Update row highlight
+  const row = document.querySelector(`.product-row[data-handle="${{handle}}"]`);
+  if (row) row.classList.toggle('selected', checked);
+  // Sync checkbox
+  const cb = row?.querySelector('input[type="checkbox"]');
+  if (cb) cb.checked = checked;
+}}
+
+function rowClick(event, handle) {{
+  // Don't toggle if clicking a link or checkbox directly
+  if (event.target.closest('a') || event.target.type === 'checkbox') return;
+  const isSelected = selected.has(handle);
+  toggleSelect(handle, !isSelected);
 }}
 
 function exportSelected() {{
