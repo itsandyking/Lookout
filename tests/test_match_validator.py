@@ -129,3 +129,69 @@ def test_post_extraction_missing_signals_neutral():
     )
     assert result["pass"] is True
     assert result["confidence"] >= 50
+
+
+# --- Price extraction tests ---
+
+
+def test_extract_price_from_specs_dollar():
+    from lookout.enrich.match_validator import _extract_price_from_facts
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Test", canonical_url="https://example.com", images=[], variants=[], specs={"Price": "$175.00"})
+    assert _extract_price_from_facts(facts) == 175.00
+
+
+def test_extract_price_from_specs_euro():
+    from lookout.enrich.match_validator import _extract_price_from_facts
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Test", canonical_url="https://example.com", images=[], variants=[], specs={"Regular Price": "€1,299.99"})
+    assert _extract_price_from_facts(facts) == 1299.99
+
+
+def test_extract_price_from_specs_range():
+    from lookout.enrich.match_validator import _extract_price_from_facts
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Test", canonical_url="https://example.com", images=[], variants=[], specs={"Price Range": "$760.00 – $830.00"})
+    assert _extract_price_from_facts(facts) == 760.00
+
+
+def test_extract_price_falls_back_to_json_ld():
+    from lookout.enrich.match_validator import _extract_price_from_facts
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Test", canonical_url="https://example.com", images=[], variants=[], specs={}, json_ld_data={"offers": {"price": "99.99"}})
+    assert _extract_price_from_facts(facts) == 99.99
+
+
+def test_extract_price_none_when_missing():
+    from lookout.enrich.match_validator import _extract_price_from_facts
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Test", canonical_url="https://example.com", images=[], variants=[], specs={"Material": "Gore-Tex"})
+    assert _extract_price_from_facts(facts) is None
+
+
+# --- Color signal tests ---
+
+
+def test_post_extraction_with_vendor_colors():
+    from lookout.enrich.match_validator import check_post_extraction
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Reverb Youth Ski Boots", canonical_url="https://example.com", images=[], variants=[])
+    result = check_post_extraction(facts=facts, catalog_title="Youth Reverb Ski Boots 2024", catalog_price=None, catalog_colors=["Black", "Blue"], vendor_colors=["Black", "Blue"])
+    assert result["pass"] is True
+    assert result["signals"]["color_overlap"] != 0.5
+
+
+def test_post_extraction_color_from_specs():
+    from lookout.enrich.match_validator import check_post_extraction
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="CloudLite Sleeping Bag", canonical_url="https://example.com", images=[], variants=[], specs={"Color": "Blue Sky"})
+    result = check_post_extraction(facts=facts, catalog_title="CloudLite Sleeping Bag", catalog_price=None, catalog_colors=["Blue Sky"])
+    assert result["signals"]["color_overlap"] != 0.5
+
+
+def test_post_extraction_color_specs_multi():
+    from lookout.enrich.match_validator import check_post_extraction
+    from lookout.enrich.models import ExtractedFacts
+    facts = ExtractedFacts(product_name="Some Product", canonical_url="https://example.com", images=[], variants=[], specs={"Colors": "Red / Blue / Green"})
+    result = check_post_extraction(facts=facts, catalog_title="Some Product", catalog_price=None, catalog_colors=["Red", "Blue"])
+    assert result["signals"]["color_overlap"] != 0.5

@@ -28,6 +28,9 @@ _DEMO_NORMALIZE = {"men": "mens", "women": "womens"}
 
 _HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
+_PRICE_KEYS = {"price", "msrp", "regular price", "retail price", "base price", "price range", "our price"}
+_PRICE_RE = re.compile(r"[\$€£]([\d,]+\.?\d*)")
+
 
 def extract_page_title(markdown: str, catalog_title: str | None = None) -> str | None:
     """Extract the best product title heading from scraped markdown.
@@ -143,11 +146,46 @@ def check_title_gate(
     }
 
 
+def _extract_price_from_facts(facts) -> float | None:
+    """Extract a numeric price from facts.specs or JSON-LD offers.
+
+    Checks specs keys (case-insensitive) for common price labels, parses
+    the first dollar/euro/pound amount found, then falls back to JSON-LD.
+    """
+    # 1. Check facts.specs
+    if facts.specs:
+        for key, value in facts.specs.items():
+            if key.strip().lower() in _PRICE_KEYS:
+                m = _PRICE_RE.search(str(value))
+                if m:
+                    try:
+                        return float(m.group(1).replace(",", ""))
+                    except ValueError:
+                        pass
+
+    # 2. Fallback to JSON-LD offers.price
+    if facts.json_ld_data:
+        offers = facts.json_ld_data.get("offers", {})
+        raw_price = None
+        if isinstance(offers, dict):
+            raw_price = offers.get("price")
+        elif isinstance(offers, list) and offers:
+            raw_price = offers[0].get("price")
+        if raw_price is not None:
+            try:
+                return float(raw_price)
+            except (ValueError, TypeError):
+                pass
+
+    return None
+
+
 def check_post_extraction(
     facts,  # ExtractedFacts
     catalog_title: str,
     catalog_price: float | None,
     catalog_colors: list[str],
+    vendor_colors: list[str] | None = None,
 ) -> dict:
     """Stage 2: aggregate post-extraction signals into a confidence score.
 
@@ -171,17 +209,11 @@ def check_post_extraction(
     signals["title_similarity"] = title_sim
 
     # Price plausibility (25% weight)
-    scraped_price = None
-    if facts.json_ld_data:
-        offers = facts.json_ld_data.get("offers", {})
-        if isinstance(offers, dict):
-            scraped_price = offers.get("price")
-        elif isinstance(offers, list) and offers:
-            scraped_price = offers[0].get("price")
+    scraped_price = _extract_price_from_facts(facts)
 
     if scraped_price is not None and catalog_price and catalog_price > 0:
         try:
-            price_diff = abs(float(scraped_price) - catalog_price) / catalog_price
+            price_diff = abs(scraped_price - catalog_price) / catalog_price
             price_score = max(0.0, min(1.0, 1.0 - (price_diff - 0.2) / 0.4)) if price_diff > 0.2 else 1.0
         except (ValueError, TypeError):
             price_score = 0.5
@@ -190,14 +222,25 @@ def check_post_extraction(
     signals["price_ratio"] = price_score
 
     # Color overlap (25% weight)
-    vendor_colors: list[str] = []
-    for v in facts.variants:
-        if v.option_name.lower() in ("color", "colour", "style"):
-            vendor_colors = v.values
-            break
+    # Priority: 1) vendor_colors param (swatch extraction), 2) specs, 3) variants
+    resolved_colors: list[str] = []
+    if vendor_colors:
+        resolved_colors = vendor_colors
+    elif facts.specs:
+        for key, value in facts.specs.items():
+            if key.strip().lower() in ("color", "colour", "colors", "colours"):
+                resolved_colors = [
+                    c.strip() for c in re.split(r"[/,|]", str(value)) if c.strip()
+                ]
+                break
+    if not resolved_colors:
+        for v in facts.variants:
+            if v.option_name.lower() in ("color", "colour", "style"):
+                resolved_colors = v.values
+                break
 
-    if vendor_colors and catalog_colors:
-        overlap_result = score_color_overlap(catalog_colors, vendor_colors)
+    if resolved_colors and catalog_colors:
+        overlap_result = score_color_overlap(catalog_colors, resolved_colors)
         color_score = overlap_result["overlap"]
     else:
         color_score = 0.5
