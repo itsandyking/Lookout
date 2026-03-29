@@ -99,9 +99,11 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                         pos = img_by_src.get(src, "")
                         pos_label = f'<span class="assign-pos">#{pos}</span>' if pos else ""
                         thumb_cells.append(
-                            f'<div class="assign-thumb">'
+                            f'<div class="assign-thumb" data-src="{html.escape(src)}" data-color="{html.escape(color)}">'
                             f'<img src="{src}" loading="lazy" />'
-                            f'{pos_label}</div>'
+                            f'{pos_label}'
+                            f'<button type="button" class="assign-remove" onclick="removeVariantImage(this)" title="Remove assignment">&#10005;</button>'
+                            f'</div>'
                         )
                     remaining_count = len(assigned_srcs) - 3
                     if remaining_count > 0:
@@ -154,9 +156,11 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 alt_text = html.escape(img.get("alt", ""))
                 pos = img.get("position", "")
                 thumbs.append(
-                    f'<div class="thumb" data-pos="{pos}">'
+                    f'<div class="thumb" data-pos="{pos}" data-src="{html.escape(src)}">'
                     f'<img src="{src}" alt="{alt_text}" loading="lazy" />'
-                    f'<span class="pos">#{pos}</span></div>'
+                    f'<span class="pos">#{pos}</span>'
+                    f'<button type="button" class="img-remove" onclick="toggleRemoveImage(this)" title="Remove image">&#10005;</button>'
+                    f'</div>'
                 )
             remaining = len(change.new_images) - 12
             extra = f'<div class="thumb more">+{remaining} more</div>' if remaining > 0 else ""
@@ -514,6 +518,35 @@ _TEMPLATE = """<!DOCTYPE html>
     display: flex; align-items: center; justify-content: center;
     font-size: 0.85em; color: #666; font-weight: 600;
   }}
+  .img-remove, .assign-remove {{
+    position: absolute; top: 2px; right: 2px;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: none; background: rgba(0,0,0,0.5); color: #fff;
+    font-size: 12px; line-height: 20px; text-align: center;
+    cursor: pointer; padding: 0; opacity: 0; transition: opacity 0.15s;
+  }}
+  .thumb:hover .img-remove, .assign-thumb:hover .assign-remove {{ opacity: 1; }}
+  .thumb.removed {{
+    opacity: 0.3; border: 2px dashed #f44336;
+  }}
+  .thumb.removed::after {{
+    content: '\\2715'; position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%); font-size: 2em; color: #f44336;
+    font-weight: bold; pointer-events: none;
+  }}
+  .thumb.removed .img-remove {{ opacity: 1; background: #4CAF50; }}
+  .thumb.removed .img-remove::after {{ content: ''; }}
+  .assign-thumb.removed {{
+    opacity: 0.3; border: 2px dashed #f44336;
+  }}
+  .assign-choose {{
+    display: inline-block; padding: 4px 10px; border-radius: 4px;
+    border: 1px dashed #1976d2; background: #e3f2fd; color: #1976d2;
+    font-size: 0.8em; cursor: pointer; transition: all 0.15s;
+  }}
+  .assign-choose:hover {{ background: #bbdefb; }}
+  .thumb.pick-mode {{ cursor: crosshair; border: 2px solid #1976d2; }}
+  .thumb.pick-mode:hover {{ box-shadow: 0 0 0 3px rgba(25,118,210,0.3); }}
 
   /* No variant — all images indicator */
   .all-images-note {{
@@ -745,6 +778,119 @@ function rejectAll(btn) {{
   const product = btn.closest('.product');
   product.querySelectorAll('.sbtn-reject').forEach(b => setSectionDisposition(b, 'rejected'));
 }}
+
+// Image removal (toggle — click to remove, click again to undo)
+function toggleRemoveImage(btn) {{
+  const thumb = btn.closest('.thumb');
+  const product = thumb.closest('.product');
+  const handle = product.dataset.handle;
+  const pos = thumb.dataset.pos;
+
+  thumb.classList.toggle('removed');
+
+  if (!dispositions[handle]) dispositions[handle] = {{ status: 'mixed' }};
+  if (!dispositions[handle].removed_images) dispositions[handle].removed_images = [];
+
+  const removed = dispositions[handle].removed_images;
+  const idx = removed.indexOf(pos);
+  if (thumb.classList.contains('removed')) {{
+    if (idx === -1) removed.push(pos);
+  }} else {{
+    if (idx !== -1) removed.splice(idx, 1);
+  }}
+  if (removed.length === 0) delete dispositions[handle].removed_images;
+}}
+
+// Variant image reassignment
+let pickState = null; // {{ product, color, row }}
+
+function removeVariantImage(btn) {{
+  const assignThumb = btn.closest('.assign-thumb');
+  const row = assignThumb.closest('tr');
+  const product = row.closest('.product');
+  const color = assignThumb.dataset.color;
+
+  assignThumb.classList.add('removed');
+
+  // Add "Choose image" button after the removed thumb
+  if (!row.querySelector('.assign-choose')) {{
+    const chooseBtn = document.createElement('button');
+    chooseBtn.type = 'button';
+    chooseBtn.className = 'assign-choose';
+    chooseBtn.textContent = 'Choose image';
+    chooseBtn.onclick = () => enterPickMode(product, color, row);
+    row.querySelector('.assign-images').appendChild(chooseBtn);
+  }}
+
+  // Track in dispositions
+  const handle = product.dataset.handle;
+  if (!dispositions[handle]) dispositions[handle] = {{ status: 'mixed' }};
+  if (!dispositions[handle].reassigned_variants) dispositions[handle].reassigned_variants = {{}};
+  dispositions[handle].reassigned_variants[color] = null; // null = removed, not yet reassigned
+}}
+
+function enterPickMode(product, color, row) {{
+  // Cancel any existing pick mode
+  exitPickMode();
+
+  pickState = {{ product, color, row }};
+
+  // Highlight all available images in the grid
+  product.querySelectorAll('.image-grid .thumb:not(.removed):not(.more)').forEach(t => {{
+    t.classList.add('pick-mode');
+    t.addEventListener('click', pickImage);
+  }});
+}}
+
+function pickImage(e) {{
+  if (!pickState) return;
+  const thumb = e.currentTarget;
+  const src = thumb.dataset.src;
+  const pos = thumb.dataset.pos;
+
+  // Update the variant row with the new image
+  const row = pickState.row;
+  const imagesCell = row.querySelector('.assign-images');
+
+  // Remove the "Choose image" button and any removed thumbs
+  const chooseBtn = imagesCell.querySelector('.assign-choose');
+  if (chooseBtn) chooseBtn.remove();
+  imagesCell.querySelectorAll('.assign-thumb.removed').forEach(t => t.remove());
+
+  // Add the new assignment
+  const newThumb = document.createElement('div');
+  newThumb.className = 'assign-thumb';
+  newThumb.dataset.src = src;
+  newThumb.dataset.color = pickState.color;
+  newThumb.innerHTML = '<img src="' + src + '" loading="lazy" />'
+    + '<span class="assign-pos">#' + pos + '</span>'
+    + '<button type="button" class="assign-remove" onclick="removeVariantImage(this)" title="Remove assignment">&#10005;</button>';
+  imagesCell.appendChild(newThumb);
+
+  // Track in dispositions
+  const handle = pickState.product.dataset.handle;
+  if (!dispositions[handle]) dispositions[handle] = {{ status: 'mixed' }};
+  if (!dispositions[handle].reassigned_variants) dispositions[handle].reassigned_variants = {{}};
+  dispositions[handle].reassigned_variants[pickState.color] = src;
+
+  exitPickMode();
+}}
+
+function exitPickMode() {{
+  if (!pickState) return;
+  pickState.product.querySelectorAll('.thumb.pick-mode').forEach(t => {{
+    t.classList.remove('pick-mode');
+    t.removeEventListener('click', pickImage);
+  }});
+  pickState = null;
+}}
+
+// Click anywhere outside pick mode to cancel
+document.addEventListener('click', (e) => {{
+  if (pickState && !e.target.closest('.thumb.pick-mode') && !e.target.closest('.assign-choose')) {{
+    exitPickMode();
+  }}
+}});
 
 function updateProgress() {{
   const count = Object.keys(dispositions).length;
