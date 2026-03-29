@@ -633,6 +633,12 @@ class ProductProcessor:
                         final_url=accepted_url,
                         catalog_price=_catalog_price,
                         catalog_colors=known_colors,
+                        resolver_candidates=[
+                            {"url": c.url, "confidence": c.confidence,
+                             "title": c.title, "snippet": c.snippet,
+                             "reasoning": c.reasoning}
+                            for c in candidates
+                        ],
                     )
 
                 if not accepted_facts:

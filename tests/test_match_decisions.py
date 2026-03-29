@@ -53,3 +53,26 @@ def test_log_multiple_decisions(tmp_path):
 
     lines = (tmp_path / "match_decisions.jsonl").read_text().strip().split("\n")
     assert len(lines) == 2
+
+
+def test_log_includes_resolver_candidates(tmp_path):
+    from lookout.enrich.match_validator import MatchDecisionLogger
+
+    logger = MatchDecisionLogger(tmp_path / "decisions.jsonl")
+    logger.log(
+        handle="test",
+        vendor="V",
+        catalog_title="Test Product",
+        candidates_tried=[{"url": "u", "action": "accept"}],
+        outcome="accepted",
+        final_url="u",
+        resolver_candidates=[
+            {"url": "https://example.com/a", "confidence": 85, "title": "Product A", "snippet": "..."},
+            {"url": "https://example.com/b", "confidence": 70, "title": "Product B", "snippet": "..."},
+        ],
+    )
+
+    record = json.loads((tmp_path / "decisions.jsonl").read_text().strip())
+    assert "resolver_candidates" in record
+    assert len(record["resolver_candidates"]) == 2
+    assert record["resolver_candidates"][0]["confidence"] == 85

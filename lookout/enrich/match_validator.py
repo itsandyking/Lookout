@@ -286,6 +286,7 @@ class MatchDecisionLogger:
         final_url: str | None,
         catalog_price: float | None = None,
         catalog_colors: list[str] | None = None,
+        resolver_candidates: list[dict] | None = None,
     ) -> None:
         record = {
             "handle": handle,
@@ -299,6 +300,8 @@ class MatchDecisionLogger:
             "final_url": final_url,
             "retries": len(candidates_tried) - 1 if candidates_tried else 0,
         }
+        if resolver_candidates is not None:
+            record["resolver_candidates"] = resolver_candidates
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.path, "a") as f:
             f.write(json.dumps(record) + "\n")
