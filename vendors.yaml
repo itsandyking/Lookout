@@ -212,19 +212,358 @@ vendors:
       method: "site_search"
       query_template: "site:{domain} {query}"
 
-  # Template for adding new vendors
-  # VendorName:
-  #   domain: "vendor-domain.com"
-  #   swatch_selector: ".custom-color-swatch"  # optional, for variant image extraction
-  #   gallery_selector: ".product-gallery img"  # optional, for variant image extraction
-  #   blocked_paths:
-  #     - "/blog"
-  #     - "/support"
-  #   product_url_patterns:
-  #     - "/product/"
-  #   search:
-  #     method: "site_search"
-  #     query_template: "site:{domain} {query}"
+  # --- Bulk-configured vendors (domain + defaults) ---
+
+  Thule:
+    domain: "thule.com"
+
+  Goodr:
+    domain: "goodr.com"
+
+  Petzl:
+    domain: "petzl.com"
+
+  Yakima:
+    domain: "yakima.com"
+
+  "Gear Aid":
+    domain: "gearaid.com"
+
+  "Backpacker's Pantry":
+    domain: "backpackerspantry.com"
+
+  "Liberty Mountain":
+    domain: "libertymountain.com"
+
+  Bronwen:
+    domain: "bronwenjewelry.com"
+
+  "Mountain House":
+    domain: "mountainhouse.com"
+
+  "Amandalee Design":
+    domain: "amandaleedesign.com"
+
+  Metolius:
+    domain: "metoliusclimbing.com"
+
+  Osprey:
+    domain: "osprey.com"
+
+  "Peak Refuel":
+    domain: "peakrefuel.com"
+
+  "The Mountaineers Books":
+    domain: "mountaineers.org"
+
+  "Toad&Co":
+    domain: "toadandco.com"
+
+  Coghlans:
+    domain: "coghlans.com"
+
+  Nalgene:
+    domain: "nalgene.com"
+
+  Vuori:
+    domain: "vuoriclothing.com"
+
+  "Adventure Medical Kits":
+    domain: "adventuremedicalkits.com"
+
+  "Sea to Summit":
+    domain: "seatosummit.com"
+
+  Ombraz:
+    domain: "ombraz.com"
+
+  Smartwool:
+    domain: "smartwool.com"
+
+  Prana:
+    domain: "prana.com"
+
+  Kala:
+    domain: "kalabrand.com"
+
+  Dakine:
+    domain: "dakine.com"
+
+  Sunski:
+    domain: "sunski.com"
+
+  "Hydro Flask":
+    domain: "hydroflask.com"
+
+  YETI:
+    domain: "yeti.com"
+
+  Matador:
+    domain: "matadorequipment.com"
+
+  "Snow Peak":
+    domain: "snowpeak.com"
+
+  Teva:
+    domain: "teva.com"
+
+  MSR:
+    domain: "msrgear.com"
+
+  Nikwax:
+    domain: "nikwax.com"
+
+  Ruffwear:
+    domain: "ruffwear.com"
+
+  "GSI Outdoors":
+    domain: "gsioutdoors.com"
+
+  Camelbak:
+    domain: "camelbak.com"
+
+  "NEMO Equipment":
+    domain: "nemoequipment.com"
+
+  "686":
+    domain: "686.com"
+
+  "Eagle Creek":
+    domain: "eaglecreek.com"
+
+  "Helly Hansen":
+    domain: "hellyhansen.com"
+
+  "Hyperlite Mountain Gear":
+    domain: "hyperlitemountaingear.com"
+
+  Sawyer:
+    domain: "sawyer.com"
+
+  On:
+    domain: "on.com"
+
+  "Therm-a-Rest":
+    domain: "thermarest.com"
+
+  "Black Diamond":
+    domain: "blackdiamondequipment.com"
+
+  LEKI:
+    domain: "lekiusa.com"
+
+  "CLIF Bar":
+    domain: "clifbar.com"
+
+  Vargo:
+    domain: "vargooutdoors.com"
+
+  Leatherman:
+    domain: "leatherman.com"
+
+  Fjallraven:
+    domain: "fjallraven.com"
+
+  HEST:
+    domain: "hest.com"
+
+  Salewa:
+    domain: "salewa.com"
+
+  "La Sportiva":
+    domain: "lasportiva.com"
+
+  Garmin:
+    domain: "garmin.com"
+
+  Jetboil:
+    domain: "jetboil.johnsonoutdoors.com"
+
+  "Western Mountaineering":
+    domain: "westernmountaineering.com"
+
+  Union:
+    domain: "unionbindingcompany.com"
+
+  "Darn Tough":
+    domain: "darntough.com"
+
+  Katadyn:
+    domain: "katadyngroup.com"
+
+  Victorinox:
+    domain: "victorinox.com"
+
+  AeroPress:
+    domain: "aeropress.com"
+
+  BioLite:
+    domain: "bioliteenergy.com"
+
+  Cotopaxi:
+    domain: "cotopaxi.com"
+
+  "Klean Kanteen":
+    domain: "kleankanteen.com"
+
+  "National Geographic Maps":
+    domain: "natgeomaps.com"
+
+  "Tom Harrison":
+    domain: "tomharrisonmaps.com"
+
+  "Wilderness Press":
+    domain: "wildernesspress.com"
+
+  "Sticker Art":
+    domain: "sticker.art"
+
+  "Field Notes":
+    domain: "fieldnotesbrand.com"
+
+  "Good To-Go":
+    domain: "goodto-go.com"
+
+  "Purnell":
+    domain: "purnellgear.com"
+
+  "Patagonia Provisions":
+    domain: "patagoniaprovisions.com"
+
+  "Nocs Provisions":
+    domain: "nocsprovisions.com"
+
+  "Keep Nature Wild":
+    domain: "keepnaturewild.com"
+
+  "Goal Zero":
+    domain: "goalzero.com"
+
+  Kuhl:
+    domain: "kuhl.com"
+
+  Deuter:
+    domain: "deuter.com"
+
+  "Outdoor Research":
+    domain: "outdoorresearch.com"
+
+  Buff:
+    domain: "buffusa.com"
+
+  Kelty:
+    domain: "kelty.com"
+
+  "Sierra Designs":
+    domain: "sierradesigns.com"
+
+  Salomon:
+    domain: "salomon.com"
+
+  "The North Face":
+    domain: "thenorthface.com"
+
+  Keen:
+    domain: "keenfootwear.com"
+
+  Rab:
+    domain: "rab.equipment"
+
+  "Granite Gear":
+    domain: "granitegear.com"
+
+  Hestra:
+    domain: "hestragloves.com"
+
+  "Sunday Afternoons":
+    domain: "sundayafternoons.com"
+
+  "Mons Royale":
+    domain: "monsroyale.com"
+
+  Injinji:
+    domain: "injinji.com"
+
+  "Howler Brothers":
+    domain: "howlerbros.com"
+
+  "Zeal Optics":
+    domain: "zealoptics.com"
+
+  "Topo Athletic":
+    domain: "topoathletic.com"
+
+  "Hot Chillys":
+    domain: "hotchillys.com"
+
+  "Groove Life":
+    domain: "groovelife.com"
+
+  Sterling:
+    domain: "sterlingrope.com"
+
+  Nuun:
+    domain: "nuunlife.com"
+
+  "Bedrock Sandals":
+    domain: "bedrocksandals.com"
+
+  Blundstone:
+    domain: "blundstone.com"
+
+  Suunto:
+    domain: "suunto.com"
+
+  Scott:
+    domain: "scott-sports.com"
+
+  Marker:
+    domain: "marker.net"
+
+  Armada:
+    domain: "armadaskis.com"
+
+  Seirus:
+    domain: "seirus.com"
+
+  "Ignik Outdoors":
+    domain: "ignik.com"
+
+  Baggu:
+    domain: "baggu.com"
+
+  Platypus:
+    domain: "platy.com"
+
+  Bogs:
+    domain: "bogsfootwear.com"
+
+  "Morrison Outdoors":
+    domain: "morrisonoutdoors.com"
+
+  "Lems":
+    domain: "lemsshoes.com"
+
+  Dynafit:
+    domain: "dynafit.com"
+
+  "Royal Robbins":
+    domain: "royalrobbins.com"
+
+  Tilley:
+    domain: "tilley.com"
+
+  Volkl:
+    domain: "voelkl.com"
+
+  "Grand Trunk":
+    domain: "grandtrunk.com"
+
+  Hotronic:
+    domain: "hotronic.com"
+
+  Sockwell:
+    domain: "sockwell.com"
 
 # Global settings
 settings:
