@@ -25,47 +25,57 @@ DEMOGRAPHICS = frozenset({
 
 _HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
-# Section headings that are NOT product titles — skip the title gate for these
-_GENERIC_HEADINGS = frozenset({
-    "features", "materials", "specifications", "specs", "details",
-    "description", "overview", "reviews", "shipping", "returns",
-    "related products", "you may also like", "similar products",
-    "materiales", "características",  # Spanish variants
-})
 
-# Patterns in headings that indicate non-product content
-_NON_PRODUCT_PATTERNS = re.compile(
-    r"(?i)"
-    r"(?:^color:|^colour:|^size:|^rating|^question|^review|^faq|^help"
-    r"|experts?\s+break|we\s+got\s+you|you\s+may\s+also"
-    r"|^share\b|^shop\s+(?:all|the)|^free\s+shipping"
-    r"|^sign\s+up|^subscribe|^newsletter"
-    r"|^your\s+cart|^shopping\s+cart|^cart\b|^checkout"
-    r"|^\$\d|^\d+[\.,]\d{2}\s*$"  # Prices like "$359.99"
-    r"|^save\s+\d|^sold\s+out|^out\s+of\s+stock)",
-)
+def extract_page_title(markdown: str, catalog_title: str | None = None) -> str | None:
+    """Extract the best product title heading from scraped markdown.
 
+    Strategy: find ALL headings, then pick the one most similar to the
+    catalog title. This avoids false matches on navigation, marketing,
+    or section headings that happen to appear first.
 
-def extract_page_title(markdown: str) -> str | None:
-    """Extract the primary product title from scraped markdown.
-
-    Returns None if no heading found or if the first heading is a generic
-    section name rather than a product title. Uses both a static list and
-    pattern matching to filter non-product headings.
+    If no catalog_title is provided, returns the first heading (legacy).
+    Returns None if no heading found or no heading has meaningful overlap.
     """
     if not markdown:
         return None
-    match = _HEADING_RE.search(markdown)
-    if not match:
+
+    headings = _HEADING_RE.findall(markdown)
+    if not headings:
         return None
-    title = match.group(1).strip()
-    # Skip generic section headings
-    if title.lower() in _GENERIC_HEADINGS:
+
+    headings = [h.strip() for h in headings if h.strip()]
+    if not headings:
         return None
-    # Skip headings matching non-product patterns
-    if _NON_PRODUCT_PATTERNS.search(title):
-        return None
-    return title
+
+    # Without catalog title, fall back to first heading (legacy behavior)
+    if not catalog_title:
+        return headings[0]
+
+    # Score each heading by word overlap with catalog title
+    catalog_words = _extract_words(catalog_title)
+    filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with", "s"}
+    catalog_meaningful = catalog_words - filler - DEMOGRAPHICS
+    if not catalog_meaningful:
+        return headings[0]
+
+    best_heading = None
+    best_overlap = 0.0
+
+    for heading in headings:
+        heading_words = _extract_words(heading)
+        heading_meaningful = heading_words - filler - DEMOGRAPHICS
+        if not heading_meaningful:
+            continue
+        overlap = len(catalog_meaningful & heading_meaningful) / len(catalog_meaningful)
+        if overlap > best_overlap:
+            best_overlap = overlap
+            best_heading = heading
+
+    # Need at least 30% word overlap to consider it a product title
+    if best_overlap >= 0.3:
+        return best_heading
+
+    return None
 
 
 def _extract_words(text: str) -> set[str]:

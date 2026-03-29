@@ -19,6 +19,27 @@ def test_extract_page_title_none_for_empty():
     assert extract_page_title("No headings here, just text.") is None
 
 
+def test_extract_page_title_picks_best_heading():
+    """When catalog title is given, picks the heading with highest word overlap."""
+    from lookout.enrich.match_validator import extract_page_title
+    md = (
+        "# Product Description\n\n"
+        "## YOUR CART\n\n"
+        "## Men's Cloudrock Low WP Hiking Boot\n\n"
+        "### Features\n\n"
+    )
+    result = extract_page_title(md, catalog_title="Men's Cloudrock Low WP")
+    assert result == "Men's Cloudrock Low WP Hiking Boot"
+
+
+def test_extract_page_title_returns_none_when_no_overlap():
+    """No heading overlaps with catalog title → return None."""
+    from lookout.enrich.match_validator import extract_page_title
+    md = "# YOUR CART\n\n## Frequently Bought Together\n\n## Best Sellers\n"
+    result = extract_page_title(md, catalog_title="Men's Cloudrock Low WP")
+    assert result is None
+
+
 def test_title_gate_pass():
     from lookout.enrich.match_validator import check_title_gate
     result = check_title_gate("Reverb Youth Ski Boots", "Youth Reverb Ski Boots 2024")

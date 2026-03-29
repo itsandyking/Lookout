@@ -528,7 +528,7 @@ class ProductProcessor:
                         continue
 
                     # Title gate check
-                    page_title = extract_page_title(cand_markdown)
+                    page_title = extract_page_title(cand_markdown, catalog_title=catalog_title)
                     if page_title:
                         gate = check_title_gate(page_title, catalog_title)
                         if not gate["pass"]:
