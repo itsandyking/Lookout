@@ -39,4 +39,4 @@ Output HTML with these sections in order:
 - No store names, pricing, shipping, or availability info
 - The description should read naturally — like a knowledgeable salesperson explaining the product, not a spec sheet
 
-Generate the HTML now:
+Generate the HTML now. Output ONLY the HTML — no commentary, no explanations, no notes about choices made. Start with <p> and end with the closing tag of the last element:

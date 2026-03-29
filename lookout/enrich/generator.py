@@ -616,8 +616,8 @@ class Generator:
         html = re.sub(r"^```\s*$", "", html, flags=re.MULTILINE)
 
         # Remove LLM meta-commentary after the HTML
-        # Cut at lines starting with ---, **Note, **Where, **What, **To write
-        html = re.split(r'\n---\n|\n\*\*(?:Note|Where|What|To write|I\'d recommend)', html)[0]
+        # Cut at lines starting with ---, or any **bold text** (markdown commentary)
+        html = re.split(r'\n---\n|\n\*\*[A-Z]', html)[0]
 
         # Basic cleanup
         html = html.strip()
