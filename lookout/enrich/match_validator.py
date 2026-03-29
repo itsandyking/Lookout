@@ -39,7 +39,10 @@ _NON_PRODUCT_PATTERNS = re.compile(
     r"(?:^color:|^colour:|^size:|^rating|^question|^review|^faq|^help"
     r"|experts?\s+break|we\s+got\s+you|you\s+may\s+also"
     r"|^share\b|^shop\s+(?:all|the)|^free\s+shipping"
-    r"|^sign\s+up|^subscribe|^newsletter)",
+    r"|^sign\s+up|^subscribe|^newsletter"
+    r"|^your\s+cart|^shopping\s+cart|^cart\b|^checkout"
+    r"|^\$\d|^\d+[\.,]\d{2}\s*$"  # Prices like "$359.99"
+    r"|^save\s+\d|^sold\s+out|^out\s+of\s+stock)",
 )
 
 
