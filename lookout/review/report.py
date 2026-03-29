@@ -278,6 +278,10 @@ _PRODUCT_TEMPLATE = """
     </div>
     <div class="action-buttons">
       <button type="button" class="btn btn-skip" onclick="setDisposition(this, 'skip')">Skip</button>
+      <div class="skip-reason" style="display:none">
+        <input type="text" class="skip-reason-input" placeholder="Why? (optional — press Enter to confirm)"
+               onkeydown="if(event.key==='Enter')saveSkipReason(this)" />
+      </div>
     </div>
   </div>
 </div>
@@ -558,6 +562,12 @@ _TEMPLATE = """<!DOCTYPE html>
     margin-left: 4px;
   }}
   .assign-paste:hover {{ background: #f5f5f5; border-color: #999; }}
+  .skip-reason {{ margin-top: 6px; }}
+  .skip-reason-input {{
+    width: 100%; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px;
+    font-size: 0.85em; color: #666;
+  }}
+  .skip-reason-input:focus {{ border-color: #9e9e9e; outline: none; }}
   .thumb.pick-mode {{ cursor: crosshair; border: 2px solid #1976d2; }}
   .thumb.pick-mode:hover {{ box-shadow: 0 0 0 3px rgba(25,118,210,0.3); }}
 
@@ -940,6 +950,21 @@ function pasteImageUrl(btn) {{
   }}
 }}
 
+function saveSkipReason(input) {{
+  const product = input.closest('.product');
+  const handle = product.dataset.handle;
+  if (dispositions[handle]) {{
+    const reason = input.value.trim();
+    if (reason) {{
+      dispositions[handle].skip_reason = reason;
+    }} else {{
+      delete dispositions[handle].skip_reason;
+    }}
+    input.style.borderColor = '#4CAF50';
+    setTimeout(() => {{ input.style.borderColor = '#ddd'; }}, 1000);
+  }}
+}}
+
 function updateProgress() {{
   const count = Object.keys(dispositions).length;
   document.getElementById('review-count').textContent = count + ' / ' + total;
@@ -960,16 +985,24 @@ function setDisposition(btn, status) {{
 
   if (wasActive) {{
     delete dispositions[handle];
-    reasonPills.style.display = 'none';
-    highlightsList.style.display = 'none';
+    if (reasonPills) reasonPills.style.display = 'none';
+    if (highlightsList) highlightsList.style.display = 'none';
+    const skipR = product.querySelector('.skip-reason');
+    if (skipR) {{ skipR.style.display = 'none'; skipR.querySelector('input').value = ''; }}
   }} else {{
     btn.classList.add('active');
     product.classList.add('reviewed-' + status);
+    const skipReason = product.querySelector('.skip-reason');
     if (status === 'skip') {{
-      delete dispositions[handle];
+      dispositions[handle] = {{ status: 'skip' }};
       reasonPills.style.display = 'none';
       highlightsList.style.display = 'none';
+      if (skipReason) {{
+        skipReason.style.display = 'block';
+        skipReason.querySelector('input').focus();
+      }}
     }} else {{
+      if (skipReason) skipReason.style.display = 'none';
       dispositions[handle] = {{ status: status }};
       if (status === 'rejected') {{
         reasonPills.style.display = 'block';
@@ -1115,9 +1148,25 @@ function saveDispositions() {{
     .then(r => r.json())
     .then(data => {{
       const btn = document.getElementById('save-btn');
-      btn.textContent = 'Saved ' + data.saved;
+
+      // Build summary
+      let approved = 0, rejected = 0, skipped = 0, imgsRemoved = 0, variantsEdited = 0;
+      Object.values(dispositions).forEach(d => {{
+        if (d.status === 'approved') approved++;
+        else if (d.status === 'rejected') rejected++;
+        else if (d.status === 'skip') skipped++;
+        if (d.removed_images) imgsRemoved += d.removed_images.length;
+        if (d.reassigned_variants) variantsEdited += Object.keys(d.reassigned_variants).length;
+      }});
+      let summary = approved + ' approved';
+      if (rejected) summary += ', ' + rejected + ' rejected';
+      if (skipped) summary += ', ' + skipped + ' skipped';
+      if (imgsRemoved) summary += ', ' + imgsRemoved + ' images removed';
+      if (variantsEdited) summary += ', ' + variantsEdited + ' variants edited';
+
+      btn.textContent = 'Saved: ' + summary;
       btn.classList.add('saved');
-      setTimeout(() => {{ btn.textContent = 'Save'; btn.classList.remove('saved'); }}, 3000);
+      setTimeout(() => {{ btn.textContent = 'Save'; btn.classList.remove('saved'); }}, 5000);
     }})
     .catch(err => alert('Save failed: ' + err));
   }} else {{
