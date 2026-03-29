@@ -1,4 +1,4 @@
-"""Generate an enrichment opportunity dashboard from audit data."""
+"""Generate and serve an enrichment opportunity dashboard from audit data."""
 
 from __future__ import annotations
 
@@ -6,9 +6,162 @@ import csv
 import html
 import json
 import logging
+import subprocess
+import tempfile
+import threading
+from functools import partial
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Pipeline run state (shared between server thread and request handlers)
+_pipeline_state = {"status": "idle", "message": "", "run_dir": ""}
+
+
+class DashboardHandler(SimpleHTTPRequestHandler):
+    """Serves the dashboard HTML and handles pipeline launch."""
+
+    def __init__(self, *args, dashboard_html: Path, **kwargs):
+        self.dashboard_html = dashboard_html
+        super().__init__(*args, **kwargs)
+
+    def do_GET(self):
+        if self.path in ("/", "/index.html"):
+            content = self.dashboard_html.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+        elif self.path == "/pipeline-status":
+            resp = json.dumps(_pipeline_state).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(resp)))
+            self.end_headers()
+            self.wfile.write(resp)
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        if self.path == "/run-pipeline":
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length))
+            handles = body.get("handles", [])
+
+            if _pipeline_state["status"] == "running":
+                resp = json.dumps({"error": "Pipeline already running"}).encode()
+                self.send_response(409)
+            elif not handles:
+                resp = json.dumps({"error": "No products selected"}).encode()
+                self.send_response(400)
+            else:
+                # Write a temp CSV for the pipeline
+                csv_path = Path(tempfile.mktemp(suffix=".csv"))
+                products = body.get("products", [])
+                with open(csv_path, "w", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=[
+                        "Product Handle", "Vendor", "Title", "Barcode", "SKU",
+                        "Has Image", "Has Variant Images", "Has Description",
+                        "Has Product Type", "Has Tags", "Gaps", "Suggestions",
+                        "Priority Score", "Admin Link",
+                    ])
+                    writer.writeheader()
+                    for p in products:
+                        writer.writerow({
+                            "Product Handle": p.get("handle", ""),
+                            "Vendor": p.get("vendor", ""),
+                            "Title": p.get("title", ""),
+                            "Barcode": "", "SKU": "",
+                            "Has Image": p.get("has_image", False),
+                            "Has Variant Images": p.get("has_variant_images", False),
+                            "Has Description": p.get("has_description", False),
+                            "Has Product Type": p.get("has_product_type", False),
+                            "Has Tags": p.get("has_tags", False),
+                            "Gaps": ", ".join(p.get("gaps", [])),
+                            "Suggestions": p.get("suggestions", ""),
+                            "Priority Score": p.get("priority", 0),
+                            "Admin Link": p.get("admin_link", ""),
+                        })
+
+                # Launch pipeline in background thread
+                run_dir = Path(f"campaign/run_dashboard_{len(handles)}products")
+                _pipeline_state["status"] = "running"
+                _pipeline_state["message"] = f"Processing {len(handles)} products..."
+                _pipeline_state["run_dir"] = str(run_dir)
+
+                thread = threading.Thread(
+                    target=_run_pipeline, args=(csv_path, run_dir), daemon=True
+                )
+                thread.start()
+
+                resp = json.dumps({
+                    "started": True,
+                    "count": len(handles),
+                    "run_dir": str(run_dir),
+                }).encode()
+                self.send_response(200)
+
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(resp)))
+            self.end_headers()
+            self.wfile.write(resp)
+        else:
+            self.send_error(404)
+
+    def log_message(self, format, *args):
+        logger.debug(format, *args)
+
+
+def _run_pipeline(csv_path: Path, run_dir: Path):
+    """Run the enrichment pipeline in a subprocess."""
+    try:
+        result = subprocess.run(
+            [
+                "uv", "run", "lookout", "enrich", "run",
+                "-i", str(csv_path),
+                "-o", str(run_dir),
+                "--force", "-c", "2",
+            ],
+            capture_output=True, text=True, timeout=1800,
+        )
+        if result.returncode == 0:
+            _pipeline_state["status"] = "complete"
+            _pipeline_state["message"] = f"Done! Output in {run_dir}"
+        else:
+            _pipeline_state["status"] = "error"
+            _pipeline_state["message"] = result.stderr[-500:] if result.stderr else "Pipeline failed"
+    except subprocess.TimeoutExpired:
+        _pipeline_state["status"] = "error"
+        _pipeline_state["message"] = "Pipeline timed out (30 min)"
+    except Exception as e:
+        _pipeline_state["status"] = "error"
+        _pipeline_state["message"] = str(e)
+    finally:
+        csv_path.unlink(missing_ok=True)
+
+
+def serve_dashboard(dashboard_html: Path, port: int = 8788) -> None:
+    """Start the dashboard server."""
+    from lookout.review.server import get_network_ips
+
+    handler = partial(DashboardHandler, dashboard_html=dashboard_html)
+    server = HTTPServer(("0.0.0.0", port), handler)
+    ips = get_network_ips()
+
+    logger.info("Dashboard server started")
+    print(f"\n  Local:     http://localhost:{port}")
+    for label, ip in ips.items():
+        print(f"  {label + ':':10s} http://{ip}:{port}")
+    print(f"  Press Ctrl+C to stop.\n")
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nServer stopped.")
+    finally:
+        server.server_close()
 
 
 def generate_dashboard(audit_csv: Path, output_path: Path) -> None:
@@ -204,7 +357,9 @@ _TEMPLATE = """<!DOCTYPE html>
 
 <div class="batch-bar" id="batch-bar">
   <span><span class="count" id="selected-count">0</span> selected</span>
-  <button class="export-btn" onclick="exportSelected()">Export CSV for Pipeline</button>
+  <button class="export-btn" onclick="exportSelected()">Export CSV</button>
+  <button onclick="runPipeline()" id="run-btn" style="background:#4CAF50">Run Pipeline</button>
+  <span id="pipeline-status" style="font-size:0.85em;color:#666"></span>
 </div>
 
 <script>
@@ -320,6 +475,74 @@ function exportSelected() {{
 }}
 
 applyFilters();
+
+function runPipeline() {{
+  if (selected.size === 0) {{ alert('Select products first'); return; }}
+  const btn = document.getElementById('run-btn');
+  const status = document.getElementById('pipeline-status');
+
+  const selectedProducts = allProducts.filter(p => selected.has(p.handle));
+
+  btn.disabled = true;
+  btn.textContent = 'Starting...';
+  status.textContent = '';
+
+  fetch('/run-pipeline', {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify({{
+      handles: Array.from(selected),
+      products: selectedProducts,
+    }}),
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (data.error) {{
+      status.textContent = data.error;
+      btn.disabled = false;
+      btn.textContent = 'Run Pipeline';
+      return;
+    }}
+    btn.textContent = 'Running...';
+    status.textContent = data.count + ' products queued';
+    pollStatus();
+  }})
+  .catch(err => {{
+    status.textContent = 'Error: ' + err;
+    btn.disabled = false;
+    btn.textContent = 'Run Pipeline';
+  }});
+}}
+
+function pollStatus() {{
+  fetch('/pipeline-status')
+  .then(r => r.json())
+  .then(data => {{
+    const btn = document.getElementById('run-btn');
+    const status = document.getElementById('pipeline-status');
+    status.textContent = data.message;
+
+    if (data.status === 'running') {{
+      setTimeout(pollStatus, 3000);
+    }} else if (data.status === 'complete') {{
+      btn.textContent = 'Done!';
+      btn.style.background = '#2196F3';
+      setTimeout(() => {{
+        btn.disabled = false;
+        btn.textContent = 'Run Pipeline';
+        btn.style.background = '#4CAF50';
+      }}, 5000);
+    }} else if (data.status === 'error') {{
+      btn.textContent = 'Failed';
+      btn.style.background = '#f44336';
+      setTimeout(() => {{
+        btn.disabled = false;
+        btn.textContent = 'Run Pipeline';
+        btn.style.background = '#4CAF50';
+      }}, 5000);
+    }}
+  }});
+}}
 </script>
 </body>
 </html>
