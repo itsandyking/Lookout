@@ -290,8 +290,8 @@ class ProductProcessor:
                 elif self.only_mode == "variant-images":
                     input_row = input_row.model_copy(update={"has_image": True, "has_description": True})
 
-            # Check if product has any gaps
-            if not input_row.has_any_gap:
+            # Check if product has any gaps (force mode skips this check)
+            if not self.force and not input_row.has_any_gap:
                 handle_log.entries.append(LogEntry(level="INFO", message="No gaps to fill"))
                 return None, ProcessingStatus.SKIPPED_NO_GAPS, metadata
 
