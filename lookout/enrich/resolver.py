@@ -299,6 +299,9 @@ class URLResolver:
                 extra_height = extra_words & height_fit_words
                 if missing_height and extra_height:
                     critical_mismatch = True
+                elif extra_height and not (title_words & height_fit_words):
+                    candidate.confidence = max(0, candidate.confidence - 15)
+                    candidate.reasoning += " -asymmetric_height"
 
                 # Edition/variant words — "Pro" vs "Lite" is a different SKU
                 edition_words = {"standard", "pro", "plus", "lite", "max",
@@ -323,19 +326,37 @@ class URLResolver:
                     candidate.confidence = max(0, candidate.confidence - 25)
                     candidate.reasoning += " -collab_mismatch"
 
+                demographics = {"youth", "kids", "boys", "girls", "mens", "men",
+                                "womens", "women", "unisex", "junior", "jr"}
+                expected_demos = title_words & demographics
+                candidate_demos = candidate_words & demographics
+                if expected_demos and candidate_demos:
+                    if not expected_demos & candidate_demos:
+                        candidate.confidence = max(0, candidate.confidence - 15)
+                        candidate.reasoning += " -demographic_mismatch"
+
                 # Model numbers — if expected has a number not in candidate
-                expected_numbers = set(_re.findall(r'\d+', title_lower))
-                candidate_numbers = set(_re.findall(r'\d+', candidate_title))
+                _year_pattern = _re.compile(r"20[2-3]\d")
+                expected_years = set(_year_pattern.findall(title_lower))
+                candidate_years = set(_year_pattern.findall(candidate_title))
+                expected_numbers = set(_re.findall(r"\d+", title_lower)) - expected_years
+                candidate_numbers = set(_re.findall(r"\d+", candidate_title)) - candidate_years
+
                 if expected_numbers and candidate_numbers:
                     if not expected_numbers & candidate_numbers:
                         critical_mismatch = True
 
+                if expected_years and candidate_years:
+                    if not expected_years & candidate_years:
+                        candidate.confidence = max(0, candidate.confidence - 5)
+                        candidate.reasoning += " -year_mismatch"
+
                 # Check for foreign product names — words in the candidate
                 # that aren't in our title and aren't generic. If a candidate
                 # says "Protac" and our product is "BWII", that's a different product.
-                generic_words = type_words | height_fit_words | edition_words | {
+                generic_words = type_words | height_fit_words | edition_words | demographics | {
                     "rope", "ropes", "cord", "ski", "skis", "boot", "boots",
-                    "new", "sale", "mens", "womens", "men", "women", "kids",
+                    "new", "sale",
                     "2024", "2025", "2026", "2027",
                 }
                 # Also treat the vendor name and common size/measurement words as generic
