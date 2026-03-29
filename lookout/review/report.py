@@ -255,9 +255,14 @@ _PRODUCT_TEMPLATE = """
     <div class="header-flags">{missing_flags}</div>
   </div>
 
-  {description_section}
-  {variants_section}
+  <div class="bulk-actions">
+    <button type="button" class="btn btn-approve-all" onclick="approveAll(this)">Approve All Sections</button>
+    <button type="button" class="btn btn-reject-all" onclick="rejectAll(this)">Reject All Sections</button>
+  </div>
+
   {images_section}
+  {variants_section}
+  {description_section}
 
   <div class="actions">
     <div class="action-buttons">
@@ -552,6 +557,17 @@ _TEMPLATE = """<!DOCTYPE html>
   .btn-reject.active {{ background: #ffebee; border-color: #f44336; color: #c62828; }}
   .btn-skip.active {{ background: #f5f5f5; border-color: #9e9e9e; color: #666; }}
 
+  .bulk-actions {{
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }}
+  .btn-approve-all, .btn-reject-all {{
+    padding: 6px 14px; border-radius: 6px; border: 1px solid #ddd;
+    background: #fff; font-size: 0.8em; font-weight: 600;
+    cursor: pointer; transition: all 0.15s;
+  }}
+  .btn-approve-all:hover {{ background: #e8f5e9; border-color: #4CAF50; color: #2e7d32; }}
+  .btn-reject-all:hover {{ background: #ffebee; border-color: #f44336; color: #c62828; }}
+
   /* Section-local rejection reason pills */
   .section-reasons {{
     display: none; flex-wrap: wrap; gap: 6px;
@@ -709,6 +725,16 @@ function setSectionDisposition(btn, status) {{
   }}
 
   updateProgress();
+}}
+
+function approveAll(btn) {{
+  const product = btn.closest('.product');
+  product.querySelectorAll('.sbtn-approve').forEach(b => setSectionDisposition(b, 'approved'));
+}}
+
+function rejectAll(btn) {{
+  const product = btn.closest('.product');
+  product.querySelectorAll('.sbtn-reject').forEach(b => setSectionDisposition(b, 'rejected'));
 }}
 
 function updateProgress() {{
