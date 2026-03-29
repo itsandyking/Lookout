@@ -39,6 +39,12 @@ from .models import (
 from .resolver import URLResolver
 from .scraper import WebScraper
 from .shopify_output import ShopifyOutputBuilder
+from .match_validator import (
+    MatchDecisionLogger,
+    check_post_extraction,
+    check_title_gate,
+    extract_page_title,
+)
 from .utils import ensure_dir, load_vendors_config, sanitize_filename
 
 logger = logging.getLogger(__name__)
@@ -237,6 +243,7 @@ class ProductProcessor:
         store: Any | None = None,
         verify: bool = False,
         only_mode: str | None = None,
+        decision_logger: MatchDecisionLogger | None = None,
     ) -> None:
         self.vendors_config = vendors_config
         self.http_client = http_client
@@ -246,6 +253,7 @@ class ProductProcessor:
         self.store = store  # Optional LookoutStore for catalog cross-referencing
         self.verify = verify
         self.only_mode = only_mode
+        self.decision_logger = decision_logger
 
         self.resolver = URLResolver(http_client=http_client)
         self.firecrawl = FirecrawlScraper()
@@ -416,14 +424,12 @@ class ProductProcessor:
 
             if not shopify_succeeded:
                 # Step 1: Resolve URL (use all available barcodes/SKUs)
-                # Pick the best barcode and SKU for search (try all, use first match)
                 search_barcode = input_row.barcode
                 search_sku = input_row.sku
-                # If we have variant data, try all barcodes/SKUs for better matching
                 all_barcodes = input_row.all_barcodes
                 all_skus = input_row.all_skus
                 if all_barcodes:
-                    search_barcode = all_barcodes[0]  # Primary, but resolver will try title too
+                    search_barcode = all_barcodes[0]
                 if all_skus:
                     search_sku = all_skus[0]
 
@@ -461,135 +467,184 @@ class ProductProcessor:
                 metadata["confidence"] = resolver_output.selected_confidence
                 metadata["warnings"].extend(resolver_output.warnings)
 
-                # Check confidence threshold
+                # Step 2: Candidate retry loop — try top candidates with validation
+                from .firecrawl_scraper import is_bot_blocked, _firecrawl_json_to_facts
+
+                catalog_title = input_row.title or handle
                 confidence_settings = self.vendors_config.settings.confidence
-                if resolver_output.selected_confidence < confidence_settings.reject_threshold:
+                candidates = sorted(
+                    resolver_output.candidates,
+                    key=lambda c: c.confidence,
+                    reverse=True,
+                )
+
+                match_decisions: list[dict] = []
+                accepted_facts = None
+                accepted_url = None
+                accepted_markdown = None
+                accepted_variant_images = None
+
+                for candidate in candidates[:3]:
+                    if candidate.confidence < confidence_settings.reject_threshold:
+                        match_decisions.append({
+                            "url": candidate.url,
+                            "resolver_confidence": candidate.confidence,
+                            "outcome": "skip_low_confidence",
+                            "reason": f"confidence {candidate.confidence} < threshold {confidence_settings.reject_threshold}",
+                        })
+                        continue
+
+                    # Scrape the candidate
+                    handle_log.entries.append(
+                        LogEntry(
+                            message=f"Scraping candidate: {candidate.url} (confidence={candidate.confidence})",
+                        )
+                    )
+
+                    cand_markdown, cand_variant_images = await self.firecrawl.scrape_markdown(
+                        candidate.url,
+                        swatch_selector=vendor_config.swatch_selector,
+                        gallery_selector=vendor_config.gallery_selector,
+                        wait_after_click=1500 if (vendor_config.swatch_selector or vendor_config.gallery_selector) else None,
+                        wait_for=vendor_config.wait_for,
+                    )
+
+                    # Bot block check
+                    if not cand_markdown or is_bot_blocked(cand_markdown):
+                        block_reason = "bot_blocked" if cand_markdown else "no_content"
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="WARNING",
+                                message=f"Candidate {block_reason}: {candidate.url}",
+                            )
+                        )
+                        match_decisions.append({
+                            "url": candidate.url,
+                            "resolver_confidence": candidate.confidence,
+                            "outcome": "reject_bot_blocked",
+                            "reason": block_reason,
+                        })
+                        continue
+
+                    # Title gate check
+                    page_title = extract_page_title(cand_markdown)
+                    if page_title:
+                        gate = check_title_gate(page_title, catalog_title)
+                        if not gate["pass"]:
+                            handle_log.entries.append(
+                                LogEntry(
+                                    level="WARNING",
+                                    message=f"Title gate failed: {gate['reason']} (page='{page_title}')",
+                                )
+                            )
+                            match_decisions.append({
+                                "url": candidate.url,
+                                "resolver_confidence": candidate.confidence,
+                                "outcome": "reject_title_gate",
+                                "reason": gate["reason"],
+                                "title_similarity": gate["title_similarity"],
+                            })
+                            continue
+
+                    # Extract facts
+                    handle_log.entries.append(LogEntry(message="Extracting facts from markdown"))
+                    facts_dict = await self.llm_client.extract_facts_from_markdown(
+                        cand_markdown, candidate.url
+                    )
+
+                    if not facts_dict or not facts_dict.get("product_name"):
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="WARNING",
+                                message=f"Extraction failed for candidate: {candidate.url}",
+                            )
+                        )
+                        match_decisions.append({
+                            "url": candidate.url,
+                            "resolver_confidence": candidate.confidence,
+                            "outcome": "reject_extraction_failed",
+                            "reason": "no product_name in extraction",
+                        })
+                        continue
+
+                    cand_facts = _firecrawl_json_to_facts(facts_dict, candidate.url)
+
+                    # Post-extraction validation
+                    post_check = check_post_extraction(
+                        cand_facts, catalog_title, _catalog_price, known_colors or []
+                    )
+                    if not post_check["pass"]:
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="WARNING",
+                                message=f"Post-extraction check failed: {post_check['reason']}",
+                                data=post_check["signals"],
+                            )
+                        )
+                        match_decisions.append({
+                            "url": candidate.url,
+                            "resolver_confidence": candidate.confidence,
+                            "outcome": "reject_post_extraction",
+                            "reason": post_check["reason"],
+                            "confidence": post_check["confidence"],
+                            "signals": post_check["signals"],
+                        })
+                        continue
+
+                    # Accepted!
+                    handle_log.entries.append(
+                        LogEntry(
+                            message=f"Candidate accepted: {candidate.url} (post-scrape confidence={post_check['confidence']:.0f})",
+                        )
+                    )
+                    match_decisions.append({
+                        "url": candidate.url,
+                        "resolver_confidence": candidate.confidence,
+                        "outcome": "accept",
+                        "reason": "ok",
+                        "confidence": post_check["confidence"],
+                        "signals": post_check["signals"],
+                    })
+                    accepted_facts = cand_facts
+                    accepted_url = candidate.url
+                    accepted_markdown = cand_markdown
+                    accepted_variant_images = cand_variant_images
+                    break
+
+                # Log all decisions
+                if self.decision_logger:
+                    outcome = "accept" if accepted_facts else "no_match"
+                    self.decision_logger.log(
+                        handle=handle,
+                        vendor=vendor,
+                        catalog_title=catalog_title,
+                        candidates_tried=match_decisions,
+                        outcome=outcome,
+                        final_url=accepted_url,
+                        catalog_price=_catalog_price,
+                        catalog_colors=known_colors,
+                    )
+
+                if not accepted_facts:
                     handle_log.entries.append(
                         LogEntry(
                             level="WARNING",
-                            message=f"URL confidence too low: {resolver_output.selected_confidence}",
+                            message=f"No candidate accepted ({len(match_decisions)} tried)",
                         )
                     )
                     return None, ProcessingStatus.NO_MATCH, metadata
 
-                if not resolver_output.selected_url:
-                    handle_log.entries.append(LogEntry(level="WARNING", message="No URL found"))
-                    return None, ProcessingStatus.NO_MATCH, metadata
+                # Use accepted candidate values
+                facts = accepted_facts
+                scrape_url = accepted_url
+                markdown = accepted_markdown
+                firecrawl_variant_images = accepted_variant_images
 
-                # Step 2: Scrape page via Firecrawl (markdown mode)
-                from .firecrawl_scraper import is_bot_blocked
-
-                scrape_url = resolver_output.selected_url
-                handle_log.entries.append(
-                    LogEntry(
-                        message=f"Scraping via Firecrawl: {scrape_url}",
-                    )
-                )
-
-                markdown, firecrawl_variant_images = await self.firecrawl.scrape_markdown(
-                    scrape_url,
-                    swatch_selector=vendor_config.swatch_selector,
-                    gallery_selector=vendor_config.gallery_selector,
-                    wait_after_click=1500 if (vendor_config.swatch_selector or vendor_config.gallery_selector) else None,
-                    wait_for=vendor_config.wait_for,
-                )
-
-                # Check for bot block — try fallback domains if available
-                if not markdown or is_bot_blocked(markdown):
-                    block_reason = "bot blocked" if markdown else "no content"
-                    handle_log.entries.append(
-                        LogEntry(
-                            level="WARNING",
-                            message=f"Primary scrape {block_reason}: {scrape_url}",
-                        )
-                    )
-
-                    fallback_domains = vendor_config.fallback_domains
-                    fallback_success = False
-
-                    for fallback_domain in fallback_domains:
-                        handle_log.entries.append(
-                            LogEntry(
-                                message=f"Trying fallback domain: {fallback_domain}",
-                            )
-                        )
-                        # Re-resolve the product on the fallback domain
-                        fallback_resolver = URLResolver(http_client=self.http_client)
-                        fallback_vendor = VendorConfig(
-                            domain=fallback_domain,
-                            search=vendor_config.search,
-                        )
-                        fallback_output = await fallback_resolver.resolve(
-                            handle=handle,
-                            vendor=vendor,
-                            vendor_config=fallback_vendor,
-                            hints=input_row.gaps or input_row.suggestions or "",
-                            title=input_row.title,
-                            catalog_price=_catalog_price,
-                        )
-
-                        if fallback_output and fallback_output.selected_url:
-                            fallback_md, _ = await self.firecrawl.scrape_markdown(
-                                fallback_output.selected_url
-                            )
-                            if fallback_md and not is_bot_blocked(fallback_md):
-                                markdown = fallback_md
-                                scrape_url = fallback_output.selected_url
-                                fallback_success = True
-                                handle_log.entries.append(
-                                    LogEntry(
-                                        message=f"Fallback succeeded: {scrape_url}",
-                                    )
-                                )
-                                metadata["warnings"].append(
-                                    f"FALLBACK_USED: {fallback_domain}"
-                                )
-                                break
-                            else:
-                                handle_log.entries.append(
-                                    LogEntry(
-                                        level="WARNING",
-                                        message=f"Fallback {fallback_domain} also blocked",
-                                    )
-                                )
-
-                    if not fallback_success:
-                        handle_log.entries.append(
-                            LogEntry(
-                                level="ERROR",
-                                message="All scrape sources blocked or failed",
-                            )
-                        )
-                        metadata["error"] = "Scrape blocked (primary + fallbacks)"
-                        return None, ProcessingStatus.FAILED, metadata
-
-                # Save raw markdown
+                # Save raw markdown and extracted facts for accepted candidate
                 md_path = artifacts_dir / "source.md"
                 md_path.parent.mkdir(parents=True, exist_ok=True)
                 md_path.write_text(markdown)
 
-                # Step 3: Extract structured facts via Claude
-                handle_log.entries.append(LogEntry(message="Extracting facts from markdown"))
-
-                facts_dict = await self.llm_client.extract_facts_from_markdown(
-                    markdown, scrape_url
-                )
-
-                if not facts_dict or not facts_dict.get("product_name"):
-                    handle_log.entries.append(
-                        LogEntry(
-                            level="ERROR",
-                            message="LLM extraction returned no usable data",
-                        )
-                    )
-                    metadata["error"] = "Fact extraction failed"
-                    return None, ProcessingStatus.FAILED, metadata
-
-                # Map to ExtractedFacts model
-                from .firecrawl_scraper import _firecrawl_json_to_facts
-                facts = _firecrawl_json_to_facts(facts_dict, scrape_url)
-
-                # Save extraction outputs
                 facts_path = artifacts_dir / "extracted_facts.json"
                 facts_path.write_text(facts.model_dump_json(indent=2))
 
@@ -1055,6 +1110,8 @@ class Pipeline:
             except Exception:
                 logger.debug("Store not available — catalog cross-referencing disabled")
 
+            decision_logger = MatchDecisionLogger(self.config.output_dir / "match_decisions.jsonl")
+
             processor = ProductProcessor(
                 vendors_config=self.vendors_config,
                 http_client=http_client,
@@ -1064,6 +1121,7 @@ class Pipeline:
                 store=store,
                 verify=self.config.verify,
                 only_mode=self.config.only_mode,
+                decision_logger=decision_logger,
             )
 
             # Create semaphore for global concurrency
