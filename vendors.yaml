@@ -570,6 +570,10 @@ vendors:
   Sockwell:
     domain: "sockwell.com"
 
+  "NoSo Patches":
+    domain: "nosopatches.com"
+    is_shopify: true
+
 # Global settings
 settings:
   # Default confidence thresholds for URL matching

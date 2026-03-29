@@ -176,8 +176,25 @@ def _run_pipeline(csv_path: Path, run_dir: Path):
             # Count how many products got merch output
             enriched = sum(1 for d in run_dir.iterdir() if d.is_dir() and (d / "merch_output.json").exists())
             total = sum(1 for d in run_dir.iterdir() if d.is_dir())
+
+            # Read failure details from run_report.csv
+            failures = []
+            report_path = run_dir / "run_report.csv"
+            if report_path.exists():
+                with open(report_path) as rf:
+                    for row in csv.DictReader(rf):
+                        status = row.get("status", "")
+                        if status in ("FAILED", "NO_MATCH", "SKIPPED_VENDOR_NOT_CONFIGURED"):
+                            failures.append({
+                                "handle": row.get("handle", ""),
+                                "vendor": row.get("vendor", ""),
+                                "status": status,
+                                "error": row.get("error_message", "") or status.replace("_", " ").title(),
+                            })
+
             _pipeline_state["status"] = "complete"
             _pipeline_state["message"] = f"{enriched} of {total} products enriched"
+            _pipeline_state["failures"] = failures
         else:
             _pipeline_state["status"] = "error"
             _pipeline_state["message"] = result.stderr[-500:] if result.stderr else "Pipeline failed"
@@ -374,6 +391,33 @@ _TEMPLATE = """<!DOCTYPE html>
   .batch-bar button:hover {{ background: #45a049; }}
   .batch-bar .export-btn {{ background: #1976d2; }}
   .batch-bar .export-btn:hover {{ background: #1565c0; }}
+
+  .failure-section {{
+    margin-top: 8px; border: 1px solid #ffcdd2; border-radius: 6px;
+    background: #fff; overflow: hidden;
+  }}
+  .failure-toggle {{
+    width: 100%; padding: 8px 12px; border: none; background: #ffebee;
+    color: #c62828; font-weight: 600; font-size: 0.8em; cursor: pointer;
+    text-align: left;
+  }}
+  .failure-toggle:hover {{ background: #ffcdd2; }}
+  .failure-list {{
+    display: none; max-height: 240px; overflow-y: auto;
+  }}
+  .failure-section.expanded .failure-list {{ display: block; }}
+  .failure-section.expanded .failure-toggle {{ border-bottom: 1px solid #ffcdd2; }}
+  .failure-row {{
+    padding: 6px 12px; border-bottom: 1px solid #f5f5f5;
+    display: flex; gap: 10px; font-size: 0.78em; align-items: center;
+  }}
+  .failure-row:last-child {{ border-bottom: none; }}
+  .failure-handle {{ font-weight: 600; color: #333; min-width: 120px; }}
+  .failure-vendor {{
+    background: #e8eaf6; color: #3f51b5; padding: 1px 6px;
+    border-radius: 3px; font-size: 0.9em; font-weight: 600; white-space: nowrap;
+  }}
+  .failure-error {{ color: #c62828; flex: 1; }}
 </style>
 </head>
 <body>
@@ -591,7 +635,26 @@ function pollStatus() {{
     }} else if (data.status === 'complete') {{
       btn.textContent = 'Done!';
       btn.style.background = '#2196F3';
-      status.innerHTML = data.message + ' — <a href="/review" target="_blank" style="color:#1976d2;font-weight:600">Open Review</a>';
+      let statusHtml = data.message + ' — <a href="/review" target="_blank" style="color:#1976d2;font-weight:600">Open Review</a>';
+
+      // Show failure details if any
+      const failures = data.failures || [];
+      if (failures.length > 0) {{
+        statusHtml += `<div class="failure-section">
+          <button class="failure-toggle" onclick="this.parentElement.classList.toggle('expanded')">
+            ${{failures.length}} failed — show details
+          </button>
+          <div class="failure-list">
+            ${{failures.map(f => `<div class="failure-row">
+              <span class="failure-handle">${{f.handle}}</span>
+              <span class="failure-vendor">${{f.vendor}}</span>
+              <span class="failure-error">${{f.error}}</span>
+            </div>`).join('')}}
+          </div>
+        </div>`;
+      }}
+
+      status.innerHTML = statusHtml;
       setTimeout(() => {{
         btn.disabled = false;
         btn.textContent = 'Run Pipeline';
