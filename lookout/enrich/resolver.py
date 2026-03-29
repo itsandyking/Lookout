@@ -479,7 +479,7 @@ class URLResolver:
         vendor_config: VendorConfig,
         product_title: str = "",
     ) -> list[URLCandidate]:
-        """Search for candidate URLs. Tries Brave Search first, falls back to DuckDuckGo."""
+        """Search for candidate URLs. Tries Brave, SearXNG, then DuckDuckGo."""
         await asyncio.sleep(random.uniform(self._min_delay, self._max_delay))
 
         # Try Brave Search first (if API key available)
@@ -487,7 +487,12 @@ class URLResolver:
         if candidates:
             return candidates
 
-        # Fall back to DuckDuckGo
+        # Fall back to SearXNG (self-hosted metasearch)
+        candidates = await self._search_searxng(query, domain, vendor_config, product_title=product_title)
+        if candidates:
+            return candidates
+
+        # Last resort: DuckDuckGo HTML scraping
         candidates = await self._search_duckduckgo(query, domain, vendor_config)
         return candidates
 
@@ -557,6 +562,65 @@ class URLResolver:
 
         except Exception as e:
             logger.warning(f"Brave search failed: {e}")
+            return []
+
+    async def _search_searxng(
+        self,
+        query: str,
+        domain: str,
+        vendor_config: VendorConfig,
+        product_title: str = "",
+        searxng_url: str = "http://localhost:8080",
+    ) -> list[URLCandidate]:
+        """Search using self-hosted SearXNG metasearch engine."""
+        candidates: list[URLCandidate] = []
+        try:
+            response = await self._client.get(
+                f"{searxng_url}/search",
+                params={"q": query, "format": "json"},
+                timeout=15,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            for result in data.get("results", []):
+                url = result.get("url", "")
+                title = result.get("title", "")
+                snippet = result.get("content", "")
+
+                if not url:
+                    continue
+
+                # Filter to target domain
+                parsed = urlparse(url)
+                result_domain = parsed.netloc.lower().replace("www.", "")
+                if domain.lower() not in result_domain and result_domain not in domain.lower():
+                    continue
+
+                # Filter blocked paths and non-product URLs
+                if not is_product_url(
+                    url, vendor_config.blocked_paths, vendor_config.product_url_patterns
+                ):
+                    continue
+
+                confidence = self._score_candidate(url, title, snippet, domain, product_title=product_title)
+                candidates.append(
+                    URLCandidate(
+                        url=url,
+                        confidence=confidence,
+                        title=title,
+                        snippet=snippet,
+                        reasoning=f"SearXNG ({result.get('engine', '?')}): score={confidence}",
+                    )
+                )
+
+            candidates.sort(key=lambda c: c.confidence, reverse=True)
+            if candidates:
+                logger.info(f"SearXNG found {len(candidates)} candidates")
+            return candidates[:5]
+
+        except Exception as e:
+            logger.warning(f"SearXNG search failed: {e}")
             return []
 
     async def _search_duckduckgo(
