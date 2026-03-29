@@ -23,6 +23,9 @@ DEMOGRAPHICS = frozenset({
     "mens", "men", "womens", "women", "unisex",
 })
 
+# Normalize "men" → "mens", "women" → "womens" so they match
+_DEMO_NORMALIZE = {"men": "mens", "women": "womens"}
+
 _HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
 
@@ -99,8 +102,9 @@ def check_title_gate(
 
     page_words = _extract_words(page_title)
     catalog_words = _extract_words(catalog_title)
-    page_demos = page_words & DEMOGRAPHICS
-    catalog_demos = catalog_words & DEMOGRAPHICS
+    # Normalize "men"→"mens", "women"→"womens" so "Men's" matches "Mens"
+    page_demos = {_DEMO_NORMALIZE.get(w, w) for w in page_words & DEMOGRAPHICS}
+    catalog_demos = {_DEMO_NORMALIZE.get(w, w) for w in catalog_words & DEMOGRAPHICS}
 
     demographic_match: bool | None = None
     if page_demos and catalog_demos:
