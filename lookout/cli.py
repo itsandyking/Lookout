@@ -1340,6 +1340,94 @@ def feedback_cmd(feedback_dir, all_runs, verbose):
         console.print(rtable)
 
 
+@enrich.command("test-resolver")
+@click.option("--output-dir", "-d", type=click.Path(exists=True, path_type=Path),
+              default=Path("./output"), help="Directory containing match_decisions.jsonl files")
+@click.option("--verbose", is_flag=True)
+def test_resolver_cmd(output_dir, verbose):
+    """Replay resolver scoring against cached candidates to detect regressions."""
+    import json
+
+    from lookout.enrich.resolver import rescore_candidates
+    from lookout.enrich.utils.config import load_vendors_config
+
+    vendors_path = find_vendors_yaml(None)
+    if vendors_path:
+        vc = load_vendors_config(vendors_path)
+    else:
+        vc = None
+
+    decisions = []
+    for path in output_dir.rglob("match_decisions.jsonl"):
+        for line in path.read_text().strip().split("\n"):
+            if line.strip():
+                decisions.append(json.loads(line))
+
+    if not decisions:
+        console.print("[yellow]No match_decisions.jsonl files found[/yellow]")
+        return
+
+    testable = [d for d in decisions if d.get("resolver_candidates")]
+    skipped = len(decisions) - len(testable)
+
+    passed = 0
+    regressed = 0
+    regressions = []
+
+    for d in testable:
+        domain = ""
+        if vc:
+            vendor_config = vc.vendors.get(d["vendor"])
+            if vendor_config:
+                domain = vendor_config.domain
+
+        rescored = rescore_candidates(
+            candidates=d["resolver_candidates"],
+            product_title=d["catalog_title"],
+            vendor=d["vendor"],
+            domain=domain,
+            catalog_price=d.get("catalog_price"),
+        )
+
+        if not rescored:
+            continue
+
+        new_winner = rescored[0]["url"]
+        original_winner = d.get("final_url")
+
+        if original_winner and new_winner == original_winner:
+            passed += 1
+        elif original_winner:
+            regressed += 1
+            regressions.append({
+                "handle": d["handle"],
+                "vendor": d["vendor"],
+                "expected": original_winner,
+                "got": new_winner,
+            })
+            if verbose:
+                console.print(f"[red]REGRESSED[/red] {d['handle']}: expected {original_winner[:50]} got {new_winner[:50]}")
+        else:
+            if verbose:
+                console.print(f"[dim]SKIP[/dim] {d['handle']}: original was no_match")
+
+    console.print(f"\n[bold]Resolver Regression Results[/bold]")
+    console.print(f"  Passed: {passed}")
+    console.print(f"  Regressed: {regressed}")
+    console.print(f"  Skipped (no cached candidates): {skipped}")
+    console.print(f"  Total decisions: {len(decisions)}")
+
+    if regressions:
+        console.print(f"\n[red]Regressions:[/red]")
+        for r in regressions:
+            console.print(f"  {r['handle']} ({r['vendor']})")
+            console.print(f"    expected: {r['expected'][:70]}")
+            console.print(f"    got:      {r['got'][:70]}")
+
+    if regressed > 0:
+        sys.exit(1)
+
+
 def main() -> None:
     cli()
 

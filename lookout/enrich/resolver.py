@@ -1085,3 +1085,222 @@ async def resolve_product_url(
         return await resolver.resolve(
             handle, vendor, vendor_config, hints, title=title, barcode=barcode
         )
+
+
+def rescore_candidates(
+    candidates: list[dict],
+    product_title: str,
+    vendor: str,
+    domain: str,
+    catalog_price: float | None = None,
+) -> list[dict]:
+    """Re-score a list of pre-built candidates using current scoring logic.
+
+    Used by the regression test runner to replay scoring without network.
+    Applies both URL structure scoring and title comparison adjustments.
+
+    Args:
+        candidates: List of {"url", "title", "snippet"} dicts.
+        product_title: Our catalog product title.
+        vendor: Vendor name.
+        domain: Vendor domain.
+        catalog_price: Known catalog price for price signal.
+
+    Returns:
+        Candidates with "rescored_confidence" field, sorted descending.
+    """
+    if not candidates:
+        return []
+
+    from difflib import SequenceMatcher
+
+    resolver = URLResolver(http_client=None)
+    results = []
+
+    # --- Stage 1: URL structure scoring via _score_candidate ---
+    for cand in candidates:
+        url = cand.get("url", "")
+        title = cand.get("title", "")
+        snippet = cand.get("snippet", "")
+
+        base_score = resolver._score_candidate(url, title, snippet, domain, product_title)
+        results.append({
+            **cand,
+            "rescored_confidence": base_score,
+            "rescore_reasoning": f"base={base_score}",
+        })
+
+    # --- Stage 2: Title comparison adjustments (replicated from resolve()) ---
+    clean_title = product_title.strip() if product_title else ""
+    if clean_title:
+        vendor_lower = vendor.lower() if vendor else ""
+        if clean_title.lower().startswith(vendor_lower) and vendor_lower:
+            clean_title = clean_title[len(vendor):].strip(" -")
+
+    if clean_title:
+        title_lower = clean_title.lower()
+        title_words = set(re.findall(r'[a-z0-9]+', title_lower))
+        filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with"}
+        title_words -= filler
+
+        for cand in results:
+            candidate_title = cand.get("title", "").lower()
+            candidate_words = set(re.findall(r'[a-z0-9]+', candidate_title)) - filler
+
+            if not title_words or not candidate_words:
+                continue
+
+            overlap = title_words & candidate_words
+            overlap_ratio = len(overlap) / len(title_words)
+            seq_ratio = SequenceMatcher(None, title_lower, candidate_title).ratio()
+
+            conf = cand["rescored_confidence"]
+            reasoning = cand["rescore_reasoning"]
+
+            critical_mismatch = False
+            missing_words = title_words - candidate_words
+            extra_words = candidate_words - title_words
+
+            # Product type words
+            type_words = {"ski", "skis", "boot", "boots", "shoe", "shoes",
+                         "jacket", "pants", "helmet", "goggles", "sunglasses",
+                         "gloves", "pole", "poles", "binding", "bindings",
+                         "board", "snowboard",
+                         "pad", "bundle", "pack", "kit", "set", "system", "combo"}
+            missing_types = missing_words & type_words
+            extra_types = extra_words & type_words
+            if missing_types and extra_types:
+                critical_mismatch = True
+
+            # Height/fit words
+            height_fit_words = {"low", "mid", "high", "tall", "short",
+                                "wide", "narrow"}
+            missing_height = missing_words & height_fit_words
+            extra_height = extra_words & height_fit_words
+            if missing_height and extra_height:
+                critical_mismatch = True
+            elif extra_height and not (title_words & height_fit_words):
+                conf = max(0, conf - 15)
+                reasoning += " -asymmetric_height"
+
+            # Edition/variant words
+            edition_words = {"standard", "pro", "plus", "lite", "max",
+                             "mini", "ultra", "evo", "comp"}
+            missing_edition = missing_words & edition_words
+            extra_edition = extra_words & edition_words
+            if missing_edition and extra_edition:
+                critical_mismatch = True
+
+            # Collab/special edition detection
+            collab_markers = {"shf", "collab", "collaboration", "limited",
+                              "edition", "special"}
+            candidate_has_collab = bool(extra_words & collab_markers)
+            if not candidate_has_collab:
+                collab_pattern = r'(?:\s[x×]\s|×)'
+                if (re.search(collab_pattern, candidate_title)
+                        and not re.search(collab_pattern, title_lower)):
+                    candidate_has_collab = True
+            if candidate_has_collab:
+                conf = max(0, conf - 25)
+                reasoning += " -collab_mismatch"
+
+            # Demographic mismatch
+            demographics = {"youth", "kids", "boys", "girls", "mens", "men",
+                            "womens", "women", "unisex", "junior", "jr"}
+            expected_demos = title_words & demographics
+            candidate_demos = candidate_words & demographics
+            if expected_demos and candidate_demos:
+                if not expected_demos & candidate_demos:
+                    conf = max(0, conf - 15)
+                    reasoning += " -demographic_mismatch"
+
+            # Year vs model number separation
+            _year_pattern = re.compile(r"20[2-3]\d")
+            expected_years = set(_year_pattern.findall(title_lower))
+            candidate_years = set(_year_pattern.findall(candidate_title))
+            expected_numbers = set(re.findall(r"\d+", title_lower)) - expected_years
+            candidate_numbers = set(re.findall(r"\d+", candidate_title)) - candidate_years
+
+            if expected_numbers and candidate_numbers:
+                if not expected_numbers & candidate_numbers:
+                    critical_mismatch = True
+
+            if expected_years and candidate_years:
+                if not expected_years & candidate_years:
+                    conf = max(0, conf - 5)
+                    reasoning += " -year_mismatch"
+
+            # Foreign product name detection
+            generic_words = type_words | height_fit_words | edition_words | demographics | {
+                "rope", "ropes", "cord", "ski", "skis", "boot", "boots",
+                "new", "sale",
+                "2024", "2025", "2026", "2027",
+            }
+            vendor_words = set(re.findall(r'[a-z0-9]+', vendor.lower())) if vendor else set()
+            generic_words |= vendor_words
+
+            foreign_names = extra_words - generic_words - set(re.findall(r'\d+', candidate_title))
+            missing_names = missing_words - generic_words - set(re.findall(r'\d+', title_lower))
+
+            if foreign_names and missing_names:
+                conf = max(0, conf - 20)
+                reasoning += f" -foreign_product({','.join(sorted(foreign_names)[:2])})"
+
+            # Apply critical mismatch and title match boosts
+            if critical_mismatch:
+                conf = max(0, conf - 30)
+                reasoning += " -critical_mismatch(type/model)"
+            elif overlap_ratio >= 0.6 or seq_ratio >= 0.5:
+                boost = int(20 * overlap_ratio)
+                url_words = set(re.findall(r'[a-z0-9]+', cand.get("url", "").lower()))
+                url_title_overlap = title_words & url_words
+                title_in_url = len(url_title_overlap) / len(title_words) if title_words else 0
+                if title_in_url > 0.5:
+                    boost += 5
+                conf = min(100, conf + boost)
+                reasoning += f" +title_match({overlap_ratio:.0%})"
+            elif overlap_ratio < 0.2 and seq_ratio < 0.3:
+                conf = max(0, conf - 25)
+                reasoning += f" -title_mismatch({seq_ratio:.0%})"
+            elif overlap_ratio < 0.3:
+                conf = max(0, conf - 10)
+                reasoning += f" -title_weak({seq_ratio:.0%})"
+
+            cand["rescored_confidence"] = conf
+            cand["rescore_reasoning"] = reasoning
+
+    # --- Stage 3: Price comparison scoring ---
+    if catalog_price and catalog_price > 0:
+        price_pattern = re.compile(r'\$(\d+(?:[.,]\d{2})?)')
+
+        for cand in results:
+            candidate_price = None
+            for text in (cand.get("snippet", ""), cand.get("title", "")):
+                if not text:
+                    continue
+                matches = price_pattern.findall(text)
+                if matches:
+                    try:
+                        candidate_price = float(matches[0].replace(",", ""))
+                        break
+                    except (ValueError, TypeError):
+                        continue
+
+            if candidate_price is None or candidate_price <= 0:
+                continue
+
+            conf = cand["rescored_confidence"]
+            reasoning = cand["rescore_reasoning"]
+            price_diff = abs(candidate_price - catalog_price) / catalog_price
+            if price_diff <= 0.20:
+                conf = min(100, conf + 10)
+                reasoning += f" +price_match(${candidate_price:.0f}≈${catalog_price:.0f})"
+            elif price_diff > 0.50:
+                conf = max(0, conf - 15)
+                reasoning += f" -price_mismatch(${candidate_price:.0f}vs${catalog_price:.0f})"
+            cand["rescored_confidence"] = conf
+            cand["rescore_reasoning"] = reasoning
+
+    # Sort by rescored_confidence descending
+    results.sort(key=lambda c: c["rescored_confidence"], reverse=True)
+    return results
