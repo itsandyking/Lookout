@@ -346,3 +346,60 @@ class TestTier2cIntegration:
 
         # Should fall through to Tier 0 hero image
         assert "__all__" in variant_map
+
+
+class TestProductImageFallback:
+    """Test product image fallback when extraction yields few images."""
+
+    def test_brave_fills_missing_images(self):
+        from lookout.enrich.generator import Generator
+        from lookout.enrich.models import ExtractedFacts
+
+        facts = ExtractedFacts(
+            product_name="Tikka Core Headlamp",
+            brand="Petzl",
+            canonical_url="https://petzl.com/tikka",
+            images=[],
+        )
+
+        gen = Generator.__new__(Generator)
+        gen.brave_resolver = MagicMock()
+        gen.brave_resolver.find_product_images = AsyncMock(return_value=[
+            BraveImageResult(
+                full_url="https://cdn.ex.com/tikka.jpg",
+                thumbnail_url="https://thumb.ex.com/tikka.jpg",
+                source_page="https://ex.com/tikka",
+                title="Petzl Tikka Core",
+                width=1000, height=1000, confidence="high",
+            ),
+        ])
+
+        images, warnings = run(gen._select_images(facts))
+
+        gen.brave_resolver.find_product_images.assert_called()
+        assert len(images) >= 1
+        assert images[0].src == "https://cdn.ex.com/tikka.jpg"
+        assert "NO_IMAGES_FOUND" not in warnings
+
+    def test_no_fallback_when_enough_images(self):
+        from lookout.enrich.generator import Generator
+        from lookout.enrich.models import ExtractedFacts, ImageInfo
+
+        facts = ExtractedFacts(
+            product_name="Some Product",
+            brand="Some Brand",
+            canonical_url="https://example.com/product",
+            images=[
+                ImageInfo(url=f"https://ex.com/img{i}.jpg")
+                for i in range(5)
+            ],
+        )
+
+        gen = Generator.__new__(Generator)
+        gen.brave_resolver = MagicMock()
+
+        images, warnings = run(gen._select_images(facts))
+
+        # Should not call brave since we have >= 3 images
+        gen.brave_resolver.find_product_images.assert_not_called()
+        assert len(images) == 5

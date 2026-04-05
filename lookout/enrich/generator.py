@@ -222,7 +222,7 @@ class Generator:
 
         # Generate images if needed
         if input_row.needs_images:
-            images, image_warnings = self._select_images(facts)
+            images, image_warnings = await self._select_images(facts)
             output.images = images
             warnings.extend(image_warnings)
 
@@ -370,7 +370,7 @@ class Generator:
 
         return "\n".join(parts)
 
-    def _select_images(
+    async def _select_images(
         self,
         facts: ExtractedFacts,
     ) -> tuple[list[OutputImage], list[str]]:
@@ -387,8 +387,34 @@ class Generator:
         images: list[OutputImage] = []
 
         if not facts.images:
-            warnings.append("NO_IMAGES_FOUND")
-            return images, warnings
+            if self.brave_resolver:
+                try:
+                    brave_results = await self.brave_resolver.find_product_images(
+                        product_title=facts.product_name or "",
+                        vendor=facts.brand or "",
+                    )
+                    if brave_results:
+                        for br in brave_results:
+                            facts.images.append(
+                                ImageInfo(
+                                    url=br.full_url,
+                                    alt_text=br.title,
+                                    width=br.width,
+                                    height=br.height,
+                                    source="brave_image_search",
+                                )
+                            )
+                        logger.info("Brave product image fallback: added %d images", len(brave_results))
+                    else:
+                        warnings.append("NO_IMAGES_FOUND")
+                        return images, warnings
+                except Exception as e:
+                    logger.warning("Brave product image fallback failed: %s", e)
+                    warnings.append("NO_IMAGES_FOUND")
+                    return images, warnings
+            else:
+                warnings.append("NO_IMAGES_FOUND")
+                return images, warnings
 
         # Deduplicate images by URL (without query params)
         seen_urls: set[str] = set()
@@ -453,6 +479,29 @@ class Generator:
             warnings.append(f"TRUNCATED_IMAGES: {len(importable)} importable, limited to 10")
         if not importable and unique_images:
             warnings.append("ALL_IMAGES_FILTERED: none passed import validation")
+
+        # If we have fewer than 3 images, try Brave fallback
+        if len(images) < 3 and self.brave_resolver:
+            try:
+                brave_results = await self.brave_resolver.find_product_images(
+                    product_title=facts.product_name or "",
+                    vendor=facts.brand or "",
+                    max_images=3 - len(images),
+                )
+                for br in brave_results:
+                    issue = _check_image_importable(br.full_url)
+                    if not issue:
+                        images.append(
+                            OutputImage(
+                                src=br.full_url,
+                                position=len(images) + 1,
+                                alt=br.title or self._generate_alt_text(facts.product_name, len(images) + 1),
+                            )
+                        )
+                if brave_results:
+                    logger.info("Brave product image fallback: padded to %d images", len(images))
+            except Exception as e:
+                logger.warning("Brave product image fallback failed: %s", e)
 
         return images, warnings
 
