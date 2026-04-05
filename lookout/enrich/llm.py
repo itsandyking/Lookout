@@ -308,7 +308,7 @@ class OllamaVisionClient:
 
     def __init__(
         self,
-        model: str = "gemma3:4b",
+        model: str = "vision",
         base_url: str = "http://localhost:11434",
         timeout: float = 30.0,
     ) -> None:
@@ -331,6 +331,7 @@ class OllamaVisionClient:
             ),
             "images": [b64],
             "stream": False,
+            "think": False,
             "options": {"num_predict": 15, "temperature": 0.1},
         }
 
@@ -642,7 +643,7 @@ class LLMClient:
         self,
         image_urls: list[str],
         color_values: list[str],
-        ollama_model: str = "gemma3:4b",
+        ollama_model: str = "vision",
     ) -> dict[str, str]:
         """Select variant images using local vision model.
 
