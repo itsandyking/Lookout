@@ -206,6 +206,7 @@ class PipelineConfig:
         input_rows: list | None = None,
         verify: bool = False,
         only_mode: str | None = None,
+        llm_provider: str | None = None,
     ) -> None:
         self.input_path = input_path
         self.output_dir = output_dir
@@ -219,6 +220,7 @@ class PipelineConfig:
         self.input_rows = input_rows or []
         self.verify = verify
         self.only_mode = only_mode
+        self.llm_provider = llm_provider
 
 
 class ProductProcessor:
@@ -1078,8 +1080,8 @@ class Pipeline:
 
         # Initialize LLM client (optional - may fail if no API key)
         try:
-            self.llm_client = get_llm_client()
-            logger.info("LLM client initialized")
+            self.llm_client = get_llm_client(provider_name=self.config.llm_provider)
+            logger.info("LLM client initialized (provider: %s)", self.config.llm_provider or "auto")
         except ValueError as e:
             logger.warning(f"LLM client not available: {e}")
             self.llm_client = None

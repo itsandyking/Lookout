@@ -279,6 +279,83 @@ class ClaudeCLIProvider(LLMProvider):
         return AnthropicProvider._extract_and_parse_json(text)
 
 
+class OllamaTextProvider(LLMProvider):
+    """LLM provider using Ollama for text completion and structured output."""
+
+    def __init__(
+        self,
+        model: str = "reason",
+        base_url: str = "http://localhost:11434",
+        timeout: float = 120.0,
+    ) -> None:
+        self.model = model
+        self.base_url = base_url
+        self.timeout = timeout
+
+    @retry(
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=2, max=15),
+        retry=retry_if_exception_type(Exception),
+    )
+    async def complete(
+        self,
+        prompt: str,
+        system: str | None = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> str:
+        """Generate a text completion via Ollama."""
+        payload: dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False,
+            "think": False,
+            "options": {
+                "num_predict": max_tokens,
+                "temperature": temperature,
+            },
+        }
+        if system:
+            payload["system"] = system
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                f"{self.base_url}/api/generate",
+                json=payload,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            return result.get("response", "").strip()
+
+    async def complete_structured(
+        self,
+        prompt: str,
+        output_schema: dict[str, Any],
+        tool_name: str = "structured_output",
+        tool_description: str = "Output structured data",
+        system: str | None = None,
+        max_tokens: int = 4096,
+    ) -> dict[str, Any]:
+        """Generate structured output by requesting JSON from Ollama."""
+        schema_hint = json.dumps(output_schema, indent=2)
+        structured_prompt = (
+            f"{prompt}\n\n"
+            f"Respond with ONLY valid JSON matching this schema:\n"
+            f"```json\n{schema_hint}\n```\n"
+            f"No explanation, no markdown, just the JSON object."
+        )
+
+        structured_system = system or ""
+        structured_system += "\nYou must respond with only valid JSON. No other text."
+
+        text = await self.complete(
+            structured_prompt,
+            system=structured_system.strip(),
+            max_tokens=max_tokens,
+        )
+        return AnthropicProvider._extract_and_parse_json(text)
+
+
 def _create_default_provider() -> LLMProvider:
     """Create the best available LLM provider.
 
@@ -601,14 +678,23 @@ class OllamaVisionClient:
 
 
 class LLMClient:
-    """High-level LLM client with prompt template support and structured output."""
+    """High-level LLM client with prompt template support and structured output.
+
+    Supports a hybrid mode with two providers:
+    - provider: used for structured tasks (fact extraction, verification)
+    - generation_provider: used for creative writing (body HTML generation)
+
+    If only one provider is given, it handles everything.
+    """
 
     def __init__(
         self,
         provider: LLMProvider | None = None,
         prompts_dir: Path | None = None,
+        generation_provider: LLMProvider | None = None,
     ) -> None:
         self.provider = provider or _create_default_provider()
+        self.generation_provider = generation_provider or self.provider
         self.prompts_dir = prompts_dir or (Path(__file__).parent / "prompts")
         self._prompt_cache: dict[str, str] = {}
 
@@ -788,7 +874,7 @@ class LLMClient:
             "Never include review ratings, star counts, or review text in the description."
         )
 
-        return await self.provider.complete(prompt, system)
+        return await self.generation_provider.complete(prompt, system)
 
     async def select_variant_images_vision(
         self,
@@ -953,10 +1039,33 @@ def get_llm_client(
     api_key: str | None = None,
     model: str = "claude-sonnet-4-20250514",
     prompts_dir: Path | None = None,
+    provider_name: str | None = None,
 ) -> LLMClient:
     """Create an LLM client with default configuration.
 
-    Prefers claude CLI provider (uses Max subscription), falls back to SDK.
+    Args:
+        provider_name: Force a specific provider. Options:
+            - "hybrid" — Gemma for structured tasks, Claude for generation (recommended)
+            - "ollama" or "reason" — use local Gemma 4 26B for everything
+            - "claude" — use Claude CLI for everything (default)
+            - "sdk" — use Anthropic SDK for everything
+            - None — auto-detect (Claude CLI → SDK)
     """
-    provider = _create_default_provider()
+    if provider_name == "hybrid":
+        structured = OllamaTextProvider(model="reason")
+        generation = _create_default_provider()
+        logger.info("Using hybrid providers: reason (structured) + Claude (generation)")
+        return LLMClient(
+            provider=structured,
+            generation_provider=generation,
+            prompts_dir=prompts_dir,
+        )
+    elif provider_name in ("ollama", "reason"):
+        ollama_model = "reason" if provider_name == "reason" else provider_name
+        logger.info("Using Ollama provider (model: %s)", ollama_model)
+        provider = OllamaTextProvider(model=ollama_model)
+    elif provider_name == "sdk":
+        provider = AnthropicProvider(api_key=api_key, model=model)
+    else:
+        provider = _create_default_provider()
     return LLMClient(provider=provider, prompts_dir=prompts_dir)
