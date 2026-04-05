@@ -347,17 +347,20 @@ class OllamaVisionClient:
             url_hint = f"\nImage URL path: {path}"
 
         return (
-            f"This is a product image. Which of these color names best "
+            f"This is a product photo. Which ONE of these color names "
             f"matches the product shown?\n\n"
             f"Color options:\n{options_list}\n"
             f"{url_hint}\n\n"
             f"Rules:\n"
-            f"- Reply with the EXACT color name from the list above\n"
-            f"- For colorblocked products (multiple colors), pick the "
-            f"option that includes those colors (e.g. 'Black/Poppy')\n"
-            f"- If this is a lifestyle photo, size chart, or detail shot "
-            f"where you can't determine the product color, reply NONE\n"
-            f"- If none of the options match, reply NONE"
+            f"- Look at the ACTUAL COLOR of the product in the image\n"
+            f"- Reply with the EXACT color name from the list, nothing else\n"
+            f"- Only match if you are confident — if unsure, reply NONE\n"
+            f"- For multi-color/colorblocked products, match the option "
+            f"that lists those colors separated by / (e.g. 'Black/Poppy')\n"
+            f"- Reply NONE if: this is a lifestyle/action photo, a size "
+            f"chart, a detail closeup, or the product color isn't clearly "
+            f"visible\n"
+            f"- Reply NONE if no option is a good match for what you see"
         )
 
     async def match_image_to_color(
@@ -447,7 +450,7 @@ class OllamaVisionClient:
     @staticmethod
     async def download_images(
         urls: list[str],
-        max_images: int = 12,
+        max_images: int = 20,
     ) -> list[tuple[str, bytes]]:
         """Download product images for vision processing.
 
@@ -679,7 +682,18 @@ class LLMClient:
         """
         vision = OllamaVisionClient(model=ollama_model)
 
-        downloaded = await OllamaVisionClient.download_images(image_urls)
+        # Deduplicate URLs (Shopify stores same image multiple times for variants)
+        seen: set[str] = set()
+        unique_urls: list[str] = []
+        for url in image_urls:
+            normalized = url.split("?")[0]
+            if normalized not in seen:
+                seen.add(normalized)
+                unique_urls.append(url)
+        if len(unique_urls) < len(image_urls):
+            logger.debug("Vision: deduplicated %d → %d image URLs", len(image_urls), len(unique_urls))
+
+        downloaded = await OllamaVisionClient.download_images(unique_urls)
         if not downloaded:
             logger.warning("Vision: no images downloaded")
             return {}

@@ -505,7 +505,7 @@ class Generator:
         # Tier 2a: Vision-based color matching via local model
         if color_variant and self.llm_client and facts.images:
             try:
-                image_urls = [img.url for img in facts.images[:12]]
+                image_urls = [img.url for img in facts.images[:20]]
                 vision_mapping = await self.llm_client.select_variant_images_vision(
                     image_urls=image_urls,
                     color_values=color_variant.values,
