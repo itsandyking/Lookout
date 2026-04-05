@@ -171,15 +171,156 @@ class TestMatchImagesBatch:
         assert result == {}
 
 
+class TestMatchImagesBatchTwoPass:
+    """Test the two-pass matching (pass 1 menu, pass 2 freeform)."""
+
+    def _client(self):
+        return OllamaVisionClient(model="vision")
+
+    def test_pass2_picks_up_unmatched(self):
+        """Pass 1 misses, pass 2 free-form matches via token overlap."""
+        c = self._client()
+
+        async def mock_menu(data, colors, image_url=""):
+            # Pass 1 can't match this image
+            return None
+
+        async def mock_freeform(data, image_url=""):
+            return "dark purple and yellow"
+
+        with patch.object(c, "match_image_to_color", side_effect=mock_menu), \
+             patch.object(c, "_identify_color_freeform", side_effect=mock_freeform):
+            result = run(c.match_images_batch(
+                [("img1.jpg", b"a")],
+                ["Purple Ink/Purple Dusk/Cheddar"],
+            ))
+            assert "Purple Ink/Purple Dusk/Cheddar" in result
+
+    def test_pass2_skips_already_matched_urls(self):
+        """URLs matched in pass 1 aren't reused in pass 2."""
+        c = self._client()
+        call_count = 0
+
+        async def mock_menu(data, colors, image_url=""):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "Red"
+            return None
+
+        async def mock_freeform(data, image_url=""):
+            return "blue"
+
+        with patch.object(c, "match_image_to_color", side_effect=mock_menu), \
+             patch.object(c, "_identify_color_freeform", side_effect=mock_freeform):
+            result = run(c.match_images_batch(
+                [("img1.jpg", b"a"), ("img2.jpg", b"b")],
+                ["Red", "Blue"],
+            ))
+            assert result["Red"] == "img1.jpg"
+            assert result["Blue"] == "img2.jpg"
+
+    def test_pass2_not_triggered_if_all_matched(self):
+        """Pass 2 is skipped if pass 1 matched everything."""
+        c = self._client()
+        freeform_called = False
+
+        async def mock_menu(data, colors, image_url=""):
+            return colors[0] if colors else None
+
+        async def mock_freeform(data, image_url=""):
+            nonlocal freeform_called
+            freeform_called = True
+            return "red"
+
+        with patch.object(c, "match_image_to_color", side_effect=mock_menu), \
+             patch.object(c, "_identify_color_freeform", side_effect=mock_freeform):
+            run(c.match_images_batch(
+                [("a.jpg", b"a"), ("b.jpg", b"b")],
+                ["Red", "Blue"],
+            ))
+            assert not freeform_called
+
+
+class TestFuzzyMatchFreeform:
+    """Test free-form description matching to color options."""
+
+    def test_single_token_overlap(self):
+        result = OllamaVisionClient._fuzzy_match_freeform(
+            "dark olive green", ["Dark Olive", "Creek Blue"],
+        )
+        assert result == "Dark Olive"
+
+    def test_slash_name_match(self):
+        result = OllamaVisionClient._fuzzy_match_freeform(
+            "purple and yellow",
+            ["Purple Ink/Purple Dusk/Cheddar", "Black"],
+        )
+        assert result == "Purple Ink/Purple Dusk/Cheddar"
+
+    def test_no_match(self):
+        result = OllamaVisionClient._fuzzy_match_freeform(
+            "bright red", ["Blue", "Green"],
+        )
+        assert result is None
+
+    def test_noise_words_ignored(self):
+        result = OllamaVisionClient._fuzzy_match_freeform(
+            "the product is dark blue colored",
+            ["Storm Blue", "Red"],
+        )
+        assert result == "Storm Blue"
+
+    def test_best_overlap_wins(self):
+        result = OllamaVisionClient._fuzzy_match_freeform(
+            "chameleon green and black",
+            ["Chameleon/Black", "Pine Leaf Green"],
+        )
+        # "chameleon" + "black" = 2 tokens overlap vs "green" = 1
+        assert result == "Chameleon/Black"
+
+    def test_hyphenated_name(self):
+        result = OllamaVisionClient._fuzzy_match_freeform(
+            "olive", ["Dark-Olive", "Blue"],
+        )
+        assert result == "Dark-Olive"
+
+
+class TestDescribeColorOption:
+    """Test slash name expansion."""
+
+    def test_simple_color(self):
+        assert OllamaVisionClient._describe_color_option("Red") == "- Red"
+
+    def test_slash_color(self):
+        result = OllamaVisionClient._describe_color_option("Black/Poppy")
+        assert "- Black/Poppy" in result
+        assert "multi-color" in result
+        assert "black" in result
+        assert "poppy" in result
+
+    def test_three_part_slash(self):
+        result = OllamaVisionClient._describe_color_option("Purple Ink/Purple Dusk/Cheddar")
+        assert "multi-color" in result
+        assert "ink" in result
+        assert "dusk" in result
+        assert "cheddar" in result
+
+
 class TestBuildPrompt:
     """Test prompt construction."""
 
     def test_includes_all_colors(self):
         c = OllamaVisionClient()
         prompt = c._build_prompt(["Basin Green", "Nouveau Green", "Black/Poppy"])
-        assert "- Basin Green" in prompt
-        assert "- Nouveau Green" in prompt
-        assert "- Black/Poppy" in prompt
+        assert "Basin Green" in prompt
+        assert "Nouveau Green" in prompt
+        assert "Black/Poppy" in prompt
+
+    def test_slash_expanded_in_prompt(self):
+        c = OllamaVisionClient()
+        prompt = c._build_prompt(["Black/Poppy"])
+        assert "multi-color" in prompt
 
     def test_includes_url_path(self):
         c = OllamaVisionClient()
@@ -194,10 +335,10 @@ class TestBuildPrompt:
         prompt = c._build_prompt(["Red"])
         assert "Image URL path" not in prompt
 
-    def test_colorblock_rule_in_prompt(self):
+    def test_multi_color_rule_in_prompt(self):
         c = OllamaVisionClient()
         prompt = c._build_prompt(["Red"])
-        assert "colorblocked" in prompt.lower()
+        assert "multi-color" in prompt.lower()
 
     def test_lifestyle_rejection_rule(self):
         c = OllamaVisionClient()

@@ -332,13 +332,29 @@ class OllamaVisionClient:
             result = resp.json()
             return result.get("response", "").strip().strip(".")
 
+    @staticmethod
+    def _describe_color_option(color: str) -> str:
+        """Build a menu line for a color, expanding slash names.
+
+        'Purple Ink/Purple Dusk/Cheddar' → '- Purple Ink/Purple Dusk/Cheddar (multi-color: purple, purple, cheddar)'
+        'Black' → '- Black'
+        """
+        if "/" not in color:
+            return f"- {color}"
+        parts = [p.strip() for p in color.split("/")]
+        # Extract the last word from each part as the core color
+        core_colors = [p.split()[-1].lower() for p in parts]
+        return f"- {color}  (multi-color: {', '.join(core_colors)})"
+
     def _build_prompt(
         self,
         color_options: list[str],
         image_url: str = "",
     ) -> str:
         """Build the vision prompt with color menu and URL hint."""
-        options_list = "\n".join(f"- {c}" for c in color_options)
+        options_list = "\n".join(
+            self._describe_color_option(c) for c in color_options
+        )
 
         url_hint = ""
         if image_url:
@@ -355,8 +371,8 @@ class OllamaVisionClient:
             f"- Look at the ACTUAL COLOR of the product in the image\n"
             f"- Reply with the EXACT color name from the list, nothing else\n"
             f"- Only match if you are confident — if unsure, reply NONE\n"
-            f"- For multi-color/colorblocked products, match the option "
-            f"that lists those colors separated by / (e.g. 'Black/Poppy')\n"
+            f"- Some options are multi-color (shown with /). If the product "
+            f"has multiple colors that match those parts, pick that option\n"
             f"- Reply NONE if: this is a lifestyle/action photo, a size "
             f"chart, a detail closeup, or the product color isn't clearly "
             f"visible\n"
@@ -409,15 +425,92 @@ class OllamaVisionClient:
         logger.debug("Vision returned '%s' which didn't match any option", raw)
         return None
 
+    async def _identify_color_freeform(
+        self,
+        image_data: bytes,
+        image_url: str = "",
+    ) -> str | None:
+        """Ask the model to freely describe the product color (pass 2).
+
+        Returns a short color description like 'dark purple and yellow',
+        or None on failure.
+        """
+        b64 = base64.b64encode(image_data).decode()
+
+        url_hint = ""
+        if image_url:
+            from urllib.parse import unquote, urlparse
+            path = unquote(urlparse(image_url).path)
+            url_hint = f"\nImage URL path: {path}"
+
+        payload = {
+            "model": self.model,
+            "prompt": (
+                f"What are the main colors of this product? "
+                f"List the 1-3 dominant colors you see, separated by commas. "
+                f"Be specific (e.g. 'dark olive green' not just 'green'). "
+                f"If this isn't a clear product photo, reply NONE."
+                f"{url_hint}"
+            ),
+            "images": [b64],
+            "stream": False,
+            "think": False,
+            "options": {"num_predict": 30, "temperature": 0.1},
+        }
+
+        raw = await self._post_vision(payload)
+        if not raw or raw.upper() == "NONE":
+            return None
+        return raw
+
+    @staticmethod
+    def _fuzzy_match_freeform(
+        description: str,
+        remaining_colors: list[str],
+    ) -> str | None:
+        """Match a free-form color description to remaining options.
+
+        Uses token overlap: if the model says 'dark purple and yellow'
+        and an option is 'Purple Ink/Purple Dusk/Cheddar', the overlap
+        on 'purple' scores a match.
+        """
+        desc_tokens = {t.lower().strip(",.") for t in description.split()}
+        # Remove noise words
+        noise = {"and", "with", "the", "a", "an", "dark", "light", "bright",
+                 "deep", "pale", "matte", "product", "is", "color", "colored"}
+        desc_tokens -= noise
+
+        best_option = None
+        best_score = 0
+
+        for option in remaining_colors:
+            # Tokenize the option, including slash-separated parts
+            option_expanded = option.replace("/", " ").replace("-", " ")
+            option_tokens = {t.lower().strip() for t in option_expanded.split()}
+            option_tokens -= noise
+
+            overlap = desc_tokens & option_tokens
+            if len(overlap) > best_score:
+                best_score = len(overlap)
+                best_option = option
+
+        # Require at least 1 meaningful token overlap
+        if best_score >= 1:
+            return best_option
+        return None
+
     async def match_images_batch(
         self,
         images: list[tuple[str, bytes]],
         color_options: list[str],
     ) -> dict[str, str]:
-        """Match a batch of images to color options.
+        """Match a batch of images to color options using two passes.
 
-        Processes images sequentially. Each color can only be assigned once
-        (first image wins). Skips images the model can't classify.
+        Pass 1: Menu-based — model picks from the exact color names.
+        Pass 2: Free-form — for unmatched images, ask the model to describe
+                the color, then fuzzy-match back to remaining options.
+
+        Each color can only be assigned once (first image wins).
 
         Args:
             images: List of (image_url, image_bytes) tuples.
@@ -428,7 +521,9 @@ class OllamaVisionClient:
         """
         mapping: dict[str, str] = {}
         remaining_colors = list(color_options)
+        unmatched_images: list[tuple[str, bytes]] = []
 
+        # Pass 1: Menu-based matching
         for url, data in images:
             if not remaining_colors:
                 break
@@ -439,11 +534,39 @@ class OllamaVisionClient:
                 if matched:
                     mapping[matched] = url
                     remaining_colors.remove(matched)
-                    logger.debug("Vision: %s → %s", url, matched)
+                    logger.debug("Vision pass 1: %s → %s", url, matched)
                 else:
-                    logger.debug("Vision: %s → no match", url)
+                    unmatched_images.append((url, data))
+                    logger.debug("Vision pass 1: %s → no match", url)
             except Exception as e:
-                logger.warning("Vision failed for %s: %s", url, e)
+                logger.warning("Vision pass 1 failed for %s: %s", url, e)
+                unmatched_images.append((url, data))
+
+        # Pass 2: Free-form identification for remaining colors
+        if remaining_colors and unmatched_images:
+            logger.info(
+                "Vision pass 2: %d colors remain, %d images to retry",
+                len(remaining_colors), len(unmatched_images),
+            )
+            used_urls: set[str] = set(mapping.values())
+
+            for url, data in unmatched_images:
+                if not remaining_colors or url in used_urls:
+                    continue
+                try:
+                    description = await self._identify_color_freeform(data, image_url=url)
+                    if not description:
+                        continue
+                    matched = self._fuzzy_match_freeform(description, remaining_colors)
+                    if matched:
+                        mapping[matched] = url
+                        remaining_colors.remove(matched)
+                        used_urls.add(url)
+                        logger.debug("Vision pass 2: %s → %s (from '%s')", url, matched, description)
+                    else:
+                        logger.debug("Vision pass 2: %s described as '%s' — no match", url, description)
+                except Exception as e:
+                    logger.warning("Vision pass 2 failed for %s: %s", url, e)
 
         return mapping
 
