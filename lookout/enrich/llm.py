@@ -2,9 +2,12 @@
 LLM client wrapper for provider-agnostic LLM access.
 
 Currently implements Anthropic Claude with native structured output
-via tool use for JSON responses.
+via tool use for JSON responses.  Also provides OllamaVisionClient
+for local vision-based variant image matching via Gemma 3 4B.
 """
 
+import asyncio
+import base64
 import json
 import logging
 import os
@@ -12,6 +15,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, TypeVar
 
+import httpx
 from pydantic import BaseModel
 from tenacity import (
     retry,
@@ -299,6 +303,151 @@ def _create_default_provider() -> LLMProvider:
     )
 
 
+class OllamaVisionClient:
+    """Local vision model client for image color identification via Ollama."""
+
+    def __init__(
+        self,
+        model: str = "gemma3:4b",
+        base_url: str = "http://localhost:11434",
+        timeout: float = 30.0,
+    ) -> None:
+        self.model = model
+        self.base_url = base_url
+        self.timeout = timeout
+
+    async def identify_color(self, image_data: bytes) -> str | None:
+        """Ask the vision model what color a product is.
+
+        Returns a short color description, or None on failure.
+        """
+        b64 = base64.b64encode(image_data).decode()
+        payload = {
+            "model": self.model,
+            "prompt": (
+                "What is the primary color of this product? "
+                "Reply with ONLY the color name, 1-3 words maximum. "
+                "Examples: Red, Navy Blue, Forest Green, Black."
+            ),
+            "images": [b64],
+            "stream": False,
+            "options": {"num_predict": 15, "temperature": 0.1},
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                f"{self.base_url}/api/generate",
+                json=payload,
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            raw = result.get("response", "").strip().strip(".")
+            return raw if raw else None
+
+    async def identify_colors_batch(
+        self,
+        images: list[tuple[str, bytes]],
+    ) -> list[tuple[str, str | None]]:
+        """Identify colors for multiple images sequentially.
+
+        Args:
+            images: List of (image_url, image_bytes) tuples.
+
+        Returns:
+            List of (image_url, detected_color) tuples.
+        """
+        results = []
+        for url, data in images:
+            try:
+                color = await self.identify_color(data)
+                logger.debug("Vision color for %s: %s", url, color)
+                results.append((url, color))
+            except Exception as e:
+                logger.warning("Vision failed for %s: %s", url, e)
+                results.append((url, None))
+        return results
+
+    @staticmethod
+    async def download_images(
+        urls: list[str],
+        max_images: int = 12,
+    ) -> list[tuple[str, bytes]]:
+        """Download product images for vision processing.
+
+        Returns list of (url, image_bytes) for successfully downloaded images.
+        """
+        downloaded: list[tuple[str, bytes]] = []
+        async with httpx.AsyncClient(
+            timeout=15.0,
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Lookout/1.0)"},
+        ) as client:
+            for url in urls[:max_images]:
+                try:
+                    resp = await client.get(url)
+                    resp.raise_for_status()
+                    content_type = resp.headers.get("content-type", "")
+                    if "image" not in content_type and not url.lower().endswith(
+                        (".jpg", ".jpeg", ".png", ".webp")
+                    ):
+                        continue
+                    downloaded.append((url, resp.content))
+                except Exception as e:
+                    logger.debug("Failed to download %s: %s", url, e)
+        return downloaded
+
+    @staticmethod
+    def match_colors(
+        detected: list[tuple[str, str | None]],
+        variant_colors: list[str],
+    ) -> dict[str, str]:
+        """Match detected image colors to variant color names.
+
+        Uses case-insensitive substring matching: if the detected color
+        contains or is contained by a variant color name, it's a match.
+        First match wins for each variant color.
+
+        Returns:
+            Dict mapping variant color name → image URL.
+        """
+        mapping: dict[str, str] = {}
+        used_urls: set[str] = set()
+
+        # Normalize variant colors for matching
+        normalized_variants = [(c, c.lower().strip()) for c in variant_colors]
+
+        for url, detected_color in detected:
+            if not detected_color or url in used_urls:
+                continue
+            detected_lower = detected_color.lower().strip()
+
+            for original, norm in normalized_variants:
+                if original in mapping:
+                    continue
+                # Check if detected color matches variant name
+                if (
+                    norm in detected_lower
+                    or detected_lower in norm
+                    or _color_tokens_overlap(detected_lower, norm)
+                ):
+                    mapping[original] = url
+                    used_urls.add(url)
+                    break
+
+        return mapping
+
+
+def _color_tokens_overlap(detected: str, variant: str) -> bool:
+    """Check if significant color tokens overlap between detected and variant.
+
+    Ignores filler words and checks if any meaningful color word matches.
+    """
+    filler = {"dark", "light", "deep", "bright", "pale", "matte", "metallic"}
+    detected_tokens = {t for t in detected.split() if t not in filler}
+    variant_tokens = {t for t in variant.split() if t not in filler}
+    return bool(detected_tokens & variant_tokens)
+
+
 class LLMClient:
     """High-level LLM client with prompt template support and structured output."""
 
@@ -489,12 +638,43 @@ class LLMClient:
 
         return await self.provider.complete(prompt, system)
 
+    async def select_variant_images_vision(
+        self,
+        image_urls: list[str],
+        color_values: list[str],
+        ollama_model: str = "gemma3:4b",
+    ) -> dict[str, str]:
+        """Select variant images using local vision model.
+
+        Downloads product images and uses Gemma 3 4B to identify the
+        color of each image, then matches to variant color names.
+        """
+        vision = OllamaVisionClient(model=ollama_model)
+
+        # Download images
+        downloaded = await OllamaVisionClient.download_images(image_urls)
+        if not downloaded:
+            logger.warning("Vision: no images downloaded")
+            return {}
+
+        logger.info("Vision: identifying colors in %d images", len(downloaded))
+        detected = await vision.identify_colors_batch(downloaded)
+
+        mapping = OllamaVisionClient.match_colors(detected, color_values)
+        logger.info(
+            "Vision: matched %d/%d colors: %s",
+            len(mapping),
+            len(color_values),
+            list(mapping.keys()),
+        )
+        return mapping
+
     async def select_variant_images(
         self,
         facts: dict[str, Any],
         available_images: list[dict[str, Any]],
     ) -> dict[str, str]:
-        """Select variant images using structured output."""
+        """Select variant images using structured output (text-based fallback)."""
         prompt_template = self.load_prompt("select_variant_images")
 
         prompt = prompt_template.format(

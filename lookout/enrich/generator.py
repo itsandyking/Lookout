@@ -502,7 +502,25 @@ class Generator:
             facts.variants.append(color_variant)
             logger.info(f"Injected {len(store_colors)} colors from Shopify store: {store_colors}")
 
-        # Tier 2: LLM-assisted color matching (only if color variants exist)
+        # Tier 2a: Vision-based color matching via local model
+        if color_variant and self.llm_client and facts.images:
+            try:
+                image_urls = [img.url for img in facts.images[:12]]
+                vision_mapping = await self.llm_client.select_variant_images_vision(
+                    image_urls=image_urls,
+                    color_values=color_variant.values,
+                )
+
+                if vision_mapping:
+                    variant_map = vision_mapping
+                    logger.info(f"Tier 2a (vision) variant images assigned: {len(variant_map)} colors")
+                    return variant_map, warnings
+
+            except Exception as e:
+                logger.warning(f"Vision variant image selection failed: {e}")
+                warnings.append(f"VISION_VARIANT_SELECTION_ERROR: {e!s}")
+
+        # Tier 2b: Text-based LLM fallback (uses URLs + alt text, no actual vision)
         if color_variant and self.llm_client and facts.images:
             try:
                 images_for_llm = [
@@ -516,11 +534,11 @@ class Generator:
 
                 if llm_mapping:
                     variant_map = llm_mapping
-                    logger.info(f"Tier 2 (LLM) variant images assigned: {len(variant_map)} colors")
+                    logger.info(f"Tier 2b (LLM text) variant images assigned: {len(variant_map)} colors")
                     return variant_map, warnings
 
             except Exception as e:
-                logger.warning(f"LLM variant image selection failed: {e}")
+                logger.warning(f"LLM text variant image selection failed: {e}")
                 warnings.append(f"LLM_VARIANT_SELECTION_ERROR: {e!s}")
 
         # Tier 0: Assign hero image to all variants
