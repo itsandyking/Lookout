@@ -223,6 +223,19 @@ class TimeoutSettings(BaseModel):
     page_load_timeout_ms: int = 60000
 
 
+class BraveImagesSettings(BaseModel):
+    """Settings for Brave Image Search fallback."""
+
+    enabled: bool = True
+    ollama_host: str = "http://localhost:11434"
+    ollama_model: str = "gemma4:e4b"
+    max_candidates_per_color: int = 3
+    min_image_dimensions: int = 400
+    verify_timeout: int = 30
+    brave_count: int = 50
+    max_evaluate: int = 15
+
+
 class GlobalSettings(BaseModel):
     """Global pipeline settings."""
 
@@ -230,6 +243,7 @@ class GlobalSettings(BaseModel):
     rate_limiting: RateLimitSettings = Field(default_factory=RateLimitSettings)
     retries: RetrySettings = Field(default_factory=RetrySettings)
     timeouts: TimeoutSettings = Field(default_factory=TimeoutSettings)
+    brave_images: BraveImagesSettings = Field(default_factory=BraveImagesSettings)
 
 
 class VendorsConfig(BaseModel):
@@ -281,6 +295,7 @@ class ImageInfo(BaseModel):
     alt_text: str = ""
     width: int | None = None
     height: int | None = None
+    source: str = ""
 
 
 class VariantOption(BaseModel):
