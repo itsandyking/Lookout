@@ -834,6 +834,50 @@ class ProductProcessor:
 
             merch_output = await self.generator.generate_output(input_row, facts)
             merch_output.source_url = scrape_url
+
+            # Filter variant_image_map to only include colors that exist
+            # in our Shopify store (vendor site may have more colorways)
+            if merch_output.variant_image_map and input_row.variant_data:
+                store_colors = {v.color for v in input_row.variant_data if v.color}
+                if store_colors:
+                    # Normalize for comparison: lowercase, collapse separators
+                    def _normalize(s: str) -> str:
+                        return s.lower().replace(" | ", " / ").replace("|", "/")
+
+                    store_normalized = {_normalize(sc) for sc in store_colors}
+                    # Also extract first color segment for partial matching
+                    # e.g. "Flint / Tarmac Tortoise / ChromaPop..." → "flint"
+                    store_prefixes = {_normalize(sc).split(" / ")[0] for sc in store_colors}
+
+                    filtered_vim = {}
+                    for vim_key, vim_url in merch_output.variant_image_map.items():
+                        if vim_key == "__all__":
+                            filtered_vim[vim_key] = vim_url
+                            continue
+                        vim_norm = _normalize(vim_key)
+                        vim_prefix = vim_norm.split(" / ")[0]
+                        matched = (
+                            vim_norm in store_normalized
+                            or any(vim_norm.startswith(sn) or sn.startswith(vim_norm) for sn in store_normalized)
+                            or vim_prefix in store_prefixes
+                        )
+                        if matched:
+                            filtered_vim[vim_key] = vim_url
+                        else:
+                            logger.debug(
+                                "Filtered out vim key '%s' — not in store variants",
+                                vim_key,
+                            )
+                    if len(filtered_vim) < len(merch_output.variant_image_map):
+                        removed = len(merch_output.variant_image_map) - len(filtered_vim)
+                        logger.info(
+                            "Filtered variant_image_map: %d → %d (removed %d non-store colors)",
+                            len(merch_output.variant_image_map),
+                            len(filtered_vim),
+                            removed,
+                        )
+                    merch_output.variant_image_map = filtered_vim
+
             metadata["warnings"].extend(merch_output.warnings)
 
             # Step 4a: GMC compliance check
