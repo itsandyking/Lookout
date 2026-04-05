@@ -32,6 +32,7 @@ from .models import (
     InputRow,
     LogEntry,
     MerchOutput,
+    OutputImage,
     ProcessingStatus,
     VendorConfig,
     VendorsConfig,
@@ -207,6 +208,7 @@ class PipelineConfig:
         verify: bool = False,
         only_mode: str | None = None,
         llm_provider: str | None = None,
+        brave_images: bool | None = None,
     ) -> None:
         self.input_path = input_path
         self.output_dir = output_dir
@@ -221,6 +223,7 @@ class PipelineConfig:
         self.verify = verify
         self.only_mode = only_mode
         self.llm_provider = llm_provider
+        self.brave_images = brave_images
 
 
 class ProductProcessor:
@@ -246,6 +249,7 @@ class ProductProcessor:
         verify: bool = False,
         only_mode: str | None = None,
         decision_logger: MatchDecisionLogger | None = None,
+        brave_resolver: Any | None = None,
     ) -> None:
         self.vendors_config = vendors_config
         self.http_client = http_client
@@ -256,10 +260,11 @@ class ProductProcessor:
         self.verify = verify
         self.only_mode = only_mode
         self.decision_logger = decision_logger
+        self.brave_resolver = brave_resolver
 
         self.resolver = URLResolver(http_client=http_client)
         self.firecrawl = FirecrawlScraper()
-        self.generator = Generator(llm_client=llm_client)
+        self.generator = Generator(llm_client=llm_client, brave_resolver=brave_resolver)
 
     async def process(
         self,
@@ -321,6 +326,60 @@ class ProductProcessor:
                 handle_log.entries.append(
                     LogEntry(level="INFO", message=f"Vendor blocked (bot protection): {vendor}")
                 )
+                # If Brave image search is available, try it instead of skipping
+                if self.brave_resolver:
+                    handle_log.entries.append(
+                        LogEntry(level="INFO", message="Attempting Brave image search fallback for blocked vendor")
+                    )
+                    try:
+                        colors = input_row.known_colors or []
+                        brave_mapping = await self.brave_resolver.find_variant_images(
+                            product_title=input_row.title or "",
+                            vendor=vendor,
+                            colors=colors,
+                        )
+                        if brave_mapping:
+                            variant_map = {
+                                color: match.url for color, match in brave_mapping.items()
+                            }
+                            metadata["brave_image_search"] = {
+                                "colors_searched": colors,
+                                "colors_matched": list(brave_mapping.keys()),
+                                "candidates_evaluated": len(brave_mapping),
+                                "images_accepted": len(brave_mapping),
+                            }
+                            handle_log.entries.append(
+                                LogEntry(
+                                    level="INFO",
+                                    message=f"Brave images found for {len(brave_mapping)}/{len(colors)} colors",
+                                    data={"colors_matched": list(brave_mapping.keys())},
+                                )
+                            )
+                            images = []
+                            for i, (color, url) in enumerate(variant_map.items(), 1):
+                                images.append(OutputImage(
+                                    src=url,
+                                    position=i,
+                                    alt=f"{input_row.title} - {color}",
+                                ))
+                            merch_output = MerchOutput(
+                                handle=handle,
+                                body_html=None,
+                                images=images,
+                                variant_image_map=variant_map,
+                                confidence=50,
+                                source_url=None,
+                                warnings=["BRAVE_IMAGE_SEARCH_ONLY"],
+                            )
+                            self._save_log(handle_log, artifacts_dir)
+                            await self.generator.save_output(merch_output, artifacts_dir)
+                            return merch_output, ProcessingStatus.UPDATED, metadata
+                    except Exception as e:
+                        logger.warning("Brave fallback for blocked vendor failed: %s", e)
+                        handle_log.entries.append(
+                            LogEntry(level="WARNING", message=f"Brave fallback failed: {e}")
+                        )
+
                 return None, ProcessingStatus.SKIPPED_VENDOR_NOT_CONFIGURED, metadata
 
             # Check cache
@@ -1175,6 +1234,19 @@ class Pipeline:
 
             decision_logger = MatchDecisionLogger(self.config.output_dir / "match_decisions.jsonl")
 
+            # Set up Brave image resolver based on config + vendors.yaml settings
+            brave_resolver = None
+            brave_enabled = self.config.brave_images
+            if brave_enabled is None:
+                brave_enabled = self.vendors_config.settings.brave_images.enabled
+            if brave_enabled:
+                try:
+                    from .brave_images import BraveImageResolver
+                    brave_resolver = BraveImageResolver(self.vendors_config.settings.brave_images)
+                    logger.info("Brave image search enabled")
+                except Exception as e:
+                    logger.warning("Failed to initialize Brave image resolver: %s", e)
+
             processor = ProductProcessor(
                 vendors_config=self.vendors_config,
                 http_client=http_client,
@@ -1185,6 +1257,7 @@ class Pipeline:
                 verify=self.config.verify,
                 only_mode=self.config.only_mode,
                 decision_logger=decision_logger,
+                brave_resolver=brave_resolver,
             )
 
             # Create semaphore for global concurrency
