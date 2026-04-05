@@ -833,6 +833,7 @@ class ProductProcessor:
             handle_log.entries.append(LogEntry(message="Generating merchandising output"))
 
             merch_output = await self.generator.generate_output(input_row, facts)
+            merch_output.source_url = scrape_url
             metadata["warnings"].extend(merch_output.warnings)
 
             # Step 4a: GMC compliance check

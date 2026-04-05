@@ -355,6 +355,7 @@ class MerchOutput(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     gmc_flags: list[str] = Field(default_factory=list)
     confidence: int = Field(ge=0, le=100, default=0)
+    source_url: str | None = None
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 

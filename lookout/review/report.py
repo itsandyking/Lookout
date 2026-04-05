@@ -232,7 +232,11 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 images_section=images_html,
                 has_description="true" if has_description else "false",
                 has_images="true" if has_images else "false",
-                source_url=html.escape(change.source_url or ""),
+                source_link=(
+                    f'<a class="source-link" href="{html.escape(change.source_url)}" '
+                    f'target="_blank" rel="noopener">{html.escape(change.source_url)} &#8599;</a>'
+                    if change.source_url else ""
+                ),
             )
         )
 
@@ -262,7 +266,7 @@ _PRODUCT_TEMPLATE = """
       <span class="vendor">{vendor}</span>
       {inventory_info}
       <span class="handle">{handle}</span>
-      <a class="source-link" href="{source_url}" target="_blank" rel="noopener">Source Page &#8599;</a>
+      {source_link}
     </div>
     <div class="header-flags">{missing_flags}</div>
   </div>
