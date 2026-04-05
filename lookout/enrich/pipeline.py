@@ -405,7 +405,7 @@ class ProductProcessor:
                         )
                     )
                     facts = shopify_facts
-                    scrape_url = f"https://{vendor_config.domain}/products/{handle}"
+                    scrape_url = shopify_facts.canonical_url or f"https://{vendor_config.domain}/products/{handle}"
                     metadata["confidence"] = 100  # Direct API match
                     metadata["source"] = "shopify_json"
 
