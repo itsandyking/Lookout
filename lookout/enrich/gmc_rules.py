@@ -2,10 +2,6 @@
 
 Rule logic extracted from Google Shoptimizer (Apache-2.0) and adapted
 for Lookout's data models. Pure Python, no external dependencies.
-
-CRITICAL: Color mapping is EXPORT-ONLY. Internal color names are never
-modified anywhere in the system. map_color_for_gmc() is called only
-by lookout/output/google_shopping.py when writing the GMC color attribute.
 """
 
 from __future__ import annotations
@@ -108,40 +104,6 @@ def check_prohibited_terms(text: str) -> list[str]:
         if pattern.search(text):
             violations.append(message)
     return violations
-
-
-# ── Color Mapping (EXPORT-ONLY) ──────────────────────────────────────
-
-GMC_COLOR_MAP: dict[str, str] = {
-    "Midnight": "Navy", "Midnight Navy": "Navy", "Deep Navy": "Navy",
-    "Abyss": "Navy", "Dark Navy": "Navy",
-    "Deep Forest": "Green", "Forest": "Green", "Pine": "Green",
-    "Sage": "Green", "Olive": "Green", "Moss": "Green",
-    "Hemlock": "Green", "Nouveau Green": "Green",
-    "Slate": "Gray", "Forge Grey": "Gray", "Smolder": "Gray",
-    "Carbon": "Gray", "Graphite": "Gray", "Ash": "Gray",
-    "Stone": "Gray", "Plume Grey": "Gray",
-    "Mocha": "Brown", "Espresso": "Brown", "Earth": "Brown",
-    "Coriander": "Brown", "Dark Walnut": "Brown",
-    "Sumac Red": "Red", "Barn Red": "Red", "Paintbrush Red": "Red",
-    "Touring Red": "Red", "Coral": "Pink", "Quartz Coral": "Pink",
-    "Storm Blue": "Blue", "Tidepool Blue": "Blue", "Anacapa Blue": "Blue",
-    "Wavy Blue": "Blue", "Lagom Blue": "Blue",
-    "Birch White": "White", "Natural": "White",
-    "Oatmeal": "Beige", "Pumice": "Beige",
-    "Shrub": "Yellow", "Phosphorus": "Yellow",
-    "Mango": "Orange", "Pufferfish Gold": "Gold",
-}
-
-_COLOR_MAP_LOWER = {k.lower(): v for k, v in GMC_COLOR_MAP.items()}
-
-
-def map_color_for_gmc(color: str) -> str:
-    """Map a display color name to a GMC-recognized color value.
-    EXPORT-ONLY. Unmapped colors pass through unchanged."""
-    if not color:
-        return ""
-    return _COLOR_MAP_LOWER.get(color.lower(), color)
 
 
 # ── Required Attributes ──────────────────────────────────────────────

@@ -18,7 +18,7 @@ from html.parser import HTMLParser
 
 from openpyxl import Workbook
 
-from lookout.enrich.gmc_rules import map_color_for_gmc, validate_gtin
+from lookout.enrich.gmc_rules import validate_gtin
 
 logger = logging.getLogger(__name__)
 
@@ -494,7 +494,6 @@ def generate_google_shopping(output_path, store: LookoutStore) -> dict:
 
             # Color + size + size_system
             color_internal = extract_color(option1_name, option1_value, option2_value)
-            color_gmc = map_color_for_gmc(color_internal)
             size = extract_size(option1_name, option1_value, option2_value)
             size_system = detect_size_system(vendor, product_type, size) if size else ""
 
@@ -533,7 +532,7 @@ def generate_google_shopping(output_path, store: LookoutStore) -> dict:
                     gender,
                     age_group,
                     "new",
-                    color_gmc,
+                    color_internal,
                     size,
                     size_system,
                     season,

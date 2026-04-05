@@ -3,10 +3,8 @@
 import pytest
 
 from lookout.enrich.gmc_rules import (
-    GMC_COLOR_MAP,
     check_prohibited_terms,
     check_required_attributes,
-    map_color_for_gmc,
     structure_title,
     validate_gtin,
     validate_title,
@@ -75,25 +73,6 @@ class TestCheckProhibitedTerms:
         result = check_prohibited_terms("Only $99.99 while supplies last!")
         assert len(result) > 0
 
-
-class TestMapColorForGmc:
-    def test_known_mapping(self):
-        if "Midnight" in GMC_COLOR_MAP:
-            result = map_color_for_gmc("Midnight")
-            assert result == GMC_COLOR_MAP["Midnight"]
-
-    def test_unmapped_color_passes_through(self):
-        result = map_color_for_gmc("Blue")
-        assert result == "Blue"
-
-    def test_case_insensitive_lookup(self):
-        if "midnight" in {k.lower() for k in GMC_COLOR_MAP}:
-            result = map_color_for_gmc("midnight")
-            assert result != ""
-
-    def test_empty_string(self):
-        result = map_color_for_gmc("")
-        assert result == ""
 
 
 class TestStructureTitle:
