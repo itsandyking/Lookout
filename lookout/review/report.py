@@ -70,40 +70,45 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
 
         # Variant assignment table: Color → thumbnail
         if change.variant_labels and (has_images or vim):
-            # Build color list: prefer vim keys (they match the image map),
-            # fall back to deduped variant labels
-            if vim and "__all__" not in vim:
-                # Use the variant_image_map keys as canonical colors,
-                # plus any variant labels not covered
-                seen_colors = {}
-                for key in vim:
-                    if key != "__all__":
-                        # Use a short display name from the key
-                        seen_colors[key] = key
-                # Add any variant labels not already covered
-                for v in change.variant_labels:
-                    color = v.split(" / ")[0] if " / " in v else v
-                    already_covered = any(
-                        color.lower() in k.lower() for k in seen_colors
-                    )
-                    if not already_covered and color not in seen_colors:
-                        seen_colors[color] = v
-            else:
-                seen_colors = {}
-                for v in change.variant_labels:
-                    color = v.split(" / ")[0] if " / " in v else v
-                    if color not in seen_colors:
-                        seen_colors[color] = v
+            # Deduplicate variant labels by color — these are from YOUR
+            # Shopify store, so only show variants you actually carry.
+            seen_colors = {}
+            for v in change.variant_labels:
+                color = v.split(" / ")[0] if " / " in v else v
+                if color not in seen_colors:
+                    seen_colors[color] = v
 
             assignment_rows = []
             for color, full_label in seen_colors.items():
-                # Find assigned image src(s) for this variant
+                # Find assigned image in vim — try multiple key formats
+                # since scraper keys may differ from Shopify option values
+                # (e.g. ' | ' vs ' / ' separators, extra lens info)
                 assigned_srcs = []
-                if color in vim:
-                    raw = vim[color]
-                    assigned_srcs = raw if isinstance(raw, list) else [raw]
-                elif full_label in vim:
-                    raw = vim[full_label]
+
+                # Build candidates: exact, full label, separator swaps
+                candidates = [color, full_label]
+                for c in [color, full_label]:
+                    candidates.append(c.replace(" / ", " | "))
+                    candidates.append(c.replace(" | ", " / "))
+
+                # Also check if any vim key contains this color name
+                # (handles "Flint / Tarmac Tortoise | ChromaPop..." matching "Flint")
+                matched_key = None
+                for candidate in candidates:
+                    if candidate in vim:
+                        matched_key = candidate
+                        break
+
+                if not matched_key:
+                    # Fuzzy: find vim key that starts with or contains this color
+                    color_lower = color.lower()
+                    for vim_key in vim:
+                        if vim_key.lower().startswith(color_lower) or color_lower in vim_key.lower():
+                            matched_key = vim_key
+                            break
+
+                if matched_key:
+                    raw = vim[matched_key]
                     assigned_srcs = raw if isinstance(raw, list) else [raw]
                 elif "__all__" in vim:
                     raw = vim["__all__"]
