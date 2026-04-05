@@ -385,6 +385,7 @@ class Generator:
         """
         warnings: list[str] = []
         images: list[OutputImage] = []
+        brave_already_called = False
 
         if not facts.images:
             if self.brave_resolver:
@@ -405,6 +406,7 @@ class Generator:
                                 )
                             )
                         logger.info("Brave product image fallback: added %d images", len(brave_results))
+                        brave_already_called = True
                     else:
                         warnings.append("NO_IMAGES_FOUND")
                         return images, warnings
@@ -481,7 +483,7 @@ class Generator:
             warnings.append("ALL_IMAGES_FILTERED: none passed import validation")
 
         # If we have fewer than 3 images, try Brave fallback
-        if len(images) < 3 and self.brave_resolver:
+        if len(images) < 3 and self.brave_resolver and not brave_already_called:
             try:
                 brave_results = await self.brave_resolver.find_product_images(
                     product_title=facts.product_name or "",

@@ -345,7 +345,7 @@ class ProductProcessor:
                             metadata["brave_image_search"] = {
                                 "colors_searched": colors,
                                 "colors_matched": list(brave_mapping.keys()),
-                                "candidates_evaluated": len(brave_mapping),
+                                "candidates_evaluated": len(colors),
                                 "images_accepted": len(brave_mapping),
                             }
                             handle_log.entries.append(
@@ -373,6 +373,18 @@ class ProductProcessor:
                             )
                             self._save_log(handle_log, artifacts_dir)
                             await self.generator.save_output(merch_output, artifacts_dir)
+                            if self.decision_logger:
+                                self.decision_logger.log(
+                                    handle=handle,
+                                    vendor=vendor,
+                                    catalog_title=input_row.title or "",
+                                    catalog_price=None,
+                                    catalog_colors=colors,
+                                    candidates_tried=[],
+                                    outcome="accept",
+                                    final_url=None,
+                                    brave_image_search=metadata.get("brave_image_search"),
+                                )
                             return merch_output, ProcessingStatus.UPDATED, metadata
                     except Exception as e:
                         logger.warning("Brave fallback for blocked vendor failed: %s", e)

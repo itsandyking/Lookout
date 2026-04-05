@@ -7,6 +7,7 @@ before being accepted.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import logging
 import os
@@ -52,6 +53,7 @@ class BraveImageResolver:
 
     def __init__(self, settings: BraveImagesSettings) -> None:
         self.settings = settings
+        self._brave_semaphore = asyncio.Semaphore(1)
 
     def _parse_results(
         self,
@@ -123,22 +125,26 @@ class BraveImageResolver:
         if count is None:
             count = self.settings.brave_count
 
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    BRAVE_IMAGE_SEARCH_URL,
-                    params={"q": query, "count": count},
-                    headers={
-                        "Accept": "application/json",
-                        "Accept-Encoding": "gzip",
-                        "X-Subscription-Token": api_key,
-                    },
-                )
-                resp.raise_for_status()
-                data = resp.json()
-        except Exception as e:
-            logger.warning("Brave image search failed for '%s': %s", query, e)
-            return []
+        async with self._brave_semaphore:
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as client:
+                    resp = await client.get(
+                        BRAVE_IMAGE_SEARCH_URL,
+                        params={"q": query, "count": count},
+                        headers={
+                            "Accept": "application/json",
+                            "Accept-Encoding": "gzip",
+                            "X-Subscription-Token": api_key,
+                        },
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+            except Exception as e:
+                logger.warning("Brave image search failed for '%s': %s", query, e)
+                return []
+            finally:
+                # Ensure 1 query/sec rate limit for Brave free tier
+                await asyncio.sleep(1.0)
 
         results = self._parse_results(data)
         logger.info("Brave image search '%s': %d results after filtering", query, len(results))
