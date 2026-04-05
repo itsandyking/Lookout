@@ -446,8 +446,9 @@ def enrich():
 @click.option("--verify", is_flag=True, help="Enable LLM fact-checking of generated descriptions")
 @click.option("--only", "only_mode", type=click.Choice(["images", "description", "variant-images"]), default=None, help="Only fill this specific gap type")
 @click.option("--llm", "llm_provider", type=click.Choice(["claude", "reason", "ollama", "hybrid", "sdk"]), default=None, help="LLM provider: hybrid=reason+claude split (default: auto-detect)")
+@click.option("--brave-images/--no-brave-images", "brave_images", default=None, help="Enable/disable Brave Image Search fallback (default: from vendors.yaml)")
 @click.option("--verbose", is_flag=True)
-def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verify, only_mode, llm_provider, verbose):
+def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verify, only_mode, llm_provider, brave_images, verbose):
     """Run the enrichment pipeline."""
     setup_logging(verbose)
     from lookout.enrich.pipeline import PipelineConfig, run_pipeline
@@ -528,6 +529,7 @@ def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_
         verify=verify,
         only_mode=only_mode,
         llm_provider=llm_provider,
+        brave_images=brave_images,
     )
 
     console.print(Panel(

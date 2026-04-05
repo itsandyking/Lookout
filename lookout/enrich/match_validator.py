@@ -287,6 +287,7 @@ class MatchDecisionLogger:
         catalog_price: float | None = None,
         catalog_colors: list[str] | None = None,
         resolver_candidates: list[dict] | None = None,
+        brave_image_search: dict | None = None,
     ) -> None:
         record = {
             "handle": handle,
@@ -302,6 +303,8 @@ class MatchDecisionLogger:
         }
         if resolver_candidates is not None:
             record["resolver_candidates"] = resolver_candidates
+        if brave_image_search:
+            record["brave_image_search"] = brave_image_search
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.path, "a") as f:
             f.write(json.dumps(record) + "\n")

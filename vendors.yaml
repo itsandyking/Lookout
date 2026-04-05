@@ -210,6 +210,7 @@ vendors:
 
   Arc'teryx:
     domain: "arcteryx.com"
+    blocked: true  # 429 rate limiting on product pages
     swatch_selector: "button[data-colour-value]"
     b2b_platform: nuorder
     b2b_url: "https://app.next.nuorder.com/dashboard"
@@ -398,6 +399,7 @@ vendors:
 
   "NEMO Equipment":
     domain: "nemoequipment.com"
+    blocked: true  # Bot protection
     b2b_platform: elastic_suite
     b2b_url: "https://nemo.elasticsuite.com"
 
@@ -413,6 +415,7 @@ vendors:
 
   "Helly Hansen":
     domain: "hellyhansen.com"
+    blocked: true  # 403 on all product pages
     b2b_platform: custom
     b2b_url: "https://b2bsport.hellyhansen.com/"
 
@@ -535,6 +538,7 @@ vendors:
 
   "Purnell":
     domain: "purnellgear.com"
+    blocked: true  # Bot protection
 
   "Patagonia Provisions":
     domain: "patagoniaprovisions.com"
@@ -708,6 +712,7 @@ vendors:
 
   "Lems":
     domain: "lemsshoes.com"
+    blocked: true  # Bot protection
     b2b_platform: elastic_suite
     b2b_url: "https://lemsshoes.elasticsuite.com"
 
@@ -728,6 +733,7 @@ vendors:
 
   Volkl:
     domain: "volkl.com"
+    blocked: true  # Bot protection
     b2b_platform: custom
     b2b_url: "https://b2b.elevateoutdoorcollective.com/"
 
@@ -770,3 +776,13 @@ settings:
   timeouts:
     request_timeout_ms: 30000
     page_load_timeout_ms: 60000
+
+  brave_images:
+    enabled: true
+    ollama_host: "http://localhost:11434"
+    ollama_model: "gemma4:e4b"
+    max_candidates_per_color: 3
+    min_image_dimensions: 400
+    verify_timeout: 30
+    brave_count: 50
+    max_evaluate: 15
