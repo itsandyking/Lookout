@@ -355,7 +355,6 @@ class ProductProcessor:
                                     data={"colors_matched": list(brave_mapping.keys())},
                                 )
                             )
-                            from .models import MerchOutput, OutputImage
                             images = []
                             for i, (color, url) in enumerate(variant_map.items(), 1):
                                 images.append(OutputImage(
@@ -762,7 +761,6 @@ class ProductProcessor:
                                         data={"colors_matched": list(brave_mapping.keys())},
                                     )
                                 )
-                                from .models import MerchOutput, OutputImage
                                 images = []
                                 for i, (color, url) in enumerate(variant_map.items(), 1):
                                     images.append(OutputImage(
