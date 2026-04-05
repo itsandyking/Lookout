@@ -625,14 +625,15 @@ class Generator:
         elif facts.images:
             hero_url = facts.images[0].url
 
-        if hero_url:
-            # Use "__all__" as a special key meaning "apply to every variant"
+        if hero_url and not color_variant:
+            # Tier 0: ONLY for size-only / single-color products (no color options).
+            # When color matching fails, assigning the hero to all variants creates
+            # wrong-color images. Better to leave variants unassigned.
             variant_map["__all__"] = hero_url
-            if not color_variant:
-                logger.info("Tier 0: Hero image assigned to all variants (no color options)")
-            else:
-                logger.info("Tier 0: Hero image assigned to all variants (color matching failed)")
-                warnings.append("COLOR_MATCHING_FAILED_USING_HERO")
+            logger.info("Tier 0: Hero image assigned to all variants (no color options)")
+        elif color_variant:
+            logger.info("No variant images found — leaving variants unassigned (no Tier 0 for color products)")
+            warnings.append("COLOR_MATCHING_FAILED_NO_IMAGES_ASSIGNED")
         else:
             warnings.append("NO_IMAGES_FOR_VARIANT_ASSIGNMENT")
 

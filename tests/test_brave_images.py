@@ -344,8 +344,9 @@ class TestTier2cIntegration:
 
         variant_map, warnings = run(gen._assign_variant_images(facts))
 
-        # Should fall through to Tier 0 hero image
-        assert "__all__" in variant_map
+        # Should NOT assign hero to color products — better no image than wrong image
+        assert "__all__" not in variant_map
+        assert "COLOR_MATCHING_FAILED_NO_IMAGES_ASSIGNED" in warnings
 
 
 class TestProductImageFallback:
