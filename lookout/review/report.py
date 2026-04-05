@@ -80,12 +80,23 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
             assignment_rows = []
             for color, full_label in seen_colors.items():
                 # Find assigned image src(s) for this variant
+                # Try multiple key formats: exact color, full label,
+                # and normalized variants (/ vs | separators)
                 assigned_srcs = []
-                if color in vim:
-                    raw = vim[color]
-                    assigned_srcs = raw if isinstance(raw, list) else [raw]
-                elif full_label in vim:
-                    raw = vim[full_label]
+                candidates = [color, full_label]
+                # Also try swapping separator styles
+                for c in [color, full_label]:
+                    candidates.append(c.replace(" / ", " | "))
+                    candidates.append(c.replace(" | ", " / "))
+
+                matched_key = None
+                for candidate in candidates:
+                    if candidate in vim:
+                        matched_key = candidate
+                        break
+
+                if matched_key:
+                    raw = vim[matched_key]
                     assigned_srcs = raw if isinstance(raw, list) else [raw]
                 elif "__all__" in vim:
                     raw = vim["__all__"]
