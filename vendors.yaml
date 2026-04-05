@@ -1,10 +1,15 @@
 # Vendor Configuration for Merchfill Pipeline
 # Each vendor entry defines how to discover and scrape product pages
+#
+# b2b_platform: elastic_suite | nuorder | envoy_b2b | hubsoft | deckers_b2b | custom
+# b2b_url: Login URL for the vendor's B2B/wholesale portal
 
 vendors:
   Patagonia:
     domain: "patagonia.com"
     blocked: true  # Akamai bot protection
+    b2b_platform: elastic_suite
+    b2b_url: "https://b2bsales.patagonia.com/#splash"
     # Paths that should be excluded from product matching
     blocked_paths:
       - "/blog"
@@ -29,6 +34,8 @@ vendors:
   Altra:
     domain: "altrarunning.com"
     blocked: true  # Bot protection
+    b2b_platform: custom
+    b2b_url: "https://b2b.altrarunning.com/#splash"
     fallback_domains:
       - "zappos.com"
     blocked_paths:
@@ -50,6 +57,8 @@ vendors:
   Rossignol:
     domain: "rossignol.com"
     swatch_selector: "button.color-toggle.js-color-toggle"
+    b2b_platform: custom
+    b2b_url: "https://b2b.grouperossignol.com/en/login"
     fallback_domains:
       - "zappos.com"
     blocked_paths:
@@ -69,6 +78,8 @@ vendors:
   "K2 Sports":
     domain: "k2snow.com"
     swatch_selector: ".color-btns button.variant-btn"
+    b2b_platform: custom
+    b2b_url: "https://b2b.elevateoutdoorcollective.com/"
     gallery_selector: ".product-image-tiles .amp-image-container img"
     wait_for: 5000
     blocked_paths:
@@ -100,6 +111,8 @@ vendors:
   "Smith Optics":
     domain: "smithoptics.com"
     is_shopify: true
+    b2b_platform: elastic_suite
+    b2b_url: "https://smithoptics.elasticsuite.com"
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -115,6 +128,8 @@ vendors:
 
   Nordica:
     domain: "nordica.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -130,6 +145,8 @@ vendors:
   Burton:
     domain: "burton.com"
     swatch_selector: "a.variant-swatch.variationColor"
+    b2b_platform: elastic_suite
+    b2b_url: "https://burton.elasticsuite.com/#splash"
     gallery_selector: ".product-image img"
     blocked_paths:
       - "/blog"
@@ -148,6 +165,8 @@ vendors:
   "Black Crows":
     domain: "black-crows.com"
     is_shopify: true
+    b2b_platform: elastic_suite
+    b2b_url: "https://blackcrows.elasticsuite.com"
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -175,6 +194,8 @@ vendors:
 
   Blizzard:
     domain: "blizzard-tecnica.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -190,6 +211,8 @@ vendors:
   Arc'teryx:
     domain: "arcteryx.com"
     swatch_selector: "button[data-colour-value]"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -206,6 +229,8 @@ vendors:
   "Jones Snowboards":
     domain: "jonessnowboards.com"
     is_shopify: true
+    b2b_platform: elastic_suite
+    b2b_url: "https://ordering.ndk.group/#splash"
     blocked_paths:
       - "/blog"
       - "/stories"
@@ -221,18 +246,26 @@ vendors:
 
   Thule:
     domain: "thule.com"
+    b2b_platform: custom
+    b2b_url: "https://www.thule.net/en-us/loginregister"
 
   Goodr:
     domain: "goodr.com"
 
   Petzl:
     domain: "petzl.com"
+    b2b_platform: custom
+    b2b_url: "https://www.petzldealer.com"
 
   Yakima:
     domain: "yakima.com"
+    b2b_platform: hubsoft
+    b2b_url: "https://yakima.hubsoft.com"
 
   "Gear Aid":
     domain: "gearaid.com"
+    b2b_platform: custom
+    b2b_url: "https://wholesale.gearaid.com"
 
   "Backpacker's Pantry":
     domain: "backpackerspantry.com"
@@ -245,6 +278,8 @@ vendors:
 
   "Mountain House":
     domain: "mountainhouse.com"
+    b2b_platform: custom
+    b2b_url: "https://dealer.mountainhouse.com/"
 
   "Amandalee Design":
     domain: "amandaleedesign.com"
@@ -254,15 +289,21 @@ vendors:
 
   Osprey:
     domain: "osprey.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   "Peak Refuel":
     domain: "peakrefuel.com"
+    b2b_platform: custom
+    b2b_url: "https://dealers.peakrefuel.com/"
 
   "The Mountaineers Books":
     domain: "mountaineers.org"
 
   "Toad&Co":
     domain: "toadandco.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://toadandco.elasticsuite.com"
 
   Coghlans:
     domain: "coghlans.com"
@@ -272,12 +313,16 @@ vendors:
 
   Vuori:
     domain: "vuoriclothing.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://vuori.elasticsuite.com"
 
   "Adventure Medical Kits":
     domain: "adventuremedicalkits.com"
 
   "Sea to Summit":
     domain: "seatosummit.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://seatosummit.elasticsuite.com"
 
   Ombraz:
     domain: "ombraz.com"
@@ -285,64 +330,96 @@ vendors:
   Smartwool:
     domain: "smartwool.com"
     blocked: true  # Bot protection
+    b2b_platform: custom
+    b2b_url: "https://b2b.smartwool.com/#splash"
 
   Prana:
     domain: "prana.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Kala:
     domain: "kalabrand.com"
 
   Dakine:
     domain: "dakine.com"
+    b2b_platform: custom
+    b2b_url: "https://b2b.jr286.net/"
 
   Sunski:
     domain: "sunski.com"
+    b2b_platform: envoy_b2b
+    b2b_url: "https://sunski.envoyb2b.com"
 
   "Hydro Flask":
     domain: "hydroflask.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   YETI:
     domain: "yeti.com"
 
   Matador:
     domain: "matadorequipment.com"
+    b2b_platform: envoy_b2b
+    b2b_url: "https://matador-na.envoyb2b.com"
 
   "Snow Peak":
     domain: "snowpeak.com"
+    b2b_platform: custom
+    b2b_url: "https://snowpeakb2b.com"
 
   Teva:
     domain: "teva.com"
     blocked: true  # Akamai bot protection
+    b2b_platform: deckers_b2b
+    b2b_url: "https://tevaus.deckersb2b.deckers.com/order-center/"
 
   MSR:
     domain: "msrgear.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://cascadedesigns.elasticsuite.com"
 
   Nikwax:
     domain: "nikwax.com"
 
   Ruffwear:
     domain: "ruffwear.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   "GSI Outdoors":
     domain: "gsioutdoors.com"
 
   Camelbak:
     domain: "camelbak.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://camelbak.elasticsuite.com"
 
   "NEMO Equipment":
     domain: "nemoequipment.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://nemo.elasticsuite.com"
 
   "686":
     domain: "686.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://sixeightsix.elasticsuite.com"
 
   "Eagle Creek":
     domain: "eaglecreek.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://eaglecreek.elasticsuite.com/"
 
   "Helly Hansen":
     domain: "hellyhansen.com"
+    b2b_platform: custom
+    b2b_url: "https://b2bsport.hellyhansen.com/"
 
   "Hyperlite Mountain Gear":
     domain: "hyperlitemountaingear.com"
+    b2b_platform: custom
+    b2b_url: "https://wholesale.hyperlitemountaingear.com"
 
   Sawyer:
     domain: "sawyer.com"
@@ -353,9 +430,13 @@ vendors:
 
   "Therm-a-Rest":
     domain: "thermarest.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://cascadedesigns.elasticsuite.com"
 
   "Black Diamond":
     domain: "blackdiamondequipment.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://blackdiamondna.elasticsuite.com"
 
   LEKI:
     domain: "lekiusa.com"
@@ -371,18 +452,26 @@ vendors:
 
   Fjallraven:
     domain: "fjallraven.com"
+    b2b_platform: custom
+    b2b_url: "https://fenixoutdoorb2b.com"
 
   HEST:
     domain: "hest.com"
 
   Salewa:
     domain: "salewa.com"
+    b2b_platform: custom
+    b2b_url: "http://serviceportal.oberalp.it/"
 
   "La Sportiva":
     domain: "lasportiva.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Garmin:
     domain: "garmin.com"
+    b2b_platform: custom
+    b2b_url: "https://dealers.garmin.com/en-US/partner-portal/home"
 
   Jetboil:
     domain: "jetboil.johnsonoutdoors.com"
@@ -392,12 +481,18 @@ vendors:
 
   Union:
     domain: "unionbindingcompany.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://c3.elasticsuite.com/"
 
   "Darn Tough":
     domain: "darntough.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Katadyn:
     domain: "katadyngroup.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://katadyn.elasticsuite.com"
 
   Victorinox:
     domain: "victorinox.com"
@@ -407,12 +502,18 @@ vendors:
 
   BioLite:
     domain: "bioliteenergy.com"
+    b2b_platform: envoy_b2b
+    b2b_url: "https://biolite-na.envoyb2b.com/"
 
   Cotopaxi:
     domain: "cotopaxi.com"
+    b2b_platform: custom
+    b2b_url: "https://b2b.cotopaxi.com"
 
   "Klean Kanteen":
     domain: "kleankanteen.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   "National Geographic Maps":
     domain: "natgeomaps.com"
@@ -446,54 +547,86 @@ vendors:
 
   "Goal Zero":
     domain: "goalzero.com"
+    b2b_platform: envoy_b2b
+    b2b_url: "https://biolite-na.envoyb2b.com/"
 
   Kuhl:
     domain: "kuhl.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://kuhl.elasticsuite.com/#splash"
 
   Deuter:
     domain: "deuter.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://ssousa.elasticsuite.com"
 
   "Outdoor Research":
     domain: "outdoorresearch.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://outdoorresearch.elasticsuite.com/#splash"
 
   Buff:
     domain: "buffusa.com"
+    b2b_platform: custom
+    b2b_url: "https://b2b.buff.com"
 
   Kelty:
     domain: "kelty.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   "Sierra Designs":
     domain: "sierradesigns.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Salomon:
     domain: "salomon.com"
+    b2b_platform: custom
+    b2b_url: "https://sales.amersports.com"
 
   "The North Face":
     domain: "thenorthface.com"
+    b2b_platform: custom
+    b2b_url: "https://amp.thenorthface.com/#splash"
 
   Keen:
     domain: "keenfootwear.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Rab:
     domain: "rab.equipment"
+    b2b_platform: elastic_suite
+    b2b_url: "https://rab.elasticsuite.com"
 
   "Granite Gear":
     domain: "granitegear.com"
 
   Hestra:
     domain: "hestragloves.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://hestra.elasticsuite.com/"
 
   "Sunday Afternoons":
     domain: "sundayafternoons.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://sundayafternoons.elasticsuite.com"
 
   "Mons Royale":
     domain: "monsroyale.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Injinji:
     domain: "injinji.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   "Howler Brothers":
     domain: "howlerbros.com"
+    b2b_platform: envoy_b2b
+    b2b_url: "https://howlerbros.envoyb2b.com"
 
   "Zeal Optics":
     domain: "zealoptics.com"
@@ -501,15 +634,21 @@ vendors:
   "Topo Athletic":
     domain: "topoathletic.com"
     wait_for: 3000  # SuiteCommerce SPA — images load via JS API calls
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
     product_url_patterns:
       - "/mens-"
       - "/womens-"
 
   "Hot Chillys":
     domain: "hotchillys.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://performanceapparel.elasticsuite.com"
 
   "Groove Life":
     domain: "groovelife.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://groovelife.elasticsuite.com"
 
   Sterling:
     domain: "sterlingrope.com"
@@ -519,6 +658,8 @@ vendors:
 
   "Bedrock Sandals":
     domain: "bedrocksandals.com"
+    b2b_platform: custom
+    b2b_url: "https://bedrocksandals.com"
 
   Blundstone:
     domain: "blundstone.com"
@@ -531,42 +672,64 @@ vendors:
 
   Marker:
     domain: "marker.net"
+    b2b_platform: custom
+    b2b_url: "https://b2b.elevateoutdoorcollective.com/"
 
   Armada:
     domain: "armadaskis.com"
+    b2b_platform: custom
+    b2b_url: "https://sales.amersports.com"
 
   Seirus:
     domain: "seirus.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://seirus.elasticsuite.com/"
 
   "Ignik Outdoors":
     domain: "ignik.com"
+    b2b_platform: hubsoft
+    b2b_url: "https://ignik.hubsoft.com"
 
   Baggu:
     domain: "baggu.com"
+    b2b_platform: custom
+    b2b_url: "https://wholesale.baggu.com/"
 
   Platypus:
     domain: "platy.com"
 
   Bogs:
     domain: "bogsfootwear.com"
+    b2b_platform: custom
+    b2b_url: "https://outdoorb2b.weycogroup.com/"
 
   "Morrison Outdoors":
     domain: "morrisonoutdoors.com"
 
   "Lems":
     domain: "lemsshoes.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://lemsshoes.elasticsuite.com"
 
   Dynafit:
     domain: "dynafit.com"
+    b2b_platform: custom
+    b2b_url: "http://serviceportal.oberalp.it/"
 
   "Royal Robbins":
     domain: "royalrobbins.com"
+    b2b_platform: custom
+    b2b_url: "https://fenixoutdoorb2b.com"
 
   Tilley:
     domain: "tilley.com"
+    b2b_platform: nuorder
+    b2b_url: "https://app.next.nuorder.com/dashboard"
 
   Volkl:
     domain: "volkl.com"
+    b2b_platform: custom
+    b2b_url: "https://b2b.elevateoutdoorcollective.com/"
 
   "Grand Trunk":
     domain: "grandtrunk.com"
@@ -576,6 +739,8 @@ vendors:
 
   Sockwell:
     domain: "sockwell.com"
+    b2b_platform: elastic_suite
+    b2b_url: "https://sockwell.elasticsuite.com"
 
   "NoSo Patches":
     domain: "nosopatches.com"
