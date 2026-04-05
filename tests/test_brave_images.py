@@ -403,3 +403,60 @@ class TestProductImageFallback:
         # Should not call brave since we have >= 3 images
         gen.brave_resolver.find_product_images.assert_not_called()
         assert len(images) == 5
+
+
+import json
+import tempfile
+from pathlib import Path
+
+
+class TestMatchDecisionLogging:
+    """Test that Brave image search results are logged in match_decisions."""
+
+    def test_brave_field_in_decision_record(self):
+        from lookout.enrich.match_validator import MatchDecisionLogger
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            decision_logger = MatchDecisionLogger(Path(tmpdir) / "match_decisions.jsonl")
+            decision_logger.log(
+                handle="womens-verra",
+                vendor="Teva",
+                catalog_title="Women's Verra",
+                catalog_price=75.0,
+                catalog_colors=["Black", "Grey"],
+                candidates_tried=[],
+                outcome="no_match",
+                final_url=None,
+                brave_image_search={
+                    "colors_searched": ["Black", "Grey"],
+                    "colors_matched": ["Black"],
+                    "candidates_evaluated": 6,
+                    "images_accepted": 1,
+                },
+            )
+
+            decisions_file = Path(tmpdir) / "match_decisions.jsonl"
+            assert decisions_file.exists()
+            record = json.loads(decisions_file.read_text().strip())
+            assert record["brave_image_search"]["colors_matched"] == ["Black"]
+            assert record["brave_image_search"]["images_accepted"] == 1
+
+    def test_no_brave_field_when_not_provided(self):
+        from lookout.enrich.match_validator import MatchDecisionLogger
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            decision_logger = MatchDecisionLogger(Path(tmpdir) / "match_decisions.jsonl")
+            decision_logger.log(
+                handle="some-product",
+                vendor="SomeVendor",
+                catalog_title="Some Product",
+                catalog_price=50.0,
+                catalog_colors=["Red"],
+                candidates_tried=[],
+                outcome="accept",
+                final_url="https://example.com",
+            )
+
+            decisions_file = Path(tmpdir) / "match_decisions.jsonl"
+            record = json.loads(decisions_file.read_text().strip())
+            assert "brave_image_search" not in record
