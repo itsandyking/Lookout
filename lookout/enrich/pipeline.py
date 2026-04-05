@@ -722,6 +722,84 @@ class ProductProcessor:
                             message=f"No candidate accepted ({len(match_decisions)} tried)",
                         )
                     )
+
+                    # If all candidates were bot-blocked and we have Brave, try image fallback
+                    all_bot_blocked = (
+                        match_decisions
+                        and all(
+                            d.get("outcome") in ("reject_bot_blocked", "skip_low_confidence")
+                            for d in match_decisions
+                        )
+                    )
+                    if all_bot_blocked and self.brave_resolver:
+                        handle_log.entries.append(
+                            LogEntry(
+                                level="INFO",
+                                message="All candidates blocked/low-confidence — trying Brave image fallback",
+                            )
+                        )
+                        try:
+                            colors = input_row.known_colors or []
+                            brave_mapping = await self.brave_resolver.find_variant_images(
+                                product_title=input_row.title or "",
+                                vendor=vendor,
+                                colors=colors,
+                            )
+                            if brave_mapping:
+                                variant_map = {
+                                    color: match.url for color, match in brave_mapping.items()
+                                }
+                                metadata["brave_image_search"] = {
+                                    "colors_searched": colors,
+                                    "colors_matched": list(brave_mapping.keys()),
+                                    "candidates_evaluated": len(colors),
+                                    "images_accepted": len(brave_mapping),
+                                }
+                                handle_log.entries.append(
+                                    LogEntry(
+                                        level="INFO",
+                                        message=f"Brave images found for {len(brave_mapping)}/{len(colors)} colors",
+                                        data={"colors_matched": list(brave_mapping.keys())},
+                                    )
+                                )
+                                from .models import MerchOutput, OutputImage
+                                images = []
+                                for i, (color, url) in enumerate(variant_map.items(), 1):
+                                    images.append(OutputImage(
+                                        src=url,
+                                        position=i,
+                                        alt=f"{input_row.title} - {color}",
+                                    ))
+                                merch_output = MerchOutput(
+                                    handle=handle,
+                                    body_html=None,
+                                    images=images,
+                                    variant_image_map=variant_map,
+                                    confidence=50,
+                                    source_url=None,
+                                    warnings=["BRAVE_IMAGE_SEARCH_ONLY"],
+                                )
+                                self._save_log(handle_log, artifacts_dir)
+                                await self.generator.save_output(merch_output, artifacts_dir)
+                                if self.decision_logger:
+                                    self.decision_logger.log(
+                                        handle=handle,
+                                        vendor=vendor,
+                                        catalog_title=input_row.title or "",
+                                        catalog_price=None,
+                                        catalog_colors=colors,
+                                        candidates_tried=match_decisions,
+                                        outcome="accept",
+                                        final_url=None,
+                                        brave_image_search=metadata.get("brave_image_search"),
+                                    )
+                                return merch_output, ProcessingStatus.UPDATED, metadata
+                        except Exception as e:
+                            logger.warning("Brave fallback after bot-blocked failed: %s", e)
+                            handle_log.entries.append(
+                                LogEntry(level="WARNING", message=f"Brave fallback failed: {e}")
+                            )
+
                     return None, ProcessingStatus.NO_MATCH, metadata
 
                 # Use accepted candidate values
