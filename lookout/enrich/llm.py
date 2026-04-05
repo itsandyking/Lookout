@@ -304,7 +304,12 @@ def _create_default_provider() -> LLMProvider:
 
 
 class OllamaVisionClient:
-    """Local vision model client for image color identification via Ollama."""
+    """Local vision model client for image color identification via Ollama.
+
+    Uses a menu-based approach: given a list of variant color names,
+    the model picks which one best matches each image rather than
+    guessing a generic color name.
+    """
 
     def __init__(
         self,
@@ -316,25 +321,8 @@ class OllamaVisionClient:
         self.base_url = base_url
         self.timeout = timeout
 
-    async def identify_color(self, image_data: bytes) -> str | None:
-        """Ask the vision model what color a product is.
-
-        Returns a short color description, or None on failure.
-        """
-        b64 = base64.b64encode(image_data).decode()
-        payload = {
-            "model": self.model,
-            "prompt": (
-                "What is the primary color of this product? "
-                "Reply with ONLY the color name, 1-3 words maximum. "
-                "Examples: Red, Navy Blue, Forest Green, Black."
-            ),
-            "images": [b64],
-            "stream": False,
-            "think": False,
-            "options": {"num_predict": 15, "temperature": 0.1},
-        }
-
+    async def _post_vision(self, payload: dict) -> str:
+        """Send a vision request to Ollama and return the response text."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
                 f"{self.base_url}/api/generate",
@@ -342,31 +330,119 @@ class OllamaVisionClient:
             )
             resp.raise_for_status()
             result = resp.json()
-            raw = result.get("response", "").strip().strip(".")
-            return raw if raw else None
+            return result.get("response", "").strip().strip(".")
 
-    async def identify_colors_batch(
+    def _build_prompt(
+        self,
+        color_options: list[str],
+        image_url: str = "",
+    ) -> str:
+        """Build the vision prompt with color menu and URL hint."""
+        options_list = "\n".join(f"- {c}" for c in color_options)
+
+        url_hint = ""
+        if image_url:
+            from urllib.parse import unquote, urlparse
+            path = unquote(urlparse(image_url).path)
+            url_hint = f"\nImage URL path: {path}"
+
+        return (
+            f"This is a product image. Which of these color names best "
+            f"matches the product shown?\n\n"
+            f"Color options:\n{options_list}\n"
+            f"{url_hint}\n\n"
+            f"Rules:\n"
+            f"- Reply with the EXACT color name from the list above\n"
+            f"- For colorblocked products (multiple colors), pick the "
+            f"option that includes those colors (e.g. 'Black/Poppy')\n"
+            f"- If this is a lifestyle photo, size chart, or detail shot "
+            f"where you can't determine the product color, reply NONE\n"
+            f"- If none of the options match, reply NONE"
+        )
+
+    async def match_image_to_color(
+        self,
+        image_data: bytes,
+        color_options: list[str],
+        image_url: str = "",
+    ) -> str | None:
+        """Ask the vision model which color option best matches this image.
+
+        Args:
+            image_data: Raw image bytes.
+            color_options: List of variant color names to choose from.
+            image_url: URL of the image (included as extra context).
+
+        Returns:
+            The exact color name from color_options, or None if no match.
+        """
+        b64 = base64.b64encode(image_data).decode()
+
+        payload = {
+            "model": self.model,
+            "prompt": self._build_prompt(color_options, image_url),
+            "images": [b64],
+            "stream": False,
+            "think": False,
+            "options": {"num_predict": 30, "temperature": 0.1},
+        }
+
+        raw = await self._post_vision(payload)
+
+        if not raw or raw.upper() == "NONE":
+            return None
+
+        # Exact match (case-insensitive) against the options
+        raw_lower = raw.lower()
+        for option in color_options:
+            if option.lower() == raw_lower:
+                return option
+
+        # Partial match — model might have added/dropped words
+        for option in color_options:
+            if option.lower() in raw_lower or raw_lower in option.lower():
+                return option
+
+        logger.debug("Vision returned '%s' which didn't match any option", raw)
+        return None
+
+    async def match_images_batch(
         self,
         images: list[tuple[str, bytes]],
-    ) -> list[tuple[str, str | None]]:
-        """Identify colors for multiple images sequentially.
+        color_options: list[str],
+    ) -> dict[str, str]:
+        """Match a batch of images to color options.
+
+        Processes images sequentially. Each color can only be assigned once
+        (first image wins). Skips images the model can't classify.
 
         Args:
             images: List of (image_url, image_bytes) tuples.
+            color_options: List of variant color names to choose from.
 
         Returns:
-            List of (image_url, detected_color) tuples.
+            Dict mapping color name → image URL.
         """
-        results = []
+        mapping: dict[str, str] = {}
+        remaining_colors = list(color_options)
+
         for url, data in images:
+            if not remaining_colors:
+                break
             try:
-                color = await self.identify_color(data)
-                logger.debug("Vision color for %s: %s", url, color)
-                results.append((url, color))
+                matched = await self.match_image_to_color(
+                    data, remaining_colors, image_url=url,
+                )
+                if matched:
+                    mapping[matched] = url
+                    remaining_colors.remove(matched)
+                    logger.debug("Vision: %s → %s", url, matched)
+                else:
+                    logger.debug("Vision: %s → no match", url)
             except Exception as e:
                 logger.warning("Vision failed for %s: %s", url, e)
-                results.append((url, None))
-        return results
+
+        return mapping
 
     @staticmethod
     async def download_images(
@@ -396,57 +472,6 @@ class OllamaVisionClient:
                 except Exception as e:
                     logger.debug("Failed to download %s: %s", url, e)
         return downloaded
-
-    @staticmethod
-    def match_colors(
-        detected: list[tuple[str, str | None]],
-        variant_colors: list[str],
-    ) -> dict[str, str]:
-        """Match detected image colors to variant color names.
-
-        Uses case-insensitive substring matching: if the detected color
-        contains or is contained by a variant color name, it's a match.
-        First match wins for each variant color.
-
-        Returns:
-            Dict mapping variant color name → image URL.
-        """
-        mapping: dict[str, str] = {}
-        used_urls: set[str] = set()
-
-        # Normalize variant colors for matching
-        normalized_variants = [(c, c.lower().strip()) for c in variant_colors]
-
-        for url, detected_color in detected:
-            if not detected_color or url in used_urls:
-                continue
-            detected_lower = detected_color.lower().strip()
-
-            for original, norm in normalized_variants:
-                if original in mapping:
-                    continue
-                # Check if detected color matches variant name
-                if (
-                    norm in detected_lower
-                    or detected_lower in norm
-                    or _color_tokens_overlap(detected_lower, norm)
-                ):
-                    mapping[original] = url
-                    used_urls.add(url)
-                    break
-
-        return mapping
-
-
-def _color_tokens_overlap(detected: str, variant: str) -> bool:
-    """Check if significant color tokens overlap between detected and variant.
-
-    Ignores filler words and checks if any meaningful color word matches.
-    """
-    filler = {"dark", "light", "deep", "bright", "pale", "matte", "metallic"}
-    detected_tokens = {t for t in detected.split() if t not in filler}
-    variant_tokens = {t for t in variant.split() if t not in filler}
-    return bool(detected_tokens & variant_tokens)
 
 
 class LLMClient:
@@ -647,21 +672,20 @@ class LLMClient:
     ) -> dict[str, str]:
         """Select variant images using local vision model.
 
-        Downloads product images and uses Gemma 3 4B to identify the
-        color of each image, then matches to variant color names.
+        Downloads product images and asks the model to pick which
+        variant color name best matches each image.  The model sees
+        the actual image, the list of color options, and the image URL
+        (which often contains color slugs like '/basin-green/').
         """
         vision = OllamaVisionClient(model=ollama_model)
 
-        # Download images
         downloaded = await OllamaVisionClient.download_images(image_urls)
         if not downloaded:
             logger.warning("Vision: no images downloaded")
             return {}
 
-        logger.info("Vision: identifying colors in %d images", len(downloaded))
-        detected = await vision.identify_colors_batch(downloaded)
-
-        mapping = OllamaVisionClient.match_colors(detected, color_values)
+        logger.info("Vision: matching %d images to %d colors", len(downloaded), len(color_values))
+        mapping = await vision.match_images_batch(downloaded, color_values)
         logger.info(
             "Vision: matched %d/%d colors: %s",
             len(mapping),
