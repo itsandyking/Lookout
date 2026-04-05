@@ -281,3 +281,68 @@ class TestFindVariantImages:
         resolver = self._resolver()
         result = run(resolver.find_variant_images("Verra", "Teva", []))
         assert result == {}
+
+
+class TestTier2cIntegration:
+    """Test that Tier 2c plugs into _assign_variant_images correctly."""
+
+    def test_tier2c_called_when_2a_2b_fail(self):
+        """When vision and LLM tiers fail, Brave fallback is tried."""
+        from lookout.enrich.generator import Generator
+        from lookout.enrich.models import ExtractedFacts, ImageInfo, VariantOption
+
+        # Build facts with images but no variant_image_candidates
+        facts = ExtractedFacts(
+            canonical_url="https://example.com/womens-verra",
+            product_name="Women's Verra",
+            variants=[VariantOption(option_name="Color", values=["Black", "Grey"])],
+            images=[ImageInfo(url="https://example.com/hero.jpg")],
+        )
+
+        # Create Generator with mocked LLM that returns nothing, and a brave resolver
+        gen = Generator.__new__(Generator)
+        gen.llm_client = MagicMock()
+        gen.llm_client.select_variant_images_vision = AsyncMock(return_value={})
+        gen.llm_client.select_variant_images = AsyncMock(return_value={})
+
+        mock_brave = MagicMock()
+        mock_brave.find_variant_images = AsyncMock(return_value={
+            "Black": ImageMatch(
+                url="https://cdn.ex.com/black.jpg",
+                thumbnail_url="https://thumb.ex.com/black.jpg",
+                source_page="https://ex.com/p",
+                color="Black",
+                detected_color="BLACK",
+                vision_verified=True,
+            ),
+        })
+        gen.brave_resolver = mock_brave
+
+        variant_map, warnings = run(gen._assign_variant_images(facts))
+
+        mock_brave.find_variant_images.assert_called_once()
+        assert "Black" in variant_map
+        assert variant_map["Black"] == "https://cdn.ex.com/black.jpg"
+
+    def test_tier2c_skipped_when_no_resolver(self):
+        """Without brave_resolver, falls through to Tier 0."""
+        from lookout.enrich.generator import Generator
+        from lookout.enrich.models import ExtractedFacts, ImageInfo, VariantOption
+
+        facts = ExtractedFacts(
+            canonical_url="https://example.com/womens-verra",
+            product_name="Women's Verra",
+            variants=[VariantOption(option_name="Color", values=["Black"])],
+            images=[ImageInfo(url="https://example.com/hero.jpg")],
+        )
+
+        gen = Generator.__new__(Generator)
+        gen.llm_client = MagicMock()
+        gen.llm_client.select_variant_images_vision = AsyncMock(return_value={})
+        gen.llm_client.select_variant_images = AsyncMock(return_value={})
+        gen.brave_resolver = None
+
+        variant_map, warnings = run(gen._assign_variant_images(facts))
+
+        # Should fall through to Tier 0 hero image
+        assert "__all__" in variant_map

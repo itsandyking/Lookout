@@ -177,15 +177,18 @@ class Generator:
     - Variant image assignment (Tier 0 and Tier 1)
     """
 
-    def __init__(self, llm_client: LLMClient | None = None) -> None:
+    def __init__(self, llm_client: LLMClient | None = None, brave_resolver=None) -> None:
         """
         Initialize the generator.
 
         Args:
             llm_client: LLM client for text generation. If not provided,
                        body HTML generation will be skipped.
+            brave_resolver: BraveImageResolver instance for Tier 2c image search.
+                           If not provided, Tier 2c is skipped.
         """
         self.llm_client = llm_client
+        self.brave_resolver = brave_resolver
 
     async def generate_output(
         self,
@@ -540,6 +543,27 @@ class Generator:
             except Exception as e:
                 logger.warning(f"LLM text variant image selection failed: {e}")
                 warnings.append(f"LLM_VARIANT_SELECTION_ERROR: {e!s}")
+
+        # Tier 2c: Brave Image Search fallback with vision verification
+        if color_variant and self.brave_resolver and not variant_map:
+            try:
+                brave_mapping = await self.brave_resolver.find_variant_images(
+                    product_title=facts.product_name or "",
+                    vendor=facts.brand or "",
+                    colors=color_variant.values,
+                )
+                if brave_mapping:
+                    variant_map = {
+                        color: match.url for color, match in brave_mapping.items()
+                    }
+                    logger.info(
+                        "Tier 2c (Brave) variant images assigned: %d/%d colors",
+                        len(variant_map), len(color_variant.values),
+                    )
+                    return variant_map, warnings
+            except Exception as e:
+                logger.warning("Brave image search failed: %s", e)
+                warnings.append(f"BRAVE_IMAGE_SEARCH_ERROR: {e!s}")
 
         # Tier 0: Assign hero image to all variants
         # Works for: single-color products, size-only variants, or when
