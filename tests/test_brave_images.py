@@ -6,13 +6,123 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from lookout.enrich.brave_images import BraveImageResolver, BraveImageResult, ImageMatch
+from lookout.enrich.brave_images import (
+    BraveImageResolver,
+    BraveImageResult,
+    ImageMatch,
+    normalize_color_for_query,
+)
 from lookout.enrich.models import BraveImagesSettings, GlobalSettings, ImageInfo
 
 
 def run(coro):
     """Helper to run async tests."""
     return asyncio.new_event_loop().run_until_complete(coro)
+
+
+class TestNormalizeColorForQuery:
+    """Test color name normalization for Brave search queries."""
+
+    # --- Lens / optics descriptions ---
+
+    def test_strip_w_slash_lens(self):
+        assert normalize_color_for_query("Black / Silver w/ Mirror Silver Lens") == "black silver"
+
+    def test_strip_with_keyword(self):
+        assert normalize_color_for_query("Matte Black with ChromaPop Sun Green Mirror") == "black"
+
+    def test_strip_trailing_lens(self):
+        assert normalize_color_for_query("Black Gold Mirror Lens") == "black gold"
+
+    # --- Non-color modifiers ---
+
+    def test_strip_rib(self):
+        assert normalize_color_for_query("Black Rib") == "black"
+
+    def test_strip_heather(self):
+        assert normalize_color_for_query("Grey Heather") == "gray"
+
+    def test_strip_melange(self):
+        assert normalize_color_for_query("Blue Melange") == "blue"
+
+    def test_strip_print(self):
+        assert normalize_color_for_query("Floral Print Red") == "red"
+
+    # --- Exotic color mapping ---
+
+    def test_ceramic_to_beige(self):
+        assert normalize_color_for_query("Ceramic") == "beige"
+
+    def test_crimson_to_red(self):
+        assert normalize_color_for_query("Crimson") == "red"
+
+    def test_slate_to_gray(self):
+        assert normalize_color_for_query("Slate") == "gray"
+
+    def test_obsidian_to_black(self):
+        assert normalize_color_for_query("Obsidian") == "black"
+
+    def test_ivory_to_white(self):
+        assert normalize_color_for_query("Ivory") == "white"
+
+    def test_cobalt_to_blue(self):
+        assert normalize_color_for_query("Cobalt") == "blue"
+
+    def test_sage_to_green(self):
+        assert normalize_color_for_query("Sage") == "green"
+
+    def test_cognac_to_brown(self):
+        assert normalize_color_for_query("Cognac") == "brown"
+
+    # --- Combination rules ---
+
+    def test_exotic_plus_modifier(self):
+        assert normalize_color_for_query("Slate Heather") == "gray"
+
+    def test_slash_separator_deduped(self):
+        assert normalize_color_for_query("Black/Black") == "black"
+
+    def test_multi_color_slash(self):
+        result = normalize_color_for_query("Navy / Crimson")
+        assert result == "navy crimson"
+
+    # --- Passthrough ---
+
+    def test_simple_color_passthrough(self):
+        assert normalize_color_for_query("Black") == "black"
+
+    def test_two_word_color_passthrough(self):
+        assert normalize_color_for_query("Storm Blue") == "storm blue"
+
+    def test_empty_after_stripping_returns_original(self):
+        # If everything gets stripped, fall back to lowered original
+        assert normalize_color_for_query("Print") == "print"
+
+    # --- The query uses normalized color, not the original ---
+
+    def test_pass2_query_uses_normalized_color(self):
+        """Pass 2 targeted search should use the normalized color in its query."""
+        resolver = BraveImageResolver(BraveImagesSettings(max_evaluate=1))
+
+        captured_queries = []
+
+        async def fake_search(query, count=None):
+            captured_queries.append(query)
+            return []
+
+        resolver._search_brave_images = fake_search
+
+        run(resolver._search_and_verify_color(
+            vendor="Smith",
+            product_title="I/O MAG S",
+            color="Black / Silver w/ Mirror Silver Lens",
+        ))
+
+        assert len(captured_queries) == 1
+        # Should contain normalized "black silver", not the raw lens description
+        assert "black silver" in captured_queries[0]
+        assert "Lens" not in captured_queries[0]
+        assert "w/" not in captured_queries[0]
 
 
 class TestBraveImagesSettings:
@@ -249,7 +359,8 @@ class TestFindVariantImages:
         search_queries = []
         async def fake_search(query, count=None):
             search_queries.append(query)
-            if "Rare Color" in query:
+            # After normalization, "Rare Color" becomes "rare color" (lowercased)
+            if "rare color" in query.lower():
                 return [
                     BraveImageResult(
                         full_url="https://cdn.ex.com/rare.jpg", thumbnail_url="https://thumb.ex.com/rare.jpg",
@@ -274,7 +385,7 @@ class TestFindVariantImages:
 
         assert len(search_queries) == 2
         assert "Teva Verra Sandal" in search_queries[0]
-        assert "Rare Color" in search_queries[1]
+        assert "rare color" in search_queries[1].lower()
         assert "Rare Color" in result
 
     def test_empty_colors(self):
