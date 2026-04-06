@@ -550,6 +550,14 @@ class OllamaVisionClient:
         Uses token overlap: if the model says 'dark purple and yellow'
         and an option is 'Purple Ink/Purple Dusk/Cheddar', the overlap
         on 'purple' scores a match.
+
+        Stricter rules to avoid false positives:
+        - Always require at least 1 token overlap.
+        - When the description has 2+ meaningful tokens, require at least 2.
+        - When only 1 token overlaps, it must match the *first* meaningful
+          token of the option (the dominant/primary color word).  This
+          prevents e.g. description "berry" matching option "Black/Berry"
+          on the secondary token alone.
         """
         desc_tokens = {t.lower().strip(",.") for t in description.split()}
         # Remove noise words
@@ -559,22 +567,43 @@ class OllamaVisionClient:
 
         best_option = None
         best_score = 0
+        best_overlap: set[str] = set()
+        best_first_token: str | None = None
 
         for option in remaining_colors:
             # Tokenize the option, including slash-separated parts
             option_expanded = option.replace("/", " ").replace("-", " ")
-            option_tokens = {t.lower().strip() for t in option_expanded.split()}
-            option_tokens -= noise
+            all_option_tokens = [t.lower().strip() for t in option_expanded.split()]
+            # First meaningful token is the dominant/primary color word
+            first_token = None
+            for t in all_option_tokens:
+                if t not in noise:
+                    first_token = t
+                    break
+
+            option_tokens = set(all_option_tokens) - noise
 
             overlap = desc_tokens & option_tokens
             if len(overlap) > best_score:
                 best_score = len(overlap)
                 best_option = option
+                best_overlap = overlap
+                best_first_token = first_token
 
-        # Require at least 1 meaningful token overlap
-        if best_score >= 1:
-            return best_option
-        return None
+        if best_score < 1:
+            return None
+
+        # When the description has 2+ meaningful tokens, require at least 2
+        # overlapping tokens to avoid weak single-token false positives.
+        min_required = 2 if len(desc_tokens) >= 2 else 1
+        if best_score < min_required:
+            # Allow a single-token match only if it hits the dominant
+            # (first) token of the option.
+            if best_first_token and best_first_token in best_overlap:
+                return best_option
+            return None
+
+        return best_option
 
     async def match_images_batch(
         self,
