@@ -112,10 +112,32 @@ class LookoutStore:
 
     # --- Catalog data ---
 
+    # Locally swatch URLs are color-indexed, not product-specific.
+    # The same image can appear across every product a vendor sells in
+    # that color.  Using them as variant images causes cross-product
+    # contamination (e.g. pants image on a duffel bag listing).
+    _LOCALLY_SWATCH_PATTERNS = (
+        "s3.amazonaws.com/media.locally.net/",
+        "media2.locally.com/",
+        "media.locally.com/images/",
+    )
+
+    @staticmethod
+    def _is_locally_swatch(url: str) -> bool:
+        return any(pat in url for pat in LookoutStore._LOCALLY_SWATCH_PATTERNS)
+
     def find_catalog_image(self, barcode: str) -> str | None:
-        """Find a catalog image URL by barcode."""
+        """Find a catalog image URL by barcode.
+
+        Rejects Locally swatch URLs which are color-indexed, not
+        product-specific, and cause cross-product image contamination.
+        """
         try:
-            return self._vendor_store.find_image_by_upc(barcode)
+            url = self._vendor_store.find_image_by_upc(barcode)
+            if url and self._is_locally_swatch(url):
+                logger.debug("Rejecting Locally swatch for barcode %s: %s", barcode, url[:60])
+                return None
+            return url
         except Exception as e:
             logger.warning(f"Catalog image lookup failed for {barcode}: {e}")
             return None
@@ -125,7 +147,11 @@ class LookoutStore:
     ) -> str | None:
         """Find a catalog image URL by vendor style code and color."""
         try:
-            return self._vendor_store.find_image_by_style_color(vendor, style, color)
+            url = self._vendor_store.find_image_by_style_color(vendor, style, color)
+            if url and self._is_locally_swatch(url):
+                logger.debug("Rejecting Locally swatch for %s/%s/%s", vendor, style, color)
+                return None
+            return url
         except Exception as e:
             logger.warning(f"Catalog style lookup failed: {e}")
             return None
