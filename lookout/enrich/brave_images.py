@@ -320,11 +320,15 @@ class BraveImageResolver:
         prompt = (
             f"This image should be a product photo of: {vendor} {product_title}\n"
             f"Expected color: {expected_color}\n\n"
-            f"Answer these 3 questions with YES or NO, then the color:\n"
-            f"1. Is this a product photo of a {product_title} (or very similar product)?\n"
-            f"2. Is it suitable for e-commerce (clean background, good quality, shows the product clearly)?\n"
-            f"3. What is the main color of the product? (just the color name)\n\n"
+            f"Answer these 4 questions with YES or NO, then the color:\n"
+            f"1. What TYPE of product is shown? (e.g. jacket, backpack, duffel bag, shoes, pants)\n"
+            f"2. Is this the SAME type of product as '{product_title}'? "
+            f"Answer NO if the product category is different "
+            f"(e.g. pants shown instead of a duffel bag, or a backpack instead of shoes).\n"
+            f"3. Is it suitable for e-commerce (clean background, good quality, shows the product clearly)?\n"
+            f"4. What is the main color of the product? (just the color name)\n\n"
             f"Format your answer exactly as:\n"
+            f"TYPE: <product type>\n"
             f"PRODUCT: YES or NO\n"
             f"ECOMMERCE: YES or NO\n"
             f"COLOR: <color name>"
@@ -336,7 +340,7 @@ class BraveImageResolver:
             "images": [b64],
             "stream": False,
             "think": False,
-            "options": {"num_predict": 50, "temperature": 0.1},
+            "options": {"num_predict": 80, "temperature": 0.1},
         }
 
         try:
@@ -363,13 +367,16 @@ class BraveImageResolver:
     def _parse_verify_response(raw: str, expected_color: str) -> dict:
         """Parse the structured vision response."""
         lines = raw.upper().split("\n")
+        detected_type = ""
         product_match = False
         ecommerce = False
         detected_color = ""
 
         for line in lines:
             line = line.strip()
-            if line.startswith("PRODUCT:"):
+            if line.startswith("TYPE:"):
+                detected_type = line.split(":", 1)[1].strip()
+            elif line.startswith("PRODUCT:"):
                 product_match = "YES" in line
             elif line.startswith("ECOMMERCE:"):
                 ecommerce = "YES" in line
@@ -394,6 +401,7 @@ class BraveImageResolver:
             "color_match": color_match,
             "ecommerce_suitable": ecommerce,
             "detected_color": detected_color,
+            "detected_type": detected_type,
         }
 
     async def _search_and_verify_color(
@@ -440,13 +448,14 @@ class BraveImageResolver:
                 )
             else:
                 logger.debug(
-                    "Brave image rejected for '%s' color '%s': product=%s color=%s ecom=%s detected=%s",
+                    "Brave image rejected for '%s' color '%s': product=%s color=%s ecom=%s detected=%s type=%s",
                     product_title,
                     color,
                     result["product_match"],
                     result["color_match"],
                     result["ecommerce_suitable"],
                     result["detected_color"],
+                    result.get("detected_type", ""),
                 )
 
         return None

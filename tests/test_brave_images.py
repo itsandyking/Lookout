@@ -223,28 +223,37 @@ class TestParseVerifyResponse:
     """Test parsing of structured vision responses."""
 
     def test_all_pass(self):
-        raw = "PRODUCT: YES\nECOMMERCE: YES\nCOLOR: Black"
+        raw = "TYPE: DUFFEL BAG\nPRODUCT: YES\nECOMMERCE: YES\nCOLOR: Black"
         result = BraveImageResolver._parse_verify_response(raw, "Black")
         assert result["accepted"] is True
         assert result["product_match"] is True
         assert result["color_match"] is True
         assert result["ecommerce_suitable"] is True
         assert result["detected_color"] == "BLACK"
+        assert result["detected_type"] == "DUFFEL BAG"
+
+    def test_all_pass_without_type(self):
+        """Backwards compatible — TYPE line is optional."""
+        raw = "PRODUCT: YES\nECOMMERCE: YES\nCOLOR: Black"
+        result = BraveImageResolver._parse_verify_response(raw, "Black")
+        assert result["accepted"] is True
+        assert result["detected_type"] == ""
 
     def test_product_no(self):
-        raw = "PRODUCT: NO\nECOMMERCE: YES\nCOLOR: Black"
+        raw = "TYPE: PANTS\nPRODUCT: NO\nECOMMERCE: YES\nCOLOR: Black"
         result = BraveImageResolver._parse_verify_response(raw, "Black")
         assert result["accepted"] is False
         assert result["product_match"] is False
+        assert result["detected_type"] == "PANTS"
 
     def test_ecommerce_no(self):
-        raw = "PRODUCT: YES\nECOMMERCE: NO\nCOLOR: Black"
+        raw = "TYPE: DUFFEL BAG\nPRODUCT: YES\nECOMMERCE: NO\nCOLOR: Black"
         result = BraveImageResolver._parse_verify_response(raw, "Black")
         assert result["accepted"] is False
         assert result["ecommerce_suitable"] is False
 
     def test_color_mismatch(self):
-        raw = "PRODUCT: YES\nECOMMERCE: YES\nCOLOR: Red"
+        raw = "TYPE: SANDAL\nPRODUCT: YES\nECOMMERCE: YES\nCOLOR: Red"
         result = BraveImageResolver._parse_verify_response(raw, "Black")
         assert result["accepted"] is False
         assert result["color_match"] is False
@@ -281,7 +290,7 @@ class TestVerifyImage:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "response": "PRODUCT: YES\nECOMMERCE: YES\nCOLOR: Black"
+            "response": "TYPE: SANDAL\nPRODUCT: YES\nECOMMERCE: YES\nCOLOR: Black"
         }
         mock_response.raise_for_status = MagicMock()
 
