@@ -1,7 +1,7 @@
 """Tests for data models."""
 
 
-from lookout.enrich.models import InputRow, ProcessingStatus
+from lookout.enrich.models import InputRow, ProcessingStatus, VendorConfig
 
 
 class TestInputRow:
@@ -114,6 +114,18 @@ class TestInputRow:
         assert row.suggestions is None
         assert row.has_product_type is True  # Default
         assert row.has_tags is True  # Default
+
+
+class TestVendorConfig:
+    """Tests for VendorConfig model."""
+
+    def test_house_brand_defaults_false(self):
+        vc = VendorConfig(domain="example.com")
+        assert vc.house_brand is False
+
+    def test_house_brand_true(self):
+        vc = VendorConfig(domain="", house_brand=True)
+        assert vc.house_brand is True
 
 
 class TestProcessingStatus:

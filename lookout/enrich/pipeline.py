@@ -327,7 +327,8 @@ class ProductProcessor:
                     LogEntry(level="INFO", message=f"Vendor blocked (bot protection): {vendor}")
                 )
                 # If Brave image search is available, try it instead of skipping
-                if self.brave_resolver:
+                # (but skip for house brands — no external retailers to find)
+                if self.brave_resolver and not vendor_config.house_brand:
                     handle_log.entries.append(
                         LogEntry(level="INFO", message="Attempting Brave image search fallback for blocked vendor")
                     )
@@ -730,7 +731,7 @@ class ProductProcessor:
                             for d in match_decisions
                         )
                     )
-                    if all_bot_blocked and self.brave_resolver:
+                    if all_bot_blocked and self.brave_resolver and not vendor_config.house_brand:
                         handle_log.entries.append(
                             LogEntry(
                                 level="INFO",

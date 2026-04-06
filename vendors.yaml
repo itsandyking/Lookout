@@ -752,6 +752,16 @@ vendors:
     domain: "nosopatches.com"
     is_shopify: true
 
+  # --- House brands (no external retailers, skip Brave search) ---
+
+  Switchback:
+    domain: ""
+    house_brand: true
+
+  "The Mountain Air":
+    domain: ""
+    house_brand: true
+
 # Global settings
 settings:
   # Default confidence thresholds for URL matching
