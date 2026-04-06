@@ -1736,6 +1736,223 @@ def test_resolver_cmd(output_dir, verbose):
         sys.exit(1)
 
 
+# ---------------------------------------------------------------------------
+# enrich push / undo
+# ---------------------------------------------------------------------------
+
+_DB_PATH = Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db"
+_SHOPIFY_CONFIG_PATH = Path.home() / ".tvr" / "shopify" / "config.json"
+
+
+@enrich.command("push")
+@click.option(
+    "--run-dir",
+    "-d",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Enrichment output directory (for description changes)",
+)
+@click.option(
+    "--dispositions",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Dispositions JSON with approved_matches",
+)
+@click.option("--dry-run", is_flag=True, help="Preview without writing to Shopify")
+@click.option("--verbose", is_flag=True)
+def push_cmd(run_dir, dispositions, dry_run, verbose):
+    """Push approved enrichment output (images + descriptions) to Shopify."""
+    import json
+    from collections import defaultdict
+    from datetime import UTC, datetime
+
+    import httpx
+
+    from lookout.push.manifest import PushManifest, PushSummary, save_manifest
+    from lookout.push.pusher import ShopifyPusher
+
+    setup_logging(verbose)
+
+    with open(_SHOPIFY_CONFIG_PATH) as f:
+        config = json.load(f)
+
+    with open(dispositions) as f:
+        disp_data = json.load(f)
+
+    approved = disp_data.get("approved_matches", [])
+    if not approved:
+        console.print("[red]No approved_matches found in dispositions file[/red]")
+        return
+
+    # Group assignments by handle
+    by_handle: dict[str, list[dict]] = defaultdict(list)
+    for match in approved:
+        by_handle[match["handle"]].append(match)
+
+    # Load description changes from run_dir if provided
+    body_html_by_handle: dict[str, str] = {}
+    if run_dir:
+        for merch_dir in run_dir.iterdir():
+            if not merch_dir.is_dir():
+                continue
+            merch_output = merch_dir / "merch_output.json"
+            if merch_output.exists():
+                data = json.loads(merch_output.read_text())
+                if data.get("body_html"):
+                    body_html_by_handle[data["handle"]] = data["body_html"]
+
+    console.print(
+        f"{'[yellow]DRY RUN[/yellow] ' if dry_run else ''}"
+        f"Pushing {len(approved)} image assignments across {len(by_handle)} products"
+    )
+    if body_html_by_handle:
+        console.print(f"  + {len(body_html_by_handle)} description updates")
+
+    pusher = ShopifyPusher(config=config, db_path=_DB_PATH, dry_run=dry_run)
+    run_id = run_dir.name if run_dir else "manual"
+
+    products_manifest: dict = {}
+    summary = {
+        "pushed": 0,
+        "skipped": 0,
+        "images_created": 0,
+        "images_skipped": 0,
+        "descriptions_updated": 0,
+        "failed": 0,
+    }
+
+    async def _run():
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for i, (handle, assignments) in enumerate(sorted(by_handle.items())):
+                body_html = body_html_by_handle.get(handle)
+                try:
+                    pm = await pusher.push_product(handle, assignments, client, body_html)
+                    if pm.product_id == 0:
+                        summary["skipped"] += 1
+                        continue
+                    products_manifest[handle] = pm
+                    summary["pushed"] += 1
+                    summary["images_created"] += len(pm.pushed.images_created)
+                    if pm.pushed.body_html is not None:
+                        summary["descriptions_updated"] += 1
+                except Exception as e:
+                    console.print(f"[red]Failed: {handle}: {e}[/red]")
+                    summary["failed"] += 1
+
+                if (i + 1) % 25 == 0:
+                    console.print(f"  Progress: {i + 1}/{len(by_handle)}")
+
+        pusher.close()
+
+    asyncio.run(_run())
+
+    # Save manifest
+    manifest = PushManifest(
+        run_id=run_id,
+        pushed_at=datetime.now(UTC),
+        dispositions_path=str(dispositions),
+        summary=PushSummary(
+            products_pushed=summary["pushed"],
+            images_created=summary["images_created"],
+            images_skipped=summary["images_skipped"],
+            descriptions_updated=summary["descriptions_updated"],
+            failed=summary["failed"],
+        ),
+        products=products_manifest,
+    )
+
+    output_dir = run_dir.parent if run_dir else Path("output")
+    manifest_path = save_manifest(manifest, output_dir)
+
+    # Print summary
+    table = Table(title="Push Summary")
+    table.add_column("Metric")
+    table.add_column("Count", style="cyan")
+    table.add_row("Products pushed", str(summary["pushed"]))
+    table.add_row("Images created", str(summary["images_created"]))
+    table.add_row("Descriptions updated", str(summary["descriptions_updated"]))
+    table.add_row("Skipped", str(summary["skipped"]))
+    table.add_row("Failed", str(summary["failed"]))
+    console.print(table)
+    console.print(f"\nManifest saved: [green]{manifest_path}[/green]")
+    console.print("Use [cyan]lookout enrich undo --manifest <path>[/cyan] to revert")
+
+
+@enrich.command("undo")
+@click.option(
+    "--manifest",
+    "manifest_path",
+    type=click.Path(exists=True, path_type=Path),
+    required=True,
+    help="Push manifest JSON from a previous push run",
+)
+@click.option(
+    "--handle",
+    "-h",
+    "handles",
+    multiple=True,
+    help="Only undo specific product handles (repeatable)",
+)
+@click.option(
+    "--confirm", is_flag=True, help="Actually execute the undo (default is dry-run preview)"
+)
+@click.option("--verbose", is_flag=True)
+def undo_cmd(manifest_path, handles, confirm, verbose):
+    """Undo a previous push using its manifest. Dry-run by default."""
+    import json
+
+    from lookout.push.manifest import load_manifest
+    from lookout.push.undo import PushUndoer
+
+    setup_logging(verbose)
+
+    with open(_SHOPIFY_CONFIG_PATH) as f:
+        config = json.load(f)
+
+    manifest = load_manifest(manifest_path)
+    handle_list = list(handles) if handles else None
+
+    target_products = manifest.products
+    if handle_list:
+        target_products = {h: m for h, m in manifest.products.items() if h in handle_list}
+        missing = set(handle_list) - set(target_products.keys())
+        if missing:
+            console.print(f"[yellow]Handles not in manifest: {missing}[/yellow]")
+
+    total_images = sum(len(pm.pushed.images_created) for pm in target_products.values())
+    total_body = sum(1 for pm in target_products.values() if pm.pushed.body_html is not None)
+
+    console.print(f"Manifest: [cyan]{manifest.run_id}[/cyan] (pushed {manifest.pushed_at})")
+    console.print(f"Products to undo: {len(target_products)}")
+    console.print(f"Images to delete: {total_images}")
+    if total_body:
+        console.print(f"Descriptions to restore: {total_body}")
+
+    if not confirm:
+        console.print("\n[yellow]DRY RUN — add --confirm to execute[/yellow]")
+
+    dry_run = not confirm
+    undoer = PushUndoer(config=config, dry_run=dry_run)
+
+    result = asyncio.run(undoer.undo_run(manifest, handle_list))
+
+    table = Table(title="Undo Summary")
+    table.add_column("Metric")
+    table.add_column("Count", style="cyan")
+    table.add_row("Products undone", str(result["products_undone"]))
+    table.add_row("Images deleted", str(result["images_deleted"]))
+    table.add_row("Variant assignments restored", str(result["variant_assignments_restored"]))
+    table.add_row("Descriptions restored", str(result["body_restored"]))
+    if result["errors"]:
+        table.add_row("Errors", str(len(result["errors"])))
+    console.print(table)
+
+    if result["errors"]:
+        console.print("\n[red]Errors:[/red]")
+        for err in result["errors"]:
+            console.print(f"  {err}")
+
+
 def main() -> None:
     cli()
 
