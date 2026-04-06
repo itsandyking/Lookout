@@ -7,6 +7,7 @@ for merchandising improvement.
 
 from __future__ import annotations
 
+import logging
 import re
 
 from lookout.audit.gmc_signals import GMCSignals
@@ -14,6 +15,51 @@ from lookout.audit.models import MIN_DESCRIPTION_LENGTH, AuditResult, ProductSco
 from lookout.audit.online_signals import OnlineSignals
 from lookout.store import LookoutStore
 from lookout.taxonomy.mappings import EXCLUDED_VENDORS
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_product_id(
+    offer_id: str,
+    cache: dict[int, int],
+    store: LookoutStore,
+) -> int | None:
+    """Extract the Shopify product_id from a GMC offer_id.
+
+    Shopify's Google channel uses the format ``shopify_US_{variant_id}``.
+    We look up the variant in the store to find its parent product_id,
+    caching results for efficiency.
+
+    Returns the product_id (int) or None if the offer_id can't be resolved.
+    """
+    parts = offer_id.split("_")
+
+    # Format: shopify_XX_{variant_id}  (3 parts, standard Shopify Google channel)
+    if len(parts) == 3 and parts[0].lower() == "shopify":
+        try:
+            vid = int(parts[2])
+        except (ValueError, IndexError):
+            return None
+        if vid in cache:
+            return cache[vid]
+        # Look up variant → product in the store
+        variant = store.get_variant_by_id(vid)
+        if variant:
+            pid = variant["product_id"]
+            cache[vid] = pid
+            return pid
+        logger.debug("GMC offer_id %s: variant %d not found in store", offer_id, vid)
+        return None
+
+    # Legacy/alternative format: shopify_XX_{product_id}_{variant_id} (4 parts)
+    if len(parts) >= 4 and parts[0].lower() == "shopify":
+        try:
+            return int(parts[2])
+        except (ValueError, IndexError):
+            return None
+
+    # Bare numeric ID (plain variant_id or product_id) — skip, ambiguous
+    return None
 
 
 class ContentAuditor:
@@ -48,32 +94,32 @@ class ContentAuditor:
         self.gmc_signals = gmc_signals or {}
 
         # Build product_id → aggregated GMC signals lookup.
-        # GMC offer_ids are "shopify_us_{product_id}_{variant_id}" — aggregate
-        # clicks/impressions across variants to the product level.
+        # Shopify's Google channel submits offer_ids as
+        # "shopify_US_{variant_id}" (3 parts).  We need a variant→product
+        # reverse map so we can aggregate per-variant GMC data up to the
+        # product level.
+        self._variant_to_product: dict[int, int] = {}
         self._gmc_by_product: dict[int, GMCSignals] = {}
         for offer_id, sig in self.gmc_signals.items():
-            parts = offer_id.split("_")
-            if len(parts) >= 4 and parts[0] == "shopify":
-                try:
-                    pid = int(parts[2])
-                except (ValueError, IndexError):
-                    continue
-                if pid in self._gmc_by_product:
-                    existing = self._gmc_by_product[pid]
-                    existing.clicks += sig.clicks
-                    existing.impressions += sig.impressions
-                    if sig.disapproved:
-                        existing.disapproved = True
-                    existing.issues.extend(sig.issues)
-                else:
-                    self._gmc_by_product[pid] = GMCSignals(
-                        offer_id=offer_id,
-                        title=sig.title,
-                        clicks=sig.clicks,
-                        impressions=sig.impressions,
-                        disapproved=sig.disapproved,
-                        issues=list(sig.issues),
-                    )
+            pid = _extract_product_id(offer_id, self._variant_to_product, self.store)
+            if pid is None:
+                continue
+            if pid in self._gmc_by_product:
+                existing = self._gmc_by_product[pid]
+                existing.clicks += sig.clicks
+                existing.impressions += sig.impressions
+                if sig.disapproved:
+                    existing.disapproved = True
+                existing.issues.extend(sig.issues)
+            else:
+                self._gmc_by_product[pid] = GMCSignals(
+                    offer_id=offer_id,
+                    title=sig.title,
+                    clicks=sig.clicks,
+                    impressions=sig.impressions,
+                    disapproved=sig.disapproved,
+                    issues=list(sig.issues),
+                )
         # Recalculate CTR after aggregation
         for sig in self._gmc_by_product.values():
             sig.ctr = sig.clicks / sig.impressions if sig.impressions > 0 else 0.0
