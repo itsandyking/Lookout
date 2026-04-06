@@ -78,7 +78,7 @@ _EXOTIC_COLOR_MAP: dict[str, str] = {
     "citron": "yellow",
     "mustard": "yellow",
     "grey": "gray",
-    "gold": "yellow",
+    "gold": "gold",
     "amber": "orange",
     "tangerine": "orange",
     "paprika": "red orange",
@@ -137,13 +137,15 @@ def normalize_color_for_query(color: str) -> str:
     # 2. Drop non-color modifiers
     tokens = [t for t in tokens if t.lower() not in _NON_COLOR_MODIFIERS]
 
-    # 3. Map exotic names to standard colors (per-token)
+    # 3. Map exotic names to standard colors
+    # Only apply mapping to standalone tokens (single remaining token)
+    # to avoid bad compound expansions like "Teal Blue" → "blue green blue".
     mapped: list[str] = []
-    for t in tokens:
-        replacement = _EXOTIC_COLOR_MAP.get(t.lower())
-        if replacement:
-            mapped.append(replacement)
-        else:
+    if len(tokens) == 1:
+        replacement = _EXOTIC_COLOR_MAP.get(tokens[0].lower())
+        mapped.append(replacement if replacement else tokens[0].lower())
+    else:
+        for t in tokens:
             mapped.append(t.lower())
 
     result = " ".join(mapped)

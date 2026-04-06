@@ -32,7 +32,7 @@ class TestNormalizeColorForQuery:
         assert normalize_color_for_query("Matte Black with ChromaPop Sun Green Mirror") == "black"
 
     def test_strip_trailing_lens(self):
-        assert normalize_color_for_query("Black Gold Mirror Lens") == "black yellow"
+        assert normalize_color_for_query("Black Gold Mirror Lens") == "black gold"
 
     # --- Non-color modifiers ---
 
@@ -84,7 +84,7 @@ class TestNormalizeColorForQuery:
 
     def test_multi_color_slash(self):
         result = normalize_color_for_query("Navy / Crimson")
-        assert result == "dark blue red"
+        assert result == "navy crimson"
 
     # --- Passthrough ---
 
@@ -92,7 +92,7 @@ class TestNormalizeColorForQuery:
         assert normalize_color_for_query("Black") == "black"
 
     def test_two_word_color_passthrough(self):
-        assert normalize_color_for_query("Storm Blue") == "gray blue"
+        assert normalize_color_for_query("Storm Blue") == "storm blue"
 
     def test_empty_after_stripping_returns_original(self):
         # If everything gets stripped, fall back to lowered original
