@@ -90,7 +90,10 @@ class LookoutStore:
         return self._variant_to_dict(v) if v else None
 
     def get_variant_by_id(self, variant_id: int) -> dict | None:
-        """Look up a single variant by its Shopify variant ID."""
+        """Look up a single variant by its Shopify variant ID.
+
+        Note: Raw ORM query — TVR store has no get_variant_by_id method.
+        """
         from tvr.db.models import Variant
 
         with self._store.session() as s:
