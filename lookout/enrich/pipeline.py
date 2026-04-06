@@ -439,7 +439,6 @@ class ProductProcessor:
 
                 images = []
                 if input_row.needs_images:
-                    from .models import OutputImage
                     for i, (color, url) in enumerate(variant_map.items(), 1):
                         images.append(OutputImage(src=url, position=i, alt=f"{input_row.title} - {color}"))
 
@@ -1048,7 +1047,6 @@ class ProductProcessor:
             # Step 4b: Validate image URLs (HEAD request)
             if merch_output.images:
                 from .generator import validate_image_urls
-                from .models import OutputImage
 
                 img_dicts = [{"src": img.src, "alt": img.alt, "position": img.position}
                              for img in merch_output.images]
