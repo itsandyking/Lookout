@@ -11,6 +11,7 @@ import asyncio
 import base64
 import logging
 import os
+import re
 from dataclasses import dataclass
 
 import httpx
@@ -18,6 +19,142 @@ import httpx
 from lookout.enrich.models import BraveImagesSettings
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Color-name normalization for search queries
+# ---------------------------------------------------------------------------
+# These rules clean up creative/complex color names so Brave image search
+# returns better results.  They only affect the *query string* — the original
+# color name is preserved in all stored output.
+
+# Exotic → standard color mapping (lowercase key → replacement)
+_EXOTIC_COLOR_MAP: dict[str, str] = {
+    "ceramic": "beige",
+    "crimson": "red",
+    "slate": "gray",
+    "charcoal": "gray",
+    "obsidian": "black",
+    "onyx": "black",
+    "ivory": "white",
+    "bone": "white",
+    "pearl": "white",
+    "cobalt": "blue",
+    "navy": "dark blue",
+    "teal": "blue green",
+    "olive": "green",
+    "sage": "green",
+    "moss": "green",
+    "wine": "red",
+    "burgundy": "dark red",
+    "maroon": "dark red",
+    "mauve": "pink",
+    "coral": "orange pink",
+    "rust": "orange",
+    "cognac": "brown",
+    "espresso": "dark brown",
+    "mocha": "brown",
+    "taupe": "brown gray",
+    "khaki": "tan",
+    "sand": "tan",
+    "dune": "tan",
+    "stone": "gray",
+    "pewter": "gray",
+    "graphite": "gray",
+    "ash": "gray",
+    "fog": "gray",
+    "storm": "gray",
+    "ink": "dark blue",
+    "indigo": "dark blue",
+    "midnight": "dark blue",
+    "azure": "blue",
+    "sky": "light blue",
+    "arctic": "light blue",
+    "lagoon": "blue green",
+    "fuchsia": "pink",
+    "magenta": "pink",
+    "blush": "light pink",
+    "rose": "pink",
+    "flamingo": "pink",
+    "citron": "yellow",
+    "mustard": "yellow",
+    "grey": "gray",
+    "gold": "yellow",
+    "amber": "orange",
+    "tangerine": "orange",
+    "paprika": "red orange",
+    "cayenne": "red",
+    "scarlet": "red",
+    "cherry": "red",
+    "cardinal": "red",
+    "lava": "red",
+    "sunset": "orange",
+}
+
+# Non-color modifiers to strip (case-insensitive, whole word)
+_NON_COLOR_MODIFIERS: set[str] = {
+    "rib", "heather", "melange", "marled", "marl",
+    "print", "printed", "stripe", "striped", "plaid",
+    "camo", "floral", "check", "checked",
+    "matte", "satin", "gloss", "glossy", "metallic",
+    "washed", "faded", "distressed", "acid",
+    "solid", "classic", "premium", "pro",
+}
+
+# Regex: strip everything after "w/" or "with" (lens/optics descriptions)
+_RE_LENS_SUFFIX = re.compile(r"\s+w/\s.*$|\s+with\s.*$", re.IGNORECASE)
+# Regex: strip trailing "Lens" (with optional preceding word)
+_RE_LENS_WORD = re.compile(r"\s+\S*\s*lens$", re.IGNORECASE)
+
+
+def normalize_color_for_query(color: str) -> str:
+    """Normalize a creative color name into a search-friendly query term.
+
+    Rules applied in order:
+    1. Strip lens/optics descriptions (after "w/" or "with", trailing "Lens")
+    2. Drop non-color modifiers (Rib, Heather, Melange, etc.)
+    3. Map exotic color names to standard ones
+
+    >>> normalize_color_for_query("Black / Silver w/ Mirror Silver Lens")
+    'black silver'
+    >>> normalize_color_for_query("Black Rib")
+    'black'
+    >>> normalize_color_for_query("Ceramic")
+    'beige'
+    """
+    text = color.strip()
+
+    # 1a. Strip lens/optics descriptions after "w/" or "with"
+    text = _RE_LENS_SUFFIX.sub("", text)
+    # 1b. Strip trailing "Lens" phrase
+    text = _RE_LENS_WORD.sub("", text)
+
+    # Normalize separators: "/" → space
+    text = text.replace("/", " ")
+
+    # Collapse whitespace
+    tokens = text.split()
+
+    # 2. Drop non-color modifiers
+    tokens = [t for t in tokens if t.lower() not in _NON_COLOR_MODIFIERS]
+
+    # 3. Map exotic names to standard colors (per-token)
+    mapped: list[str] = []
+    for t in tokens:
+        replacement = _EXOTIC_COLOR_MAP.get(t.lower())
+        if replacement:
+            mapped.append(replacement)
+        else:
+            mapped.append(t.lower())
+
+    result = " ".join(mapped)
+
+    # Deduplicate adjacent identical words (e.g. "black black" → "black")
+    deduped = []
+    for word in result.split():
+        if not deduped or word != deduped[-1]:
+            deduped.append(word)
+
+    return " ".join(deduped) if deduped else color.lower().strip()
 
 BRAVE_IMAGE_SEARCH_URL = "https://api.search.brave.com/res/v1/images/search"
 
@@ -269,7 +406,8 @@ class BraveImageResolver:
         If candidates are provided, uses those instead of querying Brave.
         """
         if candidates is None:
-            query = f"{vendor} {product_title} {color}"
+            search_color = normalize_color_for_query(color)
+            query = f"{vendor} {product_title} {search_color}"
             candidates = await self._search_brave_images(query, count=10)
 
         if not candidates:
