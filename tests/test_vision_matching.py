@@ -288,9 +288,8 @@ class TestFuzzyMatchFreeform:
     # --- Stricter matching: false-positive prevention ---
 
     def test_black_does_not_match_blackberry(self):
-        """'Black' in description should not match 'Black-Berry' on
-        the secondary 'berry' token alone — but 'black' is the first
-        token so it *should* match when 'black' overlaps."""
+        """'Blackberry' as a single unsplit token has zero overlap with
+        'black', so no match should occur."""
         # 'Blackberry' as a single token doesn't overlap with 'black'
         result = OllamaVisionClient._fuzzy_match_freeform(
             "black jacket", ["Blackberry", "Navy"],

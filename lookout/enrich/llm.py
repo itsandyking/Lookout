@@ -603,18 +603,6 @@ class OllamaVisionClient:
                 return best_option
             return None
 
-        # When exactly 1 token overlaps from a multi-token description,
-        # require the overlapping token to be the dominant (first) token
-        # of the option.  This prevents e.g. description "green forest
-        # leaf" matching "Pine Leaf" on secondary token "leaf" alone.
-        # Single-token descriptions already pass through the min_required
-        # gate above and are allowed (the model gave its single best guess).
-        if (best_score == 1
-                and len(desc_tokens) >= 2
-                and best_first_token
-                and best_first_token not in best_overlap):
-            return None
-
         return best_option
 
     async def match_images_batch(
