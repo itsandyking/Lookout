@@ -366,15 +366,39 @@ class URLResolver:
                 foreign_names = extra_words - generic_words - set(_re.findall(r'\d+', candidate_title))
                 missing_names = missing_words - generic_words - set(_re.findall(r'\d+', title_lower))
 
+                has_foreign_product = False
                 if foreign_names and missing_names:
-                    # Candidate has a different product name AND is missing ours
-                    # e.g., candidate="Protac" but we want "BWII"
-                    candidate.confidence = max(0, candidate.confidence - 20)
-                    candidate.reasoning += f" -foreign_product({','.join(sorted(foreign_names)[:2])})"
+                    has_foreign_product = True
+                    # Check for near-homonym model names (e.g., Reverb vs Revolve)
+                    # that inflate seq_ratio despite being different products.
+                    near_homonym = False
+                    for fn in foreign_names:
+                        for mn in missing_names:
+                            pair_sim = SequenceMatcher(None, fn, mn).ratio()
+                            if pair_sim >= 0.55 and fn != mn:
+                                near_homonym = True
+                                break
+                        if near_homonym:
+                            break
+
+                    if near_homonym:
+                        # Near-homonym model names are the most deceptive —
+                        # they inflate string similarity while being completely
+                        # different products (Reverb/Revolve, Recon/React, etc.)
+                        candidate.confidence = max(0, candidate.confidence - 40)
+                        candidate.reasoning += f" -near_homonym({','.join(sorted(foreign_names)[:2])}vs{','.join(sorted(missing_names)[:2])})"
+                    else:
+                        # Different model names, not confusable — still a strong signal
+                        candidate.confidence = max(0, candidate.confidence - 35)
+                        candidate.reasoning += f" -foreign_product({','.join(sorted(foreign_names)[:2])})"
 
                 if critical_mismatch:
                     candidate.confidence = max(0, candidate.confidence - 30)
                     candidate.reasoning += f" -critical_mismatch(type/model)"
+                elif has_foreign_product:
+                    # Don't boost candidates that have a different product name —
+                    # high seq_ratio from near-homonyms is misleading
+                    pass
                 elif overlap_ratio >= 0.6 or seq_ratio >= 0.5:
                     # Strong title match — boost based on word overlap
                     boost = int(20 * overlap_ratio)
