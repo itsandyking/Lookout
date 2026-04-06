@@ -12,11 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/checkout@v4
-        with:
-          repository: itsandyking/The-Variant-Range
-          path: The-Variant-Range
-
       - uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
