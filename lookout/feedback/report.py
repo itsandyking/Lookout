@@ -7,40 +7,10 @@ Two output modes:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
-
-# ---------------------------------------------------------------------------
-# Stub types — replace with imports once analyzer.py and replay.py land
-# ---------------------------------------------------------------------------
-
-@dataclass
-class ThresholdProposal:
-    parameter: str          # e.g., "title_gate.word_overlap"
-    current_value: float    # e.g., 0.30
-    proposed_value: float   # e.g., 0.22
-    rationale: str          # e.g., "5 failures cluster at 0.25-0.29"
-
-
-@dataclass
-class PatternCluster:
-    failure_reason: str         # e.g., "reject_title_gate"
-    count: int
-    common_vendor: str | None
-    common_type: str | None
-    affected_handles: list[str]
-    threshold_boundary: dict | None
-    proposal: ThresholdProposal | None
-    actionable: bool
-
-
-@dataclass
-class ReplayDiff:
-    proposal: ThresholdProposal
-    recovered: list[dict]
-    regressed: list[dict]
-    unchanged: int
+from lookout.feedback.analyzer import PatternCluster, ThresholdProposal
+from lookout.feedback.replay import ReplayDiff
 
 
 # ---------------------------------------------------------------------------

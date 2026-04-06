@@ -2,10 +2,9 @@
 
 from pathlib import Path
 
+from lookout.feedback.analyzer import PatternCluster, ThresholdProposal
+from lookout.feedback.replay import ReplayDiff
 from lookout.feedback.report import (
-    PatternCluster,
-    ReplayDiff,
-    ThresholdProposal,
     format_terminal,
     format_report,
     write_report,

@@ -1249,6 +1249,35 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
         save_feedback(feedback_entries, feedback_dir)
         console.print(f"\nFeedback saved: {len(feedback_entries)} entries to {feedback_dir}")
 
+        # --- Feedback analysis ---
+        decisions_path = Path(run_dir) / "match_decisions.jsonl"
+        if decisions_path.exists():
+            from lookout.feedback.analyzer import analyze
+            from lookout.feedback.replay import replay_proposal
+            from lookout.feedback.report import format_terminal, format_report, write_report
+
+            clusters = analyze(decisions_path, feedback_dir)
+            if clusters:
+                # Replay each proposal to get impact diffs
+                diffs = []
+                for c in clusters:
+                    if c.proposal:
+                        diffs.append(replay_proposal(c.proposal, decisions_path))
+
+                # Count totals from decision log
+                import json
+                all_decisions = [json.loads(ln) for ln in decisions_path.read_text().splitlines() if ln.strip()]
+                total = len(all_decisions)
+                rejected = sum(1 for d in all_decisions if d.get("outcome") in ("no_match", "all_failed"))
+
+                # Terminal summary
+                report_path = Path(run_dir) / "feedback_analysis.md"
+                console.print(format_terminal(clusters, diffs, total, rejected, report_path))
+
+                # Full report to file
+                full_report = format_report(clusters, diffs, total, rejected)
+                write_report(full_report, Path(run_dir))
+
 
 @enrich.command("revert")
 @click.option("--handle", "-h", "handles", multiple=True, help="Product handles to revert (repeatable)")
