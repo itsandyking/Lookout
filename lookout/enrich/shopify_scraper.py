@@ -47,13 +47,15 @@ def _shopify_json_to_facts(product: dict, url: str) -> ExtractedFacts:
     for img in product.get("images", []):
         src = img.get("src", "")
         if src:
-            images.append(ImageInfo(
-                url=src,
-                alt_text=img.get("alt") or "",
-                source_hint="shopify_json",
-                width=img.get("width"),
-                height=img.get("height"),
-            ))
+            images.append(
+                ImageInfo(
+                    url=src,
+                    alt_text=img.get("alt") or "",
+                    source_hint="shopify_json",
+                    width=img.get("width"),
+                    height=img.get("height"),
+                )
+            )
 
     # Description — split body_html into paragraphs
     body_html = product.get("body_html", "")
@@ -157,7 +159,9 @@ async def _search_shopify_by_title(
                                     if product:
                                         logger.info(
                                             "Shopify search matched '%s' → '%s' (handle=%s)",
-                                            title, result["title"], matched_handle,
+                                            title,
+                                            result["title"],
+                                            matched_handle,
                                         )
                                         return product
     except Exception:
@@ -176,9 +180,23 @@ async def _search_shopify_by_title(
 
         products = resp.json().get("products", [])
         title_lower = title.lower()
-        title_words = set(_re.findall(r'[a-z0-9]+', title_lower))
-        filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with",
-                 "mens", "womens", "men", "women", "kids"}
+        title_words = set(_re.findall(r"[a-z0-9]+", title_lower))
+        filler = {
+            "the",
+            "a",
+            "an",
+            "by",
+            "for",
+            "in",
+            "of",
+            "and",
+            "with",
+            "mens",
+            "womens",
+            "men",
+            "women",
+            "kids",
+        }
         title_words -= filler
 
         best_match = None
@@ -186,7 +204,7 @@ async def _search_shopify_by_title(
 
         for product in products:
             product_title = product.get("title", "").lower()
-            product_words = set(_re.findall(r'[a-z0-9]+', product_title)) - filler
+            product_words = set(_re.findall(r"[a-z0-9]+", product_title)) - filler
 
             if not title_words or not product_words:
                 continue
@@ -196,9 +214,25 @@ async def _search_shopify_by_title(
 
             # Penalize candidates with foreign product names
             # e.g., "Dancer 1 Verbier" has "verbier" which isn't in "Dancer 1 Skis"
-            generic = {"ski", "skis", "boot", "boots", "shoe", "shoes",
-                      "jacket", "rope", "helmet", "goggles", "sunglasses",
-                      "new", "sale", "2024", "2025", "2026", "2027"}
+            generic = {
+                "ski",
+                "skis",
+                "boot",
+                "boots",
+                "shoe",
+                "shoes",
+                "jacket",
+                "rope",
+                "helmet",
+                "goggles",
+                "sunglasses",
+                "new",
+                "sale",
+                "2024",
+                "2025",
+                "2026",
+                "2027",
+            }
             foreign = product_words - title_words - generic
             missing = title_words - product_words - generic
             if foreign and missing:
@@ -213,7 +247,9 @@ async def _search_shopify_by_title(
         if best_match and best_score > 0.3:
             logger.info(
                 "Shopify products.json matched '%s' → '%s' (score=%.2f)",
-                title, best_match["title"], best_score,
+                title,
+                best_match["title"],
+                best_score,
             )
             return best_match
 
@@ -263,9 +299,20 @@ async def scrape_shopify_product(
         # Try 1b: Strip common product-type suffixes and retry
         # Your store: "strand-sunglasses", vendor store: "strand"
         suffixes_to_strip = [
-            "-sunglasses", "-goggles", "-helmet", "-ski", "-skis",
-            "-snowboard", "-jacket", "-boot", "-boots", "-shoe", "-shoes",
-            "-gloves", "-pants", "-rope",
+            "-sunglasses",
+            "-goggles",
+            "-helmet",
+            "-ski",
+            "-skis",
+            "-snowboard",
+            "-jacket",
+            "-boot",
+            "-boots",
+            "-shoe",
+            "-shoes",
+            "-gloves",
+            "-pants",
+            "-rope",
         ]
         for suffix in suffixes_to_strip:
             if handle.endswith(suffix):
@@ -278,7 +325,8 @@ async def scrape_shopify_product(
                     if product:
                         logger.info(
                             "Shopify handle suffix strip matched: %s → %s",
-                            handle, short_handle,
+                            handle,
+                            short_handle,
                         )
                         product_url = f"https://{domain}/products/{short_handle}"
                         return _shopify_json_to_facts(product, product_url)

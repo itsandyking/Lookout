@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from enum import Enum
-from pathlib import Path
 
 
 class ChangeStatus(str, Enum):
@@ -49,7 +47,9 @@ class ProductChange:
     variant_labels: list[str] = field(default_factory=list)
     inventory_count: int = 0
     inventory_value: float = 0.0  # cost on hand
-    missing_fields: list[str] = field(default_factory=list)  # e.g. ["product_type", "tags", "google_shopping"]
+    missing_fields: list[str] = field(
+        default_factory=list
+    )  # e.g. ["product_type", "tags", "google_shopping"]
 
     # Apply tracking
     applied_at: str | None = None

@@ -350,9 +350,7 @@ class WebScraper:
                     status_code = response.status if response else 200
 
                     if self._is_bot_blocked(html):
-                        logger.warning(
-                            "Bot protection persists on %s after retry", url
-                        )
+                        logger.warning("Bot protection persists on %s after retry", url)
 
                 return ScrapedPage(
                     url=url,

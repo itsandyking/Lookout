@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 def _clean_description(raw: str) -> str:
     """Clean scraper junk from descriptions for display."""
     # Remove rating/review noise like "4.5(35)35 total reviews"
-    text = re.sub(r'\d+\.\d+\(\d+\)\d+\s*total reviews?', '', raw)
+    text = re.sub(r"\d+\.\d+\(\d+\)\d+\s*total reviews?", "", raw)
     # Remove standalone rating patterns
-    text = re.sub(r'\b\d+\.\d+\s*out of \d+\s*stars?\b', '', text)
+    text = re.sub(r"\b\d+\.\d+\s*out of \d+\s*stars?\b", "", text)
     return text.strip()
 
 
@@ -37,7 +37,11 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
         proposed_desc = _clean_description(change.new_body_html or "")
 
         if has_description:
-            current_display = current_desc if current_desc else '<span class="empty-tag">No current description</span>'
+            current_display = (
+                current_desc
+                if current_desc
+                else '<span class="empty-tag">No current description</span>'
+            )
             desc_html = _DESC_TEMPLATE.format(
                 current=current_display,
                 proposed=proposed_desc,
@@ -103,7 +107,10 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                     # Fuzzy: find vim key that starts with or contains this color
                     color_lower = color.lower()
                     for vim_key in vim:
-                        if vim_key.lower().startswith(color_lower) or color_lower in vim_key.lower():
+                        if (
+                            vim_key.lower().startswith(color_lower)
+                            or color_lower in vim_key.lower()
+                        ):
                             matched_key = vim_key
                             break
 
@@ -124,9 +131,9 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                         thumb_cells.append(
                             f'<div class="assign-thumb" data-src="{html.escape(src)}" data-color="{html.escape(color)}">'
                             f'<img src="{src}" loading="lazy" />'
-                            f'{pos_label}'
+                            f"{pos_label}"
                             f'<button type="button" class="assign-remove" onclick="removeVariantImage(this)" title="Remove assignment">&#10005;</button>'
-                            f'</div>'
+                            f"</div>"
                         )
                     remaining_count = len(assigned_srcs) - 3
                     if remaining_count > 0:
@@ -139,10 +146,13 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                     img_cell = (
                         f'<span class="no-assign">No image assigned</span>'
                         f'<button type="button" class="assign-choose" '
-                        f'onclick="enterPickMode(this.closest(\'.product\'), \'{html.escape(color)}\', this.closest(\'tr\'))">Choose image</button>'
+                        f"onclick=\"enterPickMode(this.closest('.product'), '{html.escape(color)}', this.closest('tr'))\">Choose image</button>"
                     )
 
-                positions = variant_img_positions.get(color, variant_img_positions.get(full_label, variant_img_positions.get("__all__", [])))
+                positions = variant_img_positions.get(
+                    color,
+                    variant_img_positions.get(full_label, variant_img_positions.get("__all__", [])),
+                )
                 pos_data = html.escape(json.dumps(positions))
 
                 assignment_rows.append(
@@ -150,7 +160,7 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                     f'<td class="assign-label" onclick="highlightVariantImages(this.closest(\'tr\'))">{html.escape(color)}</td>'
                     f'<td class="assign-images">{img_cell}'
                     f'<button type="button" class="assign-paste" onclick="pasteImageUrl(this)" title="Paste image URL">&#128203; Paste URL</button>'
-                    f'</td></tr>'
+                    f"</td></tr>"
                 )
 
             variants_html = (
@@ -160,18 +170,17 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 f'<div class="section-action" data-section="variant_images">'
                 f'<button type="button" class="sbtn sbtn-approve" onclick="setSectionDisposition(this, \'approved\')">&#10003;</button>'
                 f'<button type="button" class="sbtn sbtn-reject" onclick="setSectionDisposition(this, \'rejected\')">&#10007;</button>'
-                f'</div></div>'
+                f"</div></div>"
                 f'<table class="assign-table">{"".join(assignment_rows)}</table>'
                 f'<div class="section-reasons" style="display:none">'
                 f'<button type="button" class="pill" data-reason="wrong_image_match">Wrong variant match</button>'
                 f'<button type="button" class="pill" data-reason="missing_variant_image">Missing variant image</button>'
-                f'</div>'
-                f'</div>'
+                f"</div>"
+                f"</div>"
             )
         elif change.variant_labels:
             pills = " ".join(
-                f'<span class="variant-pill">{html.escape(v)}</span>'
-                for v in change.variant_labels
+                f'<span class="variant-pill">{html.escape(v)}</span>' for v in change.variant_labels
             )
             variants_html = f'<div class="section"><h4 class="section-label">Variants ({len(change.variant_labels)})</h4><div class="variant-pills">{pills}</div></div>'
         else:
@@ -189,7 +198,7 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                     f'<img src="{src}" alt="{alt_text}" loading="lazy" />'
                     f'<span class="pos">#{pos}</span>'
                     f'<button type="button" class="img-remove" onclick="toggleRemoveImage(this)" title="Remove image">&#10005;</button>'
-                    f'</div>'
+                    f"</div>"
                 )
             remaining = len(change.new_images) - 12
             extra = f'<div class="thumb more">+{remaining} more</div>' if remaining > 0 else ""
@@ -212,7 +221,9 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                     parts.append(f"{added} added")
                 if removed:
                     parts.append(f"{removed} replaced")
-                change_summary = ", ".join(parts) if parts else f"{current_img_count} → {proposed_count}"
+                change_summary = (
+                    ", ".join(parts) if parts else f"{current_img_count} → {proposed_count}"
+                )
 
             images_html = _IMAGES_TEMPLATE.format(
                 change_summary=change_summary,
@@ -227,17 +238,21 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
         # Inventory and payoff info
         inv_parts = []
         if change.inventory_count > 0:
-            inv_parts.append(f'{change.inventory_count} units')
+            inv_parts.append(f"{change.inventory_count} units")
         if change.inventory_value > 0:
-            inv_parts.append(f'${change.inventory_value:,.0f} on hand')
-        inventory_html = f'<span class="inv-badge">{" / ".join(inv_parts)}</span>' if inv_parts else ""
+            inv_parts.append(f"${change.inventory_value:,.0f} on hand")
+        inventory_html = (
+            f'<span class="inv-badge">{" / ".join(inv_parts)}</span>' if inv_parts else ""
+        )
 
         # Missing fields flags
         flag_labels = {
             "product_type": "No product type",
             "tags": "No tags",
         }
-        flags = [f'<span class="flag-pill">{flag_labels.get(f, f)}</span>' for f in change.missing_fields]
+        flags = [
+            f'<span class="flag-pill">{flag_labels.get(f, f)}</span>' for f in change.missing_fields
+        ]
         flags_html = " ".join(flags)
 
         products_html.append(
@@ -258,7 +273,8 @@ def generate_review_report(run: ApplyRun, output_path: Path) -> None:
                 source_link=(
                     f'<a class="source-link" href="{html.escape(change.source_url)}" '
                     f'target="_blank" rel="noopener">{html.escape(change.source_url)} &#8599;</a>'
-                    if change.source_url else ""
+                    if change.source_url
+                    else ""
                 ),
             )
         )

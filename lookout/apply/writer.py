@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from lookout.apply.backup import create_backup
@@ -31,7 +31,9 @@ async def apply_change(
         create_backup(change, backup_dir)
 
     # Determine what body to write
-    body_html = change.edited_body_html if change.status == ChangeStatus.EDITED else change.new_body_html
+    body_html = (
+        change.edited_body_html if change.status == ChangeStatus.EDITED else change.new_body_html
+    )
 
     try:
         result = await api.update_product(
@@ -46,7 +48,7 @@ async def apply_change(
             logger.error("Failed to apply %s: %s", change.handle, change.error)
         else:
             change.status = ChangeStatus.APPLIED
-            change.applied_at = datetime.now(timezone.utc).isoformat()
+            change.applied_at = datetime.now(UTC).isoformat()
             logger.info("Applied %s to Shopify", change.handle)
 
     except Exception as e:

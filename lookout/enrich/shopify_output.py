@@ -222,9 +222,7 @@ class ShopifyOutputBuilder:
                 self._add_variant_rows_from_export(handle, non_all_entries)
             else:
                 # Expand color→image to per-variant rows using variant data
-                self._expand_color_to_variants(
-                    input_row, non_all_entries, merch_output.confidence
-                )
+                self._expand_color_to_variants(input_row, non_all_entries, merch_output.confidence)
 
     def _expand_color_to_variants(
         self,

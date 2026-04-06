@@ -77,7 +77,9 @@ def get_network_ips() -> dict[str, str]:
     try:
         result = subprocess.run(
             ["tailscale", "ip", "-4"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode == 0:
             ts_ip = result.stdout.strip().split("\n")[0]
@@ -107,9 +109,9 @@ def serve_review(review_html: Path, dispositions_path: Path, port: int = 8787) -
     print(f"\n  Local:     http://localhost:{port}")
     for label, ip in ips.items():
         print(f"  {label + ':':10s} http://{ip}:{port}")
-    print(f"\n  Open on your phone or any device on the same network.")
+    print("\n  Open on your phone or any device on the same network.")
     print(f"  Dispositions will save to: {dispositions_path}")
-    print(f"  Press Ctrl+C to stop.\n")
+    print("  Press Ctrl+C to stop.\n")
 
     try:
         server.serve_forever()

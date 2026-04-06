@@ -124,7 +124,7 @@ class URLResolver:
             clean_title = title.strip()
             vendor_lower = vendor.lower()
             if clean_title.lower().startswith(vendor_lower):
-                clean_title = clean_title[len(vendor):].strip(" -")
+                clean_title = clean_title[len(vendor) :].strip(" -")
 
         # Strategy 1: Barcode on vendor site (most precise — but only if barcode appears in results)
         if barcode and barcode.strip():
@@ -132,10 +132,16 @@ class URLResolver:
             query = f"site:{domain} {barcode_clean}"
             queries_used.append(f"barcode: {query}")
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config, product_title=clean_title)
+                candidates = await self._search_candidates(
+                    query, domain, vendor_config, product_title=clean_title
+                )
                 for c in candidates:
                     # Only boost if barcode actually appears in the result
-                    if barcode_clean in c.snippet or barcode_clean in c.url or barcode_clean in c.title:
+                    if (
+                        barcode_clean in c.snippet
+                        or barcode_clean in c.url
+                        or barcode_clean in c.title
+                    ):
                         c.confidence = min(100, c.confidence + 15)
                         c.reasoning = f"Barcode MATCH: {c.reasoning}"
                     else:
@@ -155,7 +161,9 @@ class URLResolver:
             query = f"site:{domain} {sku_clean}"
             queries_used.append(f"sku: {query}")
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config, product_title=clean_title)
+                candidates = await self._search_candidates(
+                    query, domain, vendor_config, product_title=clean_title
+                )
                 for c in candidates:
                     if sku_clean in c.snippet or sku_clean in c.url or sku_prefix in c.url:
                         c.confidence = min(100, c.confidence + 12)
@@ -172,7 +180,9 @@ class URLResolver:
             query = f"site:{domain} {clean_title}"
             queries_used.append(f"title: {query}")
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config, product_title=clean_title)
+                candidates = await self._search_candidates(
+                    query, domain, vendor_config, product_title=clean_title
+                )
                 for c in candidates:
                     c.confidence = min(100, c.confidence + 10)
                     c.reasoning = f"Title search: {c.reasoning}"
@@ -186,7 +196,9 @@ class URLResolver:
             handle_query = self._build_query(handle, vendor, domain, hints)
             queries_used.append(f"handle: {handle_query}")
             try:
-                candidates = await self._search_candidates(handle_query, domain, vendor_config, product_title=clean_title)
+                candidates = await self._search_candidates(
+                    handle_query, domain, vendor_config, product_title=clean_title
+                )
                 for c in candidates:
                     c.reasoning = f"Handle search: {c.reasoning}"
                 all_candidates.extend(candidates)
@@ -205,6 +217,7 @@ class URLResolver:
                 if not broad_html:
                     # Try Brave if DDG fails
                     import os
+
                     if os.environ.get("BRAVE_SEARCH_API_KEY"):
                         resp = await self._client.get(
                             BRAVE_SEARCH_URL,
@@ -223,6 +236,7 @@ class URLResolver:
                         broad_count = 0
                 else:
                     from bs4 import BeautifulSoup
+
                     soup = BeautifulSoup(broad_html, "lxml")
                     broad_count = len(soup.select(".result__a"))
 
@@ -250,20 +264,19 @@ class URLResolver:
         # penalize those that don't. This is the strongest signal for
         # distinguishing product pages from category pages.
         if clean_title:
-            from difflib import SequenceMatcher
-
             import re as _re
+            from difflib import SequenceMatcher
 
             title_lower = clean_title.lower()
             # Normalize: strip punctuation, split into words
-            title_words = set(_re.findall(r'[a-z0-9]+', title_lower))
+            title_words = set(_re.findall(r"[a-z0-9]+", title_lower))
             # Remove common filler words
             filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with"}
             title_words -= filler
 
             for candidate in seen_urls.values():
                 candidate_title = candidate.title.lower()
-                candidate_words = set(_re.findall(r'[a-z0-9]+', candidate_title)) - filler
+                candidate_words = set(_re.findall(r"[a-z0-9]+", candidate_title)) - filler
 
                 if not title_words or not candidate_words:
                     continue
@@ -281,11 +294,33 @@ class URLResolver:
                 # Words in candidate NOT in expected title
                 extra_words = candidate_words - title_words
                 # Product type words that indicate wrong product entirely
-                type_words = {"ski", "skis", "boot", "boots", "shoe", "shoes",
-                             "jacket", "pants", "helmet", "goggles", "sunglasses",
-                             "gloves", "pole", "poles", "binding", "bindings",
-                             "board", "snowboard",
-                             "pad", "bundle", "pack", "kit", "set", "system", "combo"}
+                type_words = {
+                    "ski",
+                    "skis",
+                    "boot",
+                    "boots",
+                    "shoe",
+                    "shoes",
+                    "jacket",
+                    "pants",
+                    "helmet",
+                    "goggles",
+                    "sunglasses",
+                    "gloves",
+                    "pole",
+                    "poles",
+                    "binding",
+                    "bindings",
+                    "board",
+                    "snowboard",
+                    "pad",
+                    "bundle",
+                    "pack",
+                    "kit",
+                    "set",
+                    "system",
+                    "combo",
+                }
                 missing_types = missing_words & type_words
                 extra_types = extra_words & type_words
                 if missing_types and extra_types:
@@ -293,8 +328,7 @@ class URLResolver:
                     critical_mismatch = True
 
                 # Height/fit words — "Low" vs "Mid" is a different product
-                height_fit_words = {"low", "mid", "high", "tall", "short",
-                                    "wide", "narrow"}
+                height_fit_words = {"low", "mid", "high", "tall", "short", "wide", "narrow"}
                 missing_height = missing_words & height_fit_words
                 extra_height = extra_words & height_fit_words
                 if missing_height and extra_height:
@@ -304,8 +338,17 @@ class URLResolver:
                     candidate.reasoning += " -asymmetric_height"
 
                 # Edition/variant words — "Pro" vs "Lite" is a different SKU
-                edition_words = {"standard", "pro", "plus", "lite", "max",
-                                 "mini", "ultra", "evo", "comp"}
+                edition_words = {
+                    "standard",
+                    "pro",
+                    "plus",
+                    "lite",
+                    "max",
+                    "mini",
+                    "ultra",
+                    "evo",
+                    "comp",
+                }
                 missing_edition = missing_words & edition_words
                 extra_edition = extra_words & edition_words
                 if missing_edition and extra_edition:
@@ -313,21 +356,32 @@ class URLResolver:
 
                 # Collab/special edition detection — if candidate has collab
                 # markers not present in our title, penalize heavily
-                collab_markers = {"shf", "collab", "collaboration", "limited",
-                                  "edition", "special"}
-                # Also check for "×" or " x " crossover pattern in candidate but not title
+                collab_markers = {"shf", "collab", "collaboration", "limited", "edition", "special"}
+                # Also check for multiplication sign or " x " crossover pattern in candidate but not title
                 candidate_has_collab = bool(extra_words & collab_markers)
                 if not candidate_has_collab:
-                    collab_pattern = r'(?:\s[x×]\s|×)'
-                    if (_re.search(collab_pattern, candidate_title)
-                            and not _re.search(collab_pattern, title_lower)):
+                    collab_pattern = r"(?:\s[x\u00d7]\s|\u00d7)"
+                    if _re.search(collab_pattern, candidate_title) and not _re.search(
+                        collab_pattern, title_lower
+                    ):
                         candidate_has_collab = True
                 if candidate_has_collab:
                     candidate.confidence = max(0, candidate.confidence - 25)
                     candidate.reasoning += " -collab_mismatch"
 
-                demographics = {"youth", "kids", "boys", "girls", "mens", "men",
-                                "womens", "women", "unisex", "junior", "jr"}
+                demographics = {
+                    "youth",
+                    "kids",
+                    "boys",
+                    "girls",
+                    "mens",
+                    "men",
+                    "womens",
+                    "women",
+                    "unisex",
+                    "junior",
+                    "jr",
+                }
                 expected_demos = title_words & demographics
                 candidate_demos = candidate_words & demographics
                 if expected_demos and candidate_demos:
@@ -354,17 +408,37 @@ class URLResolver:
                 # Check for foreign product names — words in the candidate
                 # that aren't in our title and aren't generic. If a candidate
                 # says "Protac" and our product is "BWII", that's a different product.
-                generic_words = type_words | height_fit_words | edition_words | demographics | {
-                    "rope", "ropes", "cord", "ski", "skis", "boot", "boots",
-                    "new", "sale",
-                    "2024", "2025", "2026", "2027",
-                }
+                generic_words = (
+                    type_words
+                    | height_fit_words
+                    | edition_words
+                    | demographics
+                    | {
+                        "rope",
+                        "ropes",
+                        "cord",
+                        "ski",
+                        "skis",
+                        "boot",
+                        "boots",
+                        "new",
+                        "sale",
+                        "2024",
+                        "2025",
+                        "2026",
+                        "2027",
+                    }
+                )
                 # Also treat the vendor name and common size/measurement words as generic
-                vendor_words = set(_re.findall(r'[a-z0-9]+', vendor.lower())) if vendor else set()
+                vendor_words = set(_re.findall(r"[a-z0-9]+", vendor.lower())) if vendor else set()
                 generic_words |= vendor_words
 
-                foreign_names = extra_words - generic_words - set(_re.findall(r'\d+', candidate_title))
-                missing_names = missing_words - generic_words - set(_re.findall(r'\d+', title_lower))
+                foreign_names = (
+                    extra_words - generic_words - set(_re.findall(r"\d+", candidate_title))
+                )
+                missing_names = (
+                    missing_words - generic_words - set(_re.findall(r"\d+", title_lower))
+                )
 
                 has_foreign_product = False
                 if foreign_names and missing_names:
@@ -390,11 +464,13 @@ class URLResolver:
                     else:
                         # Different model names, not confusable — still a strong signal
                         candidate.confidence = max(0, candidate.confidence - 35)
-                        candidate.reasoning += f" -foreign_product({','.join(sorted(foreign_names)[:2])})"
+                        candidate.reasoning += (
+                            f" -foreign_product({','.join(sorted(foreign_names)[:2])})"
+                        )
 
                 if critical_mismatch:
                     candidate.confidence = max(0, candidate.confidence - 30)
-                    candidate.reasoning += f" -critical_mismatch(type/model)"
+                    candidate.reasoning += " -critical_mismatch(type/model)"
                 elif has_foreign_product:
                     # Don't boost candidates that have a different product name —
                     # high seq_ratio from near-homonyms is misleading
@@ -404,7 +480,7 @@ class URLResolver:
                     boost = int(20 * overlap_ratio)
                     # Check URL for title words too — product URLs often contain
                     # the model name (e.g., /product/10-5mm-2764-bwii/)
-                    url_words = set(_re.findall(r'[a-z0-9]+', candidate.url.lower()))
+                    url_words = set(_re.findall(r"[a-z0-9]+", candidate.url.lower()))
                     url_title_overlap = title_words & url_words
                     title_in_url = len(url_title_overlap) / len(title_words) if title_words else 0
                     if title_in_url > 0.5:
@@ -425,7 +501,7 @@ class URLResolver:
         if catalog_price and catalog_price > 0:
             import re as _re_price
 
-            price_pattern = _re_price.compile(r'\$(\d+(?:[.,]\d{2})?)')
+            price_pattern = _re_price.compile(r"\$(\d+(?:[.,]\d{2})?)")
 
             for candidate in seen_urls.values():
                 # Try to extract a price from snippet or title
@@ -447,10 +523,14 @@ class URLResolver:
                 price_diff = abs(candidate_price - catalog_price) / catalog_price
                 if price_diff <= 0.20:
                     candidate.confidence = min(100, candidate.confidence + 10)
-                    candidate.reasoning += f" +price_match(${candidate_price:.0f}≈${catalog_price:.0f})"
+                    candidate.reasoning += (
+                        f" +price_match(${candidate_price:.0f}≈${catalog_price:.0f})"
+                    )
                 elif price_diff > 0.50:
                     candidate.confidence = max(0, candidate.confidence - 15)
-                    candidate.reasoning += f" -price_mismatch(${candidate_price:.0f}vs${catalog_price:.0f})"
+                    candidate.reasoning += (
+                        f" -price_mismatch(${candidate_price:.0f}vs${catalog_price:.0f})"
+                    )
 
         # Strategy 6: Direct URL probe (last resort — only works when our handle
         # happens to match the vendor's URL structure, e.g., Patagonia)
@@ -483,16 +563,15 @@ class URLResolver:
             for candidate in deduplicated:
                 # HEAD-check to verify the URL is live (not 404/redirect-to-404)
                 try:
-                    resp = await self._client.head(
-                        candidate.url, follow_redirects=True, timeout=10
-                    )
+                    resp = await self._client.head(candidate.url, follow_redirects=True, timeout=10)
                     if resp.status_code == 200:
                         selected = candidate
                         break
                     else:
                         logger.info(
                             "URL probe returned %d, skipping: %s",
-                            resp.status_code, candidate.url[:80],
+                            resp.status_code,
+                            candidate.url[:80],
                         )
                         output.warnings.append(
                             f"URL_NOT_LIVE: {candidate.url[:80]} → {resp.status_code}"
@@ -593,12 +672,16 @@ class URLResolver:
         await asyncio.sleep(random.uniform(self._min_delay, self._max_delay))
 
         # Try Brave Search first (if API key available)
-        candidates = await self._search_brave(query, domain, vendor_config, product_title=product_title)
+        candidates = await self._search_brave(
+            query, domain, vendor_config, product_title=product_title
+        )
         if candidates:
             return candidates
 
         # Fall back to SearXNG (self-hosted metasearch)
-        candidates = await self._search_searxng(query, domain, vendor_config, product_title=product_title)
+        candidates = await self._search_searxng(
+            query, domain, vendor_config, product_title=product_title
+        )
         if candidates:
             return candidates
 
@@ -654,7 +737,9 @@ class URLResolver:
                 ):
                     continue
 
-                confidence = self._score_candidate(url, title, snippet, domain, product_title=product_title)
+                confidence = self._score_candidate(
+                    url, title, snippet, domain, product_title=product_title
+                )
                 candidates.append(
                     URLCandidate(
                         url=url,
@@ -713,7 +798,9 @@ class URLResolver:
                 ):
                     continue
 
-                confidence = self._score_candidate(url, title, snippet, domain, product_title=product_title)
+                confidence = self._score_candidate(
+                    url, title, snippet, domain, product_title=product_title
+                )
                 candidates.append(
                     URLCandidate(
                         url=url,
@@ -876,7 +963,9 @@ class URLResolver:
             snippet = snippet_elem.get_text(strip=True) if snippet_elem else ""
 
             # Score the candidate
-            confidence = self._score_candidate(url, title, snippet, domain, product_title=product_title)
+            confidence = self._score_candidate(
+                url, title, snippet, domain, product_title=product_title
+            )
 
             candidates.append(
                 URLCandidate(
@@ -930,7 +1019,7 @@ class URLResolver:
             if pattern in path:
                 # Check there's a slug after the pattern (not just /products/ alone)
                 idx = path.find(pattern)
-                after = path[idx + len(pattern):]
+                after = path[idx + len(pattern) :]
                 if after and after.strip("/"):
                     is_product_page = True
                     score += 20
@@ -947,18 +1036,38 @@ class URLResolver:
 
         # Penalize category/listing patterns
         category_patterns = [
-            "/blog", "/news", "/support", "/help", "/about",
-            "/category", "/collection", "/collections",
-            "/search", "/tag", "/tags",
+            "/blog",
+            "/news",
+            "/support",
+            "/help",
+            "/about",
+            "/category",
+            "/collection",
+            "/collections",
+            "/search",
+            "/tag",
+            "/tags",
         ]
         if any(p in path for p in category_patterns):
             score -= 20
 
         # Penalize URLs that look like category browsing paths
         # e.g., /shop/womens/tops/t-shirts, /shop/mens/jackets
-        category_segments = {"shop", "mens", "womens", "tops", "bottoms",
-                           "jackets", "shoes", "accessories", "gear", "all",
-                           "new", "sale", "clearance"}
+        category_segments = {
+            "shop",
+            "mens",
+            "womens",
+            "tops",
+            "bottoms",
+            "jackets",
+            "shoes",
+            "accessories",
+            "gear",
+            "all",
+            "new",
+            "sale",
+            "clearance",
+        }
         if path_segments:
             category_count = sum(1 for s in path_segments if s in category_segments)
             if category_count >= 2:
@@ -973,8 +1082,13 @@ class URLResolver:
         # Penalize generic titles (category pages)
         title_lower = title.lower()
         generic_markers = [
-            "by patagonia", "by altra", "by burton", "by rossignol",
-            "| official", "shop all", "all products",
+            "by patagonia",
+            "by altra",
+            "by burton",
+            "by rossignol",
+            "| official",
+            "shop all",
+            "all products",
         ]
         if any(m in title_lower for m in generic_markers):
             score -= 15
@@ -1004,16 +1118,15 @@ class URLResolver:
         # Boost for product name word overlap with URL slug and page title
         if product_title:
             import re
+
             product_words = {
-                w.lower() for w in re.split(r"[\s\-/]+", product_title)
+                w.lower()
+                for w in re.split(r"[\s\-/]+", product_title)
                 if len(w) > 2 and w.lower() not in {"the", "and", "for", "ski", "skis"}
             }
             if product_words:
                 # Check overlap with URL slug
-                url_words = {
-                    w.lower() for w in re.split(r"[\s\-/]+", path)
-                    if len(w) > 2
-                }
+                url_words = {w.lower() for w in re.split(r"[\s\-/]+", path) if len(w) > 2}
                 url_overlap = len(product_words & url_words) / len(product_words)
                 if url_overlap >= 0.5:
                     score += 10
@@ -1050,7 +1163,9 @@ class URLResolver:
         for color in colors[:5]:  # Limit to 5 colors to control API costs
             query = f"site:{domain} {product_name} {color}"
             try:
-                candidates = await self._search_candidates(query, domain, vendor_config, product_title=product_name)
+                candidates = await self._search_candidates(
+                    query, domain, vendor_config, product_title=product_name
+                )
                 # Extract image-like URLs from snippets/results
                 for candidate in candidates[:2]:
                     # The candidate URL itself might be a color-specific product page
@@ -1148,28 +1263,30 @@ def rescore_candidates(
         snippet = cand.get("snippet", "")
 
         base_score = resolver._score_candidate(url, title, snippet, domain, product_title)
-        results.append({
-            **cand,
-            "rescored_confidence": base_score,
-            "rescore_reasoning": f"base={base_score}",
-        })
+        results.append(
+            {
+                **cand,
+                "rescored_confidence": base_score,
+                "rescore_reasoning": f"base={base_score}",
+            }
+        )
 
     # --- Stage 2: Title comparison adjustments (replicated from resolve()) ---
     clean_title = product_title.strip() if product_title else ""
     if clean_title:
         vendor_lower = vendor.lower() if vendor else ""
         if clean_title.lower().startswith(vendor_lower) and vendor_lower:
-            clean_title = clean_title[len(vendor):].strip(" -")
+            clean_title = clean_title[len(vendor) :].strip(" -")
 
     if clean_title:
         title_lower = clean_title.lower()
-        title_words = set(re.findall(r'[a-z0-9]+', title_lower))
+        title_words = set(re.findall(r"[a-z0-9]+", title_lower))
         filler = {"the", "a", "an", "by", "for", "in", "of", "and", "with"}
         title_words -= filler
 
         for cand in results:
             candidate_title = cand.get("title", "").lower()
-            candidate_words = set(re.findall(r'[a-z0-9]+', candidate_title)) - filler
+            candidate_words = set(re.findall(r"[a-z0-9]+", candidate_title)) - filler
 
             if not title_words or not candidate_words:
                 continue
@@ -1186,19 +1303,40 @@ def rescore_candidates(
             extra_words = candidate_words - title_words
 
             # Product type words
-            type_words = {"ski", "skis", "boot", "boots", "shoe", "shoes",
-                         "jacket", "pants", "helmet", "goggles", "sunglasses",
-                         "gloves", "pole", "poles", "binding", "bindings",
-                         "board", "snowboard",
-                         "pad", "bundle", "pack", "kit", "set", "system", "combo"}
+            type_words = {
+                "ski",
+                "skis",
+                "boot",
+                "boots",
+                "shoe",
+                "shoes",
+                "jacket",
+                "pants",
+                "helmet",
+                "goggles",
+                "sunglasses",
+                "gloves",
+                "pole",
+                "poles",
+                "binding",
+                "bindings",
+                "board",
+                "snowboard",
+                "pad",
+                "bundle",
+                "pack",
+                "kit",
+                "set",
+                "system",
+                "combo",
+            }
             missing_types = missing_words & type_words
             extra_types = extra_words & type_words
             if missing_types and extra_types:
                 critical_mismatch = True
 
             # Height/fit words
-            height_fit_words = {"low", "mid", "high", "tall", "short",
-                                "wide", "narrow"}
+            height_fit_words = {"low", "mid", "high", "tall", "short", "wide", "narrow"}
             missing_height = missing_words & height_fit_words
             extra_height = extra_words & height_fit_words
             if missing_height and extra_height:
@@ -1208,29 +1346,49 @@ def rescore_candidates(
                 reasoning += " -asymmetric_height"
 
             # Edition/variant words
-            edition_words = {"standard", "pro", "plus", "lite", "max",
-                             "mini", "ultra", "evo", "comp"}
+            edition_words = {
+                "standard",
+                "pro",
+                "plus",
+                "lite",
+                "max",
+                "mini",
+                "ultra",
+                "evo",
+                "comp",
+            }
             missing_edition = missing_words & edition_words
             extra_edition = extra_words & edition_words
             if missing_edition and extra_edition:
                 critical_mismatch = True
 
             # Collab/special edition detection
-            collab_markers = {"shf", "collab", "collaboration", "limited",
-                              "edition", "special"}
+            collab_markers = {"shf", "collab", "collaboration", "limited", "edition", "special"}
             candidate_has_collab = bool(extra_words & collab_markers)
             if not candidate_has_collab:
-                collab_pattern = r'(?:\s[x×]\s|×)'
-                if (re.search(collab_pattern, candidate_title)
-                        and not re.search(collab_pattern, title_lower)):
+                collab_pattern = r"(?:\s[x\u00d7]\s|\u00d7)"
+                if re.search(collab_pattern, candidate_title) and not re.search(
+                    collab_pattern, title_lower
+                ):
                     candidate_has_collab = True
             if candidate_has_collab:
                 conf = max(0, conf - 25)
                 reasoning += " -collab_mismatch"
 
             # Demographic mismatch
-            demographics = {"youth", "kids", "boys", "girls", "mens", "men",
-                            "womens", "women", "unisex", "junior", "jr"}
+            demographics = {
+                "youth",
+                "kids",
+                "boys",
+                "girls",
+                "mens",
+                "men",
+                "womens",
+                "women",
+                "unisex",
+                "junior",
+                "jr",
+            }
             expected_demos = title_words & demographics
             candidate_demos = candidate_words & demographics
             if expected_demos and candidate_demos:
@@ -1255,16 +1413,32 @@ def rescore_candidates(
                     reasoning += " -year_mismatch"
 
             # Foreign product name detection
-            generic_words = type_words | height_fit_words | edition_words | demographics | {
-                "rope", "ropes", "cord", "ski", "skis", "boot", "boots",
-                "new", "sale",
-                "2024", "2025", "2026", "2027",
-            }
-            vendor_words = set(re.findall(r'[a-z0-9]+', vendor.lower())) if vendor else set()
+            generic_words = (
+                type_words
+                | height_fit_words
+                | edition_words
+                | demographics
+                | {
+                    "rope",
+                    "ropes",
+                    "cord",
+                    "ski",
+                    "skis",
+                    "boot",
+                    "boots",
+                    "new",
+                    "sale",
+                    "2024",
+                    "2025",
+                    "2026",
+                    "2027",
+                }
+            )
+            vendor_words = set(re.findall(r"[a-z0-9]+", vendor.lower())) if vendor else set()
             generic_words |= vendor_words
 
-            foreign_names = extra_words - generic_words - set(re.findall(r'\d+', candidate_title))
-            missing_names = missing_words - generic_words - set(re.findall(r'\d+', title_lower))
+            foreign_names = extra_words - generic_words - set(re.findall(r"\d+", candidate_title))
+            missing_names = missing_words - generic_words - set(re.findall(r"\d+", title_lower))
 
             if foreign_names and missing_names:
                 conf = max(0, conf - 20)
@@ -1276,7 +1450,7 @@ def rescore_candidates(
                 reasoning += " -critical_mismatch(type/model)"
             elif overlap_ratio >= 0.6 or seq_ratio >= 0.5:
                 boost = int(20 * overlap_ratio)
-                url_words = set(re.findall(r'[a-z0-9]+', cand.get("url", "").lower()))
+                url_words = set(re.findall(r"[a-z0-9]+", cand.get("url", "").lower()))
                 url_title_overlap = title_words & url_words
                 title_in_url = len(url_title_overlap) / len(title_words) if title_words else 0
                 if title_in_url > 0.5:
@@ -1295,7 +1469,7 @@ def rescore_candidates(
 
     # --- Stage 3: Price comparison scoring ---
     if catalog_price and catalog_price > 0:
-        price_pattern = re.compile(r'\$(\d+(?:[.,]\d{2})?)')
+        price_pattern = re.compile(r"\$(\d+(?:[.,]\d{2})?)")
 
         for cand in results:
             candidate_price = None

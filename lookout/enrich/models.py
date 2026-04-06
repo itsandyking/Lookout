@@ -94,11 +94,7 @@ class InputRow(BaseModel):
     @property
     def catalog_images_by_color(self) -> dict[str, str]:
         """Color→catalog image mapping from vendor catalog data."""
-        return {
-            v.color: v.catalog_image
-            for v in self.variant_data
-            if v.color and v.catalog_image
-        }
+        return {v.color: v.catalog_image for v in self.variant_data if v.color and v.catalog_image}
 
     @field_validator(
         "has_image",

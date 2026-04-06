@@ -33,8 +33,14 @@ _BOILERPLATE_PATTERNS: list[re.Pattern] = [
     re.compile(r"\$[\d,]+\.?\d*"),  # pricing
     re.compile(r"Liquid error", re.I),
     re.compile(r"javascript required|enable javascript|update your browser", re.I),
-    re.compile(r"^(New Arrivals|Best Sellers|Gift Cards|Shop All|My Account|Track My Order|Help Center|Find a Store|Top Rated|Follow Along|Watch Now)\s*$", re.I),
-    re.compile(r"We.ve got our hands full|This page will automatically refresh|please call.*\d{3}.*\d{4}", re.I),
+    re.compile(
+        r"^(New Arrivals|Best Sellers|Gift Cards|Shop All|My Account|Track My Order|Help Center|Find a Store|Top Rated|Follow Along|Watch Now)\s*$",
+        re.I,
+    ),
+    re.compile(
+        r"We.ve got our hands full|This page will automatically refresh|please call.*\d{3}.*\d{4}",
+        re.I,
+    ),
     re.compile(r"(regular price|sale price|starting at)", re.I),
 ]
 
@@ -45,7 +51,11 @@ def _is_boilerplate(s: str) -> bool:
         if pat.search(s):
             return True
     stripped = s.strip()
-    if len(stripped) < 15 and not re.search(r"\d", stripped) and not re.search(r"[A-Z]{2,}", stripped):
+    if (
+        len(stripped) < 15
+        and not re.search(r"\d", stripped)
+        and not re.search(r"[A-Z]{2,}", stripped)
+    ):
         return True
     return False
 
@@ -63,6 +73,7 @@ def _real_bullets(bullets: list[str]) -> list[str]:
 # ---------------------------------------------------------------------------
 # Axis 1: Content signal (0-30)
 # ---------------------------------------------------------------------------
+
 
 def score_content_signal(facts: ExtractedFacts) -> AxisScore:
     """How much real content vs. boilerplate is present."""
@@ -111,6 +122,7 @@ def score_content_signal(facts: ExtractedFacts) -> AxisScore:
 # ---------------------------------------------------------------------------
 # Axis 2: Field completeness (0-25)
 # ---------------------------------------------------------------------------
+
 
 def score_field_completeness(facts: ExtractedFacts) -> AxisScore:
     """How many useful fields are populated."""
@@ -256,6 +268,7 @@ def score_specificity(facts: ExtractedFacts) -> AxisScore:
 # Axis 4: Deduplication (0-20)
 # ---------------------------------------------------------------------------
 
+
 def _jaccard(a: str, b: str) -> float:
     """Jaccard similarity on word sets."""
     sa = set(a.lower().split())
@@ -270,7 +283,7 @@ def _ngrams(text: str, n: int = 6) -> set[tuple[str, ...]]:
     words = text.lower().split()
     if len(words) < n:
         return set()
-    return {tuple(words[i:i + n]) for i in range(len(words) - n + 1)}
+    return {tuple(words[i : i + n]) for i in range(len(words) - n + 1)}
 
 
 def score_deduplication(facts: ExtractedFacts) -> AxisScore:
@@ -333,6 +346,7 @@ def score_deduplication(facts: ExtractedFacts) -> AxisScore:
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+
 def score_facts(facts: ExtractedFacts) -> QualityScore:
     """Compute composite quality score for extracted facts."""
     qs = QualityScore(handle=facts.canonical_url or "unknown")
@@ -346,6 +360,7 @@ def score_facts(facts: ExtractedFacts) -> QualityScore:
 # ---------------------------------------------------------------------------
 # Batch helper
 # ---------------------------------------------------------------------------
+
 
 def score_facts_dir(
     test_dir: Path,

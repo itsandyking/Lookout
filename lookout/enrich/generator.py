@@ -27,8 +27,16 @@ _EXPIRING_URL_PARAMS = {"token", "expires", "signature", "sig", "x-amz-credentia
 
 # Filename substrings that indicate badge / tech / swatch images (not hero-worthy)
 _BADGE_FILENAME_PATTERNS = {
-    "chromapop", "polarized", "technology", "feature", "tech-",
-    "certification", "warranty", "award", "colorswatch", "terrain-type",
+    "chromapop",
+    "polarized",
+    "technology",
+    "feature",
+    "tech-",
+    "certification",
+    "warranty",
+    "award",
+    "colorswatch",
+    "terrain-type",
 }
 
 
@@ -109,9 +117,7 @@ def _check_image_importable(url: str) -> str | None:
     return None
 
 
-async def validate_image_urls(
-    images: list[dict], http_client: object | None = None
-) -> list[dict]:
+async def validate_image_urls(images: list[dict], http_client: object | None = None) -> list[dict]:
     """HEAD-request image URLs and annotate with validation results.
 
     Args:
@@ -229,7 +235,8 @@ class Generator:
         # Generate variant images if needed
         if input_row.needs_variant_images:
             variant_map, variant_warnings = await self._assign_variant_images(
-                facts, selected_images=output.images or None,
+                facts,
+                selected_images=output.images or None,
                 store_colors=input_row.known_colors,
             )
             output.variant_image_map = variant_map
@@ -273,21 +280,37 @@ class Generator:
         try:
             # Prepare facts for LLM — clean scraper noise
             import re
+
             def _clean_text(text: str) -> str:
-                text = re.sub(r'\d+\.?\d*\(\d+\)\d+\s*total reviews?', '', text)
-                text = re.sub(r'\d+\.?\d*\s*out of \d+\s*stars?', '', text)
+                text = re.sub(r"\d+\.?\d*\(\d+\)\d+\s*total reviews?", "", text)
+                text = re.sub(r"\d+\.?\d*\s*out of \d+\s*stars?", "", text)
                 return text.strip()
 
-            clean_descriptions = [_clean_text(d) for d in facts.description_blocks[:3] if _clean_text(d)]
+            clean_descriptions = [
+                _clean_text(d) for d in facts.description_blocks[:3] if _clean_text(d)
+            ]
 
             facts_dict = {
                 "product_name": _clean_text(facts.product_name),
                 "brand": facts.brand,
                 "description_blocks": clean_descriptions,
                 "feature_bullets": facts.feature_bullets[:6],
-                "specs": {k: v for k, v in list(facts.specs.items())[:10]
-                          if not any(skip in k.lower() for skip in
-                                     ["arm length", "inseam", "chest", "waist", "hips", "seat", "center back"])},
+                "specs": {
+                    k: v
+                    for k, v in list(facts.specs.items())[:10]
+                    if not any(
+                        skip in k.lower()
+                        for skip in [
+                            "arm length",
+                            "inseam",
+                            "chest",
+                            "waist",
+                            "hips",
+                            "seat",
+                            "center back",
+                        ]
+                    )
+                },
                 "materials": facts.materials,
             }
 
@@ -316,9 +339,9 @@ class Generator:
         except Exception as e:
             # Log the root cause, not just the retry wrapper
             root = e
-            if hasattr(e, '__cause__') and e.__cause__:
+            if hasattr(e, "__cause__") and e.__cause__:
                 root = e.__cause__
-            elif hasattr(e, '__context__') and e.__context__:
+            elif hasattr(e, "__context__") and e.__context__:
                 root = e.__context__
             logger.error(f"Error generating body HTML: {root}")
             warnings.append(f"HTML_GENERATION_ERROR: {root!s}")
@@ -405,7 +428,9 @@ class Generator:
                                     source="brave_image_search",
                                 )
                             )
-                        logger.info("Brave product image fallback: added %d images", len(brave_results))
+                        logger.info(
+                            "Brave product image fallback: added %d images", len(brave_results)
+                        )
                         brave_already_called = True
                     else:
                         warnings.append("NO_IMAGES_FOUND")
@@ -438,11 +463,7 @@ class Generator:
                 importable.append(img)
 
         # Sort: demote badge images, prefer name-matching URLs, then source hint
-        name_words = {
-            w.lower()
-            for w in (facts.product_name or "").split()
-            if len(w) > 2
-        }
+        name_words = {w.lower() for w in (facts.product_name or "").split() if len(w) > 2}
 
         def _is_badge(img: ImageInfo) -> bool:
             filename = img.url.rsplit("/", 1)[-1].split("?")[0].lower()
@@ -453,7 +474,9 @@ class Generator:
             # Count how many product-name words appear in the URL
             url_lower = img.url.lower()
             name_hits = -sum(1 for w in name_words if w in url_lower)
-            source = 0 if img.source_hint == "json_ld" else (1 if img.source_hint == "gallery" else 2)
+            source = (
+                0 if img.source_hint == "json_ld" else (1 if img.source_hint == "gallery" else 2)
+            )
             return (badge, name_hits, source)
 
         importable.sort(key=sort_key)
@@ -497,7 +520,8 @@ class Generator:
                             OutputImage(
                                 src=br.full_url,
                                 position=len(images) + 1,
-                                alt=br.title or self._generate_alt_text(facts.product_name, len(images) + 1),
+                                alt=br.title
+                                or self._generate_alt_text(facts.product_name, len(images) + 1),
                             )
                         )
                 if brave_results:
@@ -552,6 +576,7 @@ class Generator:
         # Fallback: inject store color data if scraper missed them
         if not color_variant and store_colors and len(store_colors) > 1:
             from lookout.enrich.models import VariantOption
+
             color_variant = VariantOption(option_name="Color", values=store_colors)
             facts.variants.append(color_variant)
             logger.info(f"Injected {len(store_colors)} colors from Shopify store: {store_colors}")
@@ -567,7 +592,9 @@ class Generator:
 
                 if vision_mapping:
                     variant_map = vision_mapping
-                    logger.info(f"Tier 2a (vision) variant images assigned: {len(variant_map)} colors")
+                    logger.info(
+                        f"Tier 2a (vision) variant images assigned: {len(variant_map)} colors"
+                    )
                     return variant_map, warnings
 
             except Exception as e:
@@ -588,7 +615,9 @@ class Generator:
 
                 if llm_mapping:
                     variant_map = llm_mapping
-                    logger.info(f"Tier 2b (LLM text) variant images assigned: {len(variant_map)} colors")
+                    logger.info(
+                        f"Tier 2b (LLM text) variant images assigned: {len(variant_map)} colors"
+                    )
                     return variant_map, warnings
 
             except Exception as e:
@@ -604,12 +633,11 @@ class Generator:
                     colors=color_variant.values,
                 )
                 if brave_mapping:
-                    variant_map = {
-                        color: match.url for color, match in brave_mapping.items()
-                    }
+                    variant_map = {color: match.url for color, match in brave_mapping.items()}
                     logger.info(
                         "Tier 2c (Brave) variant images assigned: %d/%d colors",
-                        len(variant_map), len(color_variant.values),
+                        len(variant_map),
+                        len(color_variant.values),
                     )
                     return variant_map, warnings
             except Exception as e:
@@ -632,7 +660,9 @@ class Generator:
             variant_map["__all__"] = hero_url
             logger.info("Tier 0: Hero image assigned to all variants (no color options)")
         elif color_variant:
-            logger.info("No variant images found — leaving variants unassigned (no Tier 0 for color products)")
+            logger.info(
+                "No variant images found — leaving variants unassigned (no Tier 0 for color products)"
+            )
             warnings.append("COLOR_MATCHING_FAILED_NO_IMAGES_ASSIGNED")
         else:
             warnings.append("NO_IMAGES_FOR_VARIANT_ASSIGNMENT")
@@ -711,7 +741,7 @@ class Generator:
 
         # Remove LLM meta-commentary after the HTML
         # Cut at lines starting with ---, or any **bold text** (markdown commentary)
-        html = re.split(r'\n---\n|\n\*\*[A-Z]', html)[0]
+        html = re.split(r"\n---\n|\n\*\*[A-Z]", html)[0]
 
         # Basic cleanup
         html = html.strip()

@@ -12,12 +12,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from lookout.enrich.match_validator import check_title_gate
-from lookout.enrich.resolver import rescore_candidates
+from lookout.feedback.analyzer import ThresholdProposal
 
 logger = logging.getLogger(__name__)
-
-
-from lookout.feedback.analyzer import ThresholdProposal
 
 
 @dataclass
@@ -45,6 +42,7 @@ def _load_decisions(decisions_path: Path) -> list[dict]:
 # Title gate replay helpers
 # ---------------------------------------------------------------------------
 
+
 def _replay_title_gate(
     page_title: str,
     catalog_title: str,
@@ -56,8 +54,8 @@ def _replay_title_gate(
     The thresholds in check_title_gate are hardcoded, so we replicate the
     logic with the proposed value substituted for the target parameter.
     """
-    from difflib import SequenceMatcher
     import re
+    from difflib import SequenceMatcher
 
     page_lower = page_title.lower()
     catalog_lower = catalog_title.lower()
@@ -66,10 +64,21 @@ def _replay_title_gate(
     page_words = set(re.findall(r"[a-z0-9]+", page_lower))
     catalog_words = set(re.findall(r"[a-z0-9]+", catalog_lower))
 
-    demographics = frozenset({
-        "youth", "kids", "boys", "girls", "junior", "jr",
-        "mens", "men", "womens", "women", "unisex",
-    })
+    demographics = frozenset(
+        {
+            "youth",
+            "kids",
+            "boys",
+            "girls",
+            "junior",
+            "jr",
+            "mens",
+            "men",
+            "womens",
+            "women",
+            "unisex",
+        }
+    )
     demo_normalize = {"men": "mens", "women": "womens"}
     page_demos = {demo_normalize.get(w, w) for w in page_words & demographics}
     catalog_demos = {demo_normalize.get(w, w) for w in catalog_words & demographics}
@@ -158,9 +167,9 @@ def _replay_resolver_decision(
     if not resolver_candidates:
         return None
 
-    product_title = decision.get("catalog_title", "")
-    vendor = decision.get("vendor", "")
-    catalog_price = decision.get("catalog_price")
+    decision.get("catalog_title", "")
+    decision.get("vendor", "")
+    decision.get("catalog_price")
 
     # Rescore with current logic (thresholds are hardcoded in resolver)
     # The rescore itself doesn't accept threshold overrides, so we compare
@@ -176,9 +185,15 @@ def _replay_resolver_decision(
             new_penalty = proposed_value
             diff = new_penalty - current_penalty
             new_conf = conf + diff
-            if entry.get("outcome") == "skip_low_confidence" and new_conf >= _RESOLVER_SKIP_THRESHOLD:
+            if (
+                entry.get("outcome") == "skip_low_confidence"
+                and new_conf >= _RESOLVER_SKIP_THRESHOLD
+            ):
                 return "recovered_from_penalty"
-            if entry.get("outcome") not in ("skip_low_confidence",) and new_conf < _RESOLVER_SKIP_THRESHOLD:
+            if (
+                entry.get("outcome") not in ("skip_low_confidence",)
+                and new_conf < _RESOLVER_SKIP_THRESHOLD
+            ):
                 return "regressed_from_penalty"
 
     return None
@@ -187,6 +202,7 @@ def _replay_resolver_decision(
 # ---------------------------------------------------------------------------
 # Main replay function
 # ---------------------------------------------------------------------------
+
 
 def replay_proposal(
     proposal: ThresholdProposal,
@@ -205,19 +221,34 @@ def replay_proposal(
     for decision in decisions:
         candidates_tried = decision.get("candidates_tried", [])
         handle = decision.get("handle", "unknown")
-        original_outcome = decision.get("outcome", "")
+        decision.get("outcome", "")
 
         if param.startswith("title_gate."):
             _replay_title_gate_decisions(
-                decision, candidates_tried, handle, param, proposal, diff,
+                decision,
+                candidates_tried,
+                handle,
+                param,
+                proposal,
+                diff,
             )
         elif param.startswith("resolver.") or param == "pipeline.candidate_skip":
             _replay_resolver_decisions(
-                decision, candidates_tried, handle, param, proposal, diff,
+                decision,
+                candidates_tried,
+                handle,
+                param,
+                proposal,
+                diff,
             )
         elif param.startswith("post_extraction."):
             _replay_post_extraction_decisions(
-                decision, candidates_tried, handle, param, proposal, diff,
+                decision,
+                candidates_tried,
+                handle,
+                param,
+                proposal,
+                diff,
             )
         else:
             diff.unchanged += 1
@@ -243,16 +274,21 @@ def _replay_title_gate_decisions(
         if outcome == "reject_title_gate" and page_title and catalog_title:
             # Re-run with proposed threshold
             new_gate = _replay_title_gate(
-                page_title, catalog_title, param, proposal.proposed_value,
+                page_title,
+                catalog_title,
+                param,
+                proposal.proposed_value,
             )
             if new_gate["pass"]:
-                diff.recovered.append({
-                    "handle": handle,
-                    "url": entry.get("url", ""),
-                    "old_outcome": outcome,
-                    "new_outcome": "pass_title_gate",
-                    "title_similarity": new_gate["title_similarity"],
-                })
+                diff.recovered.append(
+                    {
+                        "handle": handle,
+                        "url": entry.get("url", ""),
+                        "old_outcome": outcome,
+                        "new_outcome": "pass_title_gate",
+                        "title_similarity": new_gate["title_similarity"],
+                    }
+                )
                 changed = True
 
         elif outcome not in ("reject_title_gate", "reject_bot_blocked", "skip_low_confidence"):
@@ -261,16 +297,21 @@ def _replay_title_gate_decisions(
                 # Re-run with proposed value
                 old_gate = check_title_gate(page_title, catalog_title)
                 new_gate = _replay_title_gate(
-                    page_title, catalog_title, param, proposal.proposed_value,
+                    page_title,
+                    catalog_title,
+                    param,
+                    proposal.proposed_value,
                 )
                 if old_gate["pass"] and not new_gate["pass"]:
-                    diff.regressed.append({
-                        "handle": handle,
-                        "url": entry.get("url", ""),
-                        "old_outcome": "pass_title_gate",
-                        "new_outcome": "reject_title_gate",
-                        "title_similarity": new_gate["title_similarity"],
-                    })
+                    diff.regressed.append(
+                        {
+                            "handle": handle,
+                            "url": entry.get("url", ""),
+                            "old_outcome": "pass_title_gate",
+                            "new_outcome": "reject_title_gate",
+                            "title_similarity": new_gate["title_similarity"],
+                        }
+                    )
                     changed = True
 
     if not changed:
@@ -288,17 +329,21 @@ def _replay_resolver_decisions(
     """Check resolver/pipeline decisions for changes under the proposed threshold."""
     new_outcome = _replay_resolver_decision(decision, param, proposal.proposed_value)
     if new_outcome and "recovered" in new_outcome:
-        diff.recovered.append({
-            "handle": handle,
-            "old_outcome": decision.get("outcome", ""),
-            "new_outcome": new_outcome,
-        })
+        diff.recovered.append(
+            {
+                "handle": handle,
+                "old_outcome": decision.get("outcome", ""),
+                "new_outcome": new_outcome,
+            }
+        )
     elif new_outcome and "regressed" in new_outcome:
-        diff.regressed.append({
-            "handle": handle,
-            "old_outcome": decision.get("outcome", ""),
-            "new_outcome": new_outcome,
-        })
+        diff.regressed.append(
+            {
+                "handle": handle,
+                "old_outcome": decision.get("outcome", ""),
+                "new_outcome": new_outcome,
+            }
+        )
     else:
         diff.unchanged += 1
 
@@ -353,28 +398,33 @@ def _replay_post_extraction_decisions(
 
         new_pass = new_confidence >= pass_threshold
         old_pass = outcome not in (
-            "reject_post_extraction", "low_post_scrape_confidence",
+            "reject_post_extraction",
+            "low_post_scrape_confidence",
         )
 
         if not old_pass and new_pass:
-            diff.recovered.append({
-                "handle": handle,
-                "url": entry.get("url", ""),
-                "old_outcome": outcome,
-                "new_outcome": "pass_post_extraction",
-                "old_confidence": old_confidence,
-                "new_confidence": round(new_confidence, 1),
-            })
+            diff.recovered.append(
+                {
+                    "handle": handle,
+                    "url": entry.get("url", ""),
+                    "old_outcome": outcome,
+                    "new_outcome": "pass_post_extraction",
+                    "old_confidence": old_confidence,
+                    "new_confidence": round(new_confidence, 1),
+                }
+            )
             changed = True
         elif old_pass and not new_pass:
-            diff.regressed.append({
-                "handle": handle,
-                "url": entry.get("url", ""),
-                "old_outcome": outcome,
-                "new_outcome": "reject_post_extraction",
-                "old_confidence": old_confidence,
-                "new_confidence": round(new_confidence, 1),
-            })
+            diff.regressed.append(
+                {
+                    "handle": handle,
+                    "url": entry.get("url", ""),
+                    "old_outcome": outcome,
+                    "new_outcome": "reject_post_extraction",
+                    "old_confidence": old_confidence,
+                    "new_confidence": round(new_confidence, 1),
+                }
+            )
             changed = True
 
     if not changed:

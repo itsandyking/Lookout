@@ -138,6 +138,7 @@ class ProductScore:
         # When online/GMC signals are available, boost products with
         # untapped potential (high traffic + low conversion).
         import math
+
         boost = 1.0
 
         if self.online_sessions > 0:
@@ -249,16 +250,18 @@ class AuditResult:
                     except Exception:
                         pass
 
-                variant_data.append(VariantInfo(
-                    variant_id=v.get("id", 0),
-                    sku=v.get("sku", ""),
-                    barcode=v.get("barcode", ""),
-                    color=color,
-                    size=size,
-                    price=v.get("price", 0.0) or 0.0,
-                    image_src=v.get("image_src", ""),
-                    catalog_image=catalog_image,
-                ))
+                variant_data.append(
+                    VariantInfo(
+                        variant_id=v.get("id", 0),
+                        sku=v.get("sku", ""),
+                        barcode=v.get("barcode", ""),
+                        color=color,
+                        size=size,
+                        price=v.get("price", 0.0) or 0.0,
+                        image_src=v.get("image_src", ""),
+                        catalog_image=catalog_image,
+                    )
+                )
 
             row = InputRow(
                 product_handle=score.handle,
@@ -291,9 +294,7 @@ class AuditResult:
             "completion_pct": round((total - with_gaps) / total * 100, 1) if total > 0 else 100.0,
             # Gap breakdown
             "missing_images": sum(1 for s in self.scores if not s.has_product_image),
-            "missing_variant_images": sum(
-                1 for s in self.scores if not s.has_all_variant_images
-            ),
+            "missing_variant_images": sum(1 for s in self.scores if not s.has_all_variant_images),
             "missing_description": sum(1 for s in self.scores if not s.has_description),
             "missing_product_type": sum(1 for s in self.scores if not s.has_product_type),
             "missing_tags": sum(1 for s in self.scores if not s.has_tags),

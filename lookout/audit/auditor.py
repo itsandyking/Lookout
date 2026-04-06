@@ -170,9 +170,9 @@ class ContentAuditor:
         inventory = self.store.get_inventory(product_id)
 
         # Determine product-level image: if any variant has an image_src
-        has_product_image = any(
-            bool(v.get("image_src", "").strip()) for v in variants
-        ) if variants else False
+        has_product_image = (
+            any(bool(v.get("image_src", "").strip()) for v in variants) if variants else False
+        )
 
         # Variant-level image check
         variants_missing = 0

@@ -3,6 +3,7 @@
 No LLM — uses keyword matching against product name, description,
 and vendor to infer product type and tags.
 """
+
 import re
 
 # Product type inference rules: keyword patterns → product type

@@ -175,7 +175,10 @@ async def fetch_online_signals(
 
     logger.info(
         "Online signals: %d products total (%d with sessions, %d with sales, %d session-handle matches)",
-        len(signals), matched_sessions, len(sales_by_title), matched_sessions,
+        len(signals),
+        matched_sessions,
+        len(sales_by_title),
+        matched_sessions,
     )
     return signals
 

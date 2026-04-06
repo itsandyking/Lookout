@@ -14,15 +14,14 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import random
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
 
 from lookout.audit.models import ProductScore
-from lookout.audit.priority_fn import compute_priority, rank_scores
-from lookout.audit.weight_config import BOUNDS, PriorityWeights, _CONTINUOUS_PARAMS
+from lookout.audit.priority_fn import rank_scores
+from lookout.audit.weight_config import _CONTINUOUS_PARAMS, BOUNDS, PriorityWeights
 
 logger = logging.getLogger(__name__)
 
@@ -118,9 +117,7 @@ def coverage_efficiency(
     total_missing_variants = sum(s.variants_missing_images for s in gap_products)
     top_missing_variants = sum(s.variants_missing_images for s in top_scores)
     variant_coverage = (
-        top_missing_variants / total_missing_variants
-        if total_missing_variants > 0
-        else 0.0
+        top_missing_variants / total_missing_variants if total_missing_variants > 0 else 0.0
     )
 
     # --- 2. Vendor concentration (0.20) ---
@@ -133,12 +130,8 @@ def coverage_efficiency(
     inv_coverage = top_inv / total_inv if total_inv > 0 else 0.0
 
     # --- 4. Online traffic alignment (0.25) ---
-    total_traffic = sum(
-        s.online_sessions + s.gmc_impressions for s in gap_products
-    )
-    top_traffic = sum(
-        s.online_sessions + s.gmc_impressions for s in top_scores
-    )
+    total_traffic = sum(s.online_sessions + s.gmc_impressions for s in gap_products)
+    top_traffic = sum(s.online_sessions + s.gmc_impressions for s in top_scores)
     traffic_coverage = top_traffic / total_traffic if total_traffic > 0 else 0.0
 
     # Weighted combination
@@ -261,7 +254,8 @@ def run_weight_optimization(
 
     use_scipy = False
     try:
-        from scipy.optimize import minimize  # noqa: F401
+        from scipy.optimize import minimize
+
         use_scipy = True
         logger.info("Using scipy Nelder-Mead optimizer")
     except ImportError:
@@ -272,8 +266,8 @@ def run_weight_optimization(
     for inv_transform in inv_transforms:
         for restart in range(n_restarts):
 
-            def objective(arr):
-                w = PriorityWeights.from_array(list(arr), inventory_transform=inv_transform)
+            def objective(arr, _inv_transform=inv_transform):
+                w = PriorityWeights.from_array(list(arr), inventory_transform=_inv_transform)
                 return -coverage_efficiency(scores, w, top_n)
 
             if use_scipy:
@@ -318,7 +312,9 @@ def run_weight_optimization(
                 iter_path.write_text(json.dumps(entry, indent=2))
                 logger.info(
                     "New best: %.4f (restart %d, transform=%s)",
-                    eff, restart, inv_transform,
+                    eff,
+                    restart,
+                    inv_transform,
                 )
 
             iteration += 1
@@ -341,7 +337,9 @@ def run_weight_optimization(
 
     logger.info(
         "Optimization complete. Best: %.4f (baseline: %.4f, improvement: %+.4f)",
-        global_best_eff, baseline_eff, global_best_eff - baseline_eff,
+        global_best_eff,
+        baseline_eff,
+        global_best_eff - baseline_eff,
     )
 
     return {

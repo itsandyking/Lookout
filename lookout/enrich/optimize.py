@@ -7,18 +7,17 @@ LLM generation + deterministic scoring per iteration.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import shutil
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from lookout.enrich.llm import LLMClient
 from lookout.enrich.models import ExtractedFacts
 from lookout.enrich.scorer import QualityScore, score_quality
-from lookout.feedback.collector import FeedbackEntry, load_all_feedback, feedback_summary
+from lookout.feedback.collector import FeedbackEntry, feedback_summary, load_all_feedback
 
 logger = logging.getLogger(__name__)
 
@@ -119,27 +118,32 @@ def compute_iteration_result(
     weighted_totals: list[float] = []
     weight_sum = 0.0
     per_product = []
-    for handle, body_html, qs in results:
+    for handle, _body_html, qs in results:
         det = sum(qs.axes[name].score for name in axis_names if name in qs.axes)
         w = 2.0 if handle in feedback_handles else 1.0
         weighted_totals.append(det * w)
         weight_sum += w
-        per_product.append({
-            "handle": handle,
-            "score": det,
-            "feedback_weighted": handle in feedback_handles,
-            "axes": {name: qs.axes[name].score for name in axis_names if name in qs.axes},
-        })
+        per_product.append(
+            {
+                "handle": handle,
+                "score": det,
+                "feedback_weighted": handle in feedback_handles,
+                "axes": {name: qs.axes[name].score for name in axis_names if name in qs.axes},
+            }
+        )
 
     avg_score = sum(weighted_totals) / weight_sum if weight_sum else 0
     max_score = max(
-        (sum(qs.axes[name].score for name in axis_names if name in qs.axes) for _, _, qs in results),
+        (
+            sum(qs.axes[name].score for name in axis_names if name in qs.axes)
+            for _, _, qs in results
+        ),
         default=0,
     )
 
     return IterationResult(
         iteration=iteration,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         prompt_path=prompt_path,
         avg_score=avg_score,
         max_score=max_score,
@@ -179,9 +183,7 @@ def _build_feedback_context(entries: list[FeedbackEntry]) -> str:
     # Rejection reasons breakdown
     if summary["rejection_reasons"]:
         sections.append("\nRejection reasons:")
-        for reason, count in sorted(
-            summary["rejection_reasons"].items(), key=lambda x: -x[1]
-        ):
+        for reason, count in sorted(summary["rejection_reasons"].items(), key=lambda x: -x[1]):
             sections.append(f"  - {reason}: {count} products")
 
     # Edited examples (gold standard corrections) — show up to 3
@@ -251,15 +253,15 @@ async def run_optimization_loop(
 
     # Identify rejected/edited handles for score weighting
     feedback_handles = {
-        e.handle for e in feedback_entries
-        if e.disposition in ("rejected", "edited")
+        e.handle for e in feedback_entries if e.disposition in ("rejected", "edited")
     }
     if feedback_handles:
         test_handles = {h for h, _ in products}
         overlap = feedback_handles & test_handles
         logger.info(
             "Feedback: %d rejected/edited handles, %d overlap with test set",
-            len(feedback_handles), len(overlap),
+            len(feedback_handles),
+            len(overlap),
         )
 
     llm = LLMClient()
@@ -269,7 +271,10 @@ async def run_optimization_loop(
     logger.info("Iteration 0: scoring baseline prompt")
     results = await regenerate_and_score(llm, products)
     baseline = compute_iteration_result(
-        0, results, str(prompt_path), feedback_handles=feedback_handles,
+        0,
+        results,
+        str(prompt_path),
+        feedback_handles=feedback_handles,
     )
     history.append(baseline)
     _save_iteration(log_dir, baseline, results, prompt_path.read_text())
@@ -279,7 +284,10 @@ async def run_optimization_loop(
         # Ask the LLM to suggest a prompt improvement
         current_prompt = prompt_path.read_text()
         suggestion = await _suggest_improvement(
-            llm, current_prompt, history, feedback_context,
+            llm,
+            current_prompt,
+            history,
+            feedback_context,
         )
 
         if not suggestion.strip():
@@ -299,7 +307,9 @@ async def run_optimization_loop(
         logger.info("Iteration %d: testing modified prompt", i)
         results = await regenerate_and_score(llm, products)
         result = compute_iteration_result(
-            i, results, str(prompt_path),
+            i,
+            results,
+            str(prompt_path),
             prompt_diff=f"See prompt_iter_{i}.prompt",
             feedback_handles=feedback_handles,
         )
@@ -309,7 +319,9 @@ async def run_optimization_loop(
         improvement = result.avg_score - history[-2].avg_score
         logger.info(
             "Iteration %d: avg %.1f/70 (%+.1f from previous)",
-            i, result.avg_score, improvement,
+            i,
+            result.avg_score,
+            improvement,
         )
 
         # If the new prompt is worse, revert
@@ -320,16 +332,20 @@ async def run_optimization_loop(
 
         # Stop if improvement is below threshold
         if 0 <= improvement < improvement_threshold:
-            logger.info("Improvement below threshold (%.1f < %.1f), stopping",
-                        improvement, improvement_threshold)
+            logger.info(
+                "Improvement below threshold (%.1f < %.1f), stopping",
+                improvement,
+                improvement_threshold,
+            )
             break
 
     # Summary
     best = max(history, key=lambda r: r.avg_score)
     logger.info(
-        "Optimization complete. Best: iteration %d (%.1f/70). "
-        "Improvement: %+.1f from baseline.",
-        best.iteration, best.avg_score, best.avg_score - history[0].avg_score,
+        "Optimization complete. Best: iteration %d (%.1f/70). Improvement: %+.1f from baseline.",
+        best.iteration,
+        best.avg_score,
+        best.avg_score - history[0].avg_score,
     )
 
     # Write summary log
@@ -357,7 +373,7 @@ async def _suggest_improvement(
 
     # Build the scoring context
     weak_products = [p for p in latest.per_product if p["score"] < latest.avg_score]
-    weak_axes = sorted(latest.per_axis.items(), key=lambda x: x[1])
+    sorted(latest.per_axis.items(), key=lambda x: x[1])
 
     # Mark feedback-weighted products in the weak list
     weak_lines = []
@@ -389,12 +405,17 @@ Prioritize fixing the patterns that caused rejections and edits."""
 Average deterministic score: {latest.avg_score:.1f}/70
 
 Per-axis averages (lower = more room for improvement):
-{chr(10).join(f"  {name}: {score:.1f}/{max_s}" for name, (score, max_s) in [
-    ("structural_compliance", (latest.per_axis.get("structural_compliance", 0), 25)),
-    ("length_targets", (latest.per_axis.get("length_targets", 0), 15)),
-    ("anti_hype", (latest.per_axis.get("anti_hype", 0), 15)),
-    ("coverage", (latest.per_axis.get("coverage", 0), 15)),
-])}
+{
+        chr(10).join(
+            f"  {name}: {score:.1f}/{max_s}"
+            for name, (score, max_s) in [
+                ("structural_compliance", (latest.per_axis.get("structural_compliance", 0), 25)),
+                ("length_targets", (latest.per_axis.get("length_targets", 0), 15)),
+                ("anti_hype", (latest.per_axis.get("anti_hype", 0), 15)),
+                ("coverage", (latest.per_axis.get("coverage", 0), 15)),
+            ]
+        )
+    }
 
 Weakest products:
 {chr(10).join(weak_lines)}
@@ -440,12 +461,10 @@ def _save_iteration(
     (iter_dir / "prompt.txt").write_text(prompt_text)
 
     # Save scoring result
-    (iter_dir / "scores.json").write_text(
-        json.dumps(result.to_dict(), indent=2)
-    )
+    (iter_dir / "scores.json").write_text(json.dumps(result.to_dict(), indent=2))
 
     # Save generated HTML per product
     outputs_dir = iter_dir / "outputs"
     outputs_dir.mkdir(exist_ok=True)
-    for handle, body_html, qs in gen_results:
+    for handle, body_html, _qs in gen_results:
         (outputs_dir / f"{handle}.html").write_text(body_html)

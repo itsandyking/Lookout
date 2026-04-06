@@ -99,29 +99,45 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 csv_path = Path(tempfile.mktemp(suffix=".csv"))
                 products = body.get("products", [])
                 with open(csv_path, "w", newline="") as f:
-                    writer = csv.DictWriter(f, fieldnames=[
-                        "Product Handle", "Vendor", "Title", "Barcode", "SKU",
-                        "Has Image", "Has Variant Images", "Has Description",
-                        "Has Product Type", "Has Tags", "Gaps", "Suggestions",
-                        "Priority Score", "Admin Link",
-                    ])
+                    writer = csv.DictWriter(
+                        f,
+                        fieldnames=[
+                            "Product Handle",
+                            "Vendor",
+                            "Title",
+                            "Barcode",
+                            "SKU",
+                            "Has Image",
+                            "Has Variant Images",
+                            "Has Description",
+                            "Has Product Type",
+                            "Has Tags",
+                            "Gaps",
+                            "Suggestions",
+                            "Priority Score",
+                            "Admin Link",
+                        ],
+                    )
                     writer.writeheader()
                     for p in products:
-                        writer.writerow({
-                            "Product Handle": p.get("handle", ""),
-                            "Vendor": p.get("vendor", ""),
-                            "Title": p.get("title", ""),
-                            "Barcode": "", "SKU": "",
-                            "Has Image": p.get("has_image", False),
-                            "Has Variant Images": p.get("has_variant_images", False),
-                            "Has Description": p.get("has_description", False),
-                            "Has Product Type": p.get("has_product_type", False),
-                            "Has Tags": p.get("has_tags", False),
-                            "Gaps": ", ".join(p.get("gaps", [])),
-                            "Suggestions": p.get("suggestions", ""),
-                            "Priority Score": p.get("priority", 0),
-                            "Admin Link": p.get("admin_link", ""),
-                        })
+                        writer.writerow(
+                            {
+                                "Product Handle": p.get("handle", ""),
+                                "Vendor": p.get("vendor", ""),
+                                "Title": p.get("title", ""),
+                                "Barcode": "",
+                                "SKU": "",
+                                "Has Image": p.get("has_image", False),
+                                "Has Variant Images": p.get("has_variant_images", False),
+                                "Has Description": p.get("has_description", False),
+                                "Has Product Type": p.get("has_product_type", False),
+                                "Has Tags": p.get("has_tags", False),
+                                "Gaps": ", ".join(p.get("gaps", [])),
+                                "Suggestions": p.get("suggestions", ""),
+                                "Priority Score": p.get("priority", 0),
+                                "Admin Link": p.get("admin_link", ""),
+                            }
+                        )
 
                 # Launch pipeline in background thread
                 run_dir = Path(f"campaign/run_dashboard_{len(handles)}products")
@@ -134,11 +150,13 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 )
                 thread.start()
 
-                resp = json.dumps({
-                    "started": True,
-                    "count": len(handles),
-                    "run_dir": str(run_dir),
-                }).encode()
+                resp = json.dumps(
+                    {
+                        "started": True,
+                        "count": len(handles),
+                        "run_dir": str(run_dir),
+                    }
+                ).encode()
                 self.send_response(200)
 
             self.send_header("Content-Type", "application/json")
@@ -157,24 +175,38 @@ def _run_pipeline(csv_path: Path, run_dir: Path):
     try:
         result = subprocess.run(
             [
-                "uv", "run", "lookout", "enrich", "run",
-                "-i", str(csv_path),
-                "-o", str(run_dir),
-                "--force", "-c", "2",
+                "uv",
+                "run",
+                "lookout",
+                "enrich",
+                "run",
+                "-i",
+                str(csv_path),
+                "-o",
+                str(run_dir),
+                "--force",
+                "-c",
+                "2",
             ],
-            capture_output=True, text=True, timeout=1800,
+            capture_output=True,
+            text=True,
+            timeout=1800,
         )
         if result.returncode == 0:
             # Generate review HTML
             try:
                 subprocess.run(
                     ["uv", "run", "lookout", "enrich", "review", "-d", str(run_dir)],
-                    capture_output=True, text=True, timeout=60,
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
                 )
             except Exception:
                 pass
             # Count how many products got merch output
-            enriched = sum(1 for d in run_dir.iterdir() if d.is_dir() and (d / "merch_output.json").exists())
+            enriched = sum(
+                1 for d in run_dir.iterdir() if d.is_dir() and (d / "merch_output.json").exists()
+            )
             total = sum(1 for d in run_dir.iterdir() if d.is_dir())
 
             # Read failure details from run_report.csv
@@ -185,19 +217,24 @@ def _run_pipeline(csv_path: Path, run_dir: Path):
                     for row in csv.DictReader(rf):
                         status = row.get("status", "")
                         if status in ("FAILED", "NO_MATCH", "SKIPPED_VENDOR_NOT_CONFIGURED"):
-                            failures.append({
-                                "handle": row.get("handle", ""),
-                                "vendor": row.get("vendor", ""),
-                                "status": status,
-                                "error": row.get("error_message", "") or status.replace("_", " ").title(),
-                            })
+                            failures.append(
+                                {
+                                    "handle": row.get("handle", ""),
+                                    "vendor": row.get("vendor", ""),
+                                    "status": status,
+                                    "error": row.get("error_message", "")
+                                    or status.replace("_", " ").title(),
+                                }
+                            )
 
             _pipeline_state["status"] = "complete"
             _pipeline_state["message"] = f"{enriched} of {total} products enriched"
             _pipeline_state["failures"] = failures
         else:
             _pipeline_state["status"] = "error"
-            _pipeline_state["message"] = result.stderr[-500:] if result.stderr else "Pipeline failed"
+            _pipeline_state["message"] = (
+                result.stderr[-500:] if result.stderr else "Pipeline failed"
+            )
     except subprocess.TimeoutExpired:
         _pipeline_state["status"] = "error"
         _pipeline_state["message"] = "Pipeline timed out (30 min)"
@@ -220,7 +257,7 @@ def serve_dashboard(dashboard_html: Path, port: int = 8788) -> None:
     print(f"\n  Local:     http://localhost:{port}")
     for label, ip in ips.items():
         print(f"  {label + ':':10s} http://{ip}:{port}")
-    print(f"  Press Ctrl+C to stop.\n")
+    print("  Press Ctrl+C to stop.\n")
 
     try:
         server.serve_forever()
@@ -247,22 +284,24 @@ def generate_dashboard(audit_csv: Path, output_path: Path) -> None:
         gaps = r.get("Gaps", "")
         gap_list = [g.strip() for g in gaps.split(",") if g.strip()] if gaps else []
 
-        products.append({
-            "handle": r.get("Product Handle", ""),
-            "vendor": r.get("Vendor", ""),
-            "title": r.get("Title", ""),
-            "priority": float(r.get("Priority Score", 0) or 0),
-            "has_image": r.get("Has Image", "").lower() == "true",
-            "has_variant_images": r.get("Has Variant Images", "").lower() == "true",
-            "has_description": r.get("Has Description", "").lower() == "true",
-            "has_product_type": r.get("Has Product Type", "").lower() == "true",
-            "has_tags": r.get("Has Tags", "").lower() == "true",
-            "gaps": gap_list,
-            "suggestions": r.get("Suggestions", ""),
-            "admin_link": r.get("Admin Link", ""),
-            "sessions": r.get("Sessions", ""),
-            "revenue": r.get("Online Revenue", ""),
-        })
+        products.append(
+            {
+                "handle": r.get("Product Handle", ""),
+                "vendor": r.get("Vendor", ""),
+                "title": r.get("Title", ""),
+                "priority": float(r.get("Priority Score", 0) or 0),
+                "has_image": r.get("Has Image", "").lower() == "true",
+                "has_variant_images": r.get("Has Variant Images", "").lower() == "true",
+                "has_description": r.get("Has Description", "").lower() == "true",
+                "has_product_type": r.get("Has Product Type", "").lower() == "true",
+                "has_tags": r.get("Has Tags", "").lower() == "true",
+                "gaps": gap_list,
+                "suggestions": r.get("Suggestions", ""),
+                "admin_link": r.get("Admin Link", ""),
+                "sessions": r.get("Sessions", ""),
+                "revenue": r.get("Online Revenue", ""),
+            }
+        )
 
     output = _TEMPLATE.format(
         product_count=len(products),

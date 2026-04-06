@@ -564,9 +564,7 @@ class ContentExtractor:
             product_data = None
 
             # Pattern: var meta = {"product": {...}}
-            match = re.search(
-                r"var\s+meta\s*=\s*(\{[\s\S]*?\});\s*$", text, re.MULTILINE
-            )
+            match = re.search(r"var\s+meta\s*=\s*(\{[\s\S]*?\});\s*$", text, re.MULTILINE)
             if match:
                 try:
                     meta = json.loads(match.group(1))
@@ -815,9 +813,9 @@ class ContentExtractor:
             return True
         if PRICE_PATTERN.search(text):
             return True
-        # Breadcrumb pattern: "Home > Shop > Category" or with /, ›, »
+        # Breadcrumb pattern: "Home > Shop > Category" or with /, ›, »  # noqa: RUF003
         if re.match(
-            r"^[\w\s']+(?:>|/|›|»)[\w\s']+(?:(?:>|/|›|»)[\w\s']+)*$", text
+            r"^[\w\s']+(?:>|/|\u203a|\u00bb)[\w\s']+(?:(?:>|/|\u203a|\u00bb)[\w\s']+)*$", text
         ):
             return True
         return False

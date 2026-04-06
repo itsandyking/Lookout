@@ -19,9 +19,6 @@ from html.parser import HTMLParser
 from openpyxl import Workbook
 
 from lookout.enrich.gmc_rules import validate_gtin
-
-logger = logging.getLogger(__name__)
-
 from lookout.store import LookoutStore
 from lookout.taxonomy.mappings import (
     DIMENSIONAL_TYPES,
@@ -37,6 +34,8 @@ from lookout.taxonomy.mappings import (
     TAG_TO_GOOGLE_GENDER,
     TITLE_GENDER_KEYWORDS,
 )
+
+logger = logging.getLogger(__name__)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 

@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lookout.feedback.analyzer import PatternCluster, ThresholdProposal
+from lookout.feedback.analyzer import PatternCluster
 from lookout.feedback.replay import ReplayDiff
-
 
 # ---------------------------------------------------------------------------
 # Reason labels — human-friendly names for internal failure reasons
@@ -46,9 +45,7 @@ def _scope_tag(cluster: PatternCluster) -> str:
     return ""
 
 
-def _diff_for_cluster(
-    cluster: PatternCluster, diffs: list[ReplayDiff]
-) -> ReplayDiff | None:
+def _diff_for_cluster(cluster: PatternCluster, diffs: list[ReplayDiff]) -> ReplayDiff | None:
     """Find the ReplayDiff matching a cluster's proposal, if any."""
     if cluster.proposal is None:
         return None
@@ -61,6 +58,7 @@ def _diff_for_cluster(
 # ---------------------------------------------------------------------------
 # Terminal summary
 # ---------------------------------------------------------------------------
+
 
 def format_terminal(
     clusters: list[PatternCluster],
@@ -98,15 +96,17 @@ def format_terminal(
                 f"recovers {rec}, {reg} regressions"
             )
         elif not cluster.actionable:
-            lines.append("    → No threshold fix — vendor site blocks scrapers"
-                         if "bot_blocked" in cluster.failure_reason
-                         else "    → No threshold fix")
+            lines.append(
+                "    → No threshold fix — vendor site blocks scrapers"
+                if "bot_blocked" in cluster.failure_reason
+                else "    → No threshold fix"
+            )
         else:
             # Actionable but no diff yet (e.g., penalty stacking)
             if cluster.proposal:
                 lines.append(f"    → {cluster.proposal.rationale}")
             else:
-                lines.append(f"    → Needs manual investigation")
+                lines.append("    → Needs manual investigation")
 
         lines.append("")
 
@@ -120,6 +120,7 @@ def format_terminal(
 # ---------------------------------------------------------------------------
 # Full markdown report
 # ---------------------------------------------------------------------------
+
 
 def format_report(
     clusters: list[PatternCluster],
@@ -137,8 +138,8 @@ def format_report(
 
     # Summary stats
     sections.append("## Summary\n")
-    sections.append(f"| Metric | Value |")
-    sections.append(f"|--------|-------|")
+    sections.append("| Metric | Value |")
+    sections.append("|--------|-------|")
     sections.append(f"| Total decisions | {total} |")
     sections.append(f"| Accepted | {accepted} |")
     sections.append(f"| Rejected | {rejected} |")
@@ -157,18 +158,14 @@ def format_report(
     # Non-actionable
     if non_actionable:
         sections.append("## No Action Needed\n")
-        sections.append(
-            "These patterns were detected but require no threshold changes.\n"
-        )
+        sections.append("These patterns were detected but require no threshold changes.\n")
         for cluster in non_actionable:
             sections.append(_format_cluster_md(cluster, diffs))
 
     return "\n".join(sections)
 
 
-def _format_cluster_md(
-    cluster: PatternCluster, diffs: list[ReplayDiff]
-) -> str:
+def _format_cluster_md(cluster: PatternCluster, diffs: list[ReplayDiff]) -> str:
     """Format a single cluster as a markdown section."""
     lines: list[str] = []
     label = _reason_label(cluster.failure_reason)
@@ -199,9 +196,7 @@ def _format_cluster_md(
     if cluster.proposal:
         p = cluster.proposal
         lines.append("**Proposed fix:**\n")
-        lines.append(
-            f"Change `{p.parameter}` from {p.current_value} to {p.proposed_value}  "
-        )
+        lines.append(f"Change `{p.parameter}` from {p.current_value} to {p.proposed_value}  ")
         lines.append(f"Rationale: {p.rationale}\n")
 
         if diff:
@@ -234,6 +229,7 @@ def _format_cluster_md(
 # ---------------------------------------------------------------------------
 # File output
 # ---------------------------------------------------------------------------
+
 
 def write_report(report: str, run_dir: Path) -> Path:
     """Write the markdown report to the run directory."""

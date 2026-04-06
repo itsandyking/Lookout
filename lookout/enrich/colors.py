@@ -51,9 +51,7 @@ def colors_match(color_a: str, color_b: str) -> bool:
     return False
 
 
-def find_matching_color(
-    target: str, candidates: dict[str, str]
-) -> str | None:
+def find_matching_color(target: str, candidates: dict[str, str]) -> str | None:
     """Find a matching color in a dict of color→value mappings.
 
     Args:

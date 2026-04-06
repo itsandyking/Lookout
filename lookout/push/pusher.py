@@ -84,9 +84,7 @@ class ShopifyPusher:
         client: httpx.AsyncClient,
     ) -> ProductBefore:
         """GET current product state (body_html + images) from Shopify."""
-        url = self._rest_url(
-            f"products/{product_id}.json?fields=id,body_html,images"
-        )
+        url = self._rest_url(f"products/{product_id}.json?fields=id,body_html,images")
         resp = await client.get(url, headers=self._headers())
         resp.raise_for_status()
 
@@ -202,9 +200,7 @@ class ShopifyPusher:
                     retry_after,
                 )
                 await asyncio.sleep(retry_after)
-                return await self.create_image(
-                    product_id, image_url, variant_ids, alt_text, client
-                )
+                return await self.create_image(product_id, image_url, variant_ids, alt_text, client)
 
             if resp.status_code >= 400:
                 logger.error(
@@ -227,9 +223,7 @@ class ShopifyPusher:
             )
 
         except Exception as exc:
-            logger.error(
-                "Exception creating image for product %d: %s", product_id, exc
-            )
+            logger.error("Exception creating image for product %d: %s", product_id, exc)
             return None
 
     # --------------------------------------------------------------------- #
@@ -283,15 +277,9 @@ class ShopifyPusher:
                 return False
 
             data = resp.json()
-            errors = (
-                data.get("data", {})
-                .get("productUpdate", {})
-                .get("userErrors", [])
-            )
+            errors = data.get("data", {}).get("productUpdate", {}).get("userErrors", [])
             if errors:
-                logger.error(
-                    "GraphQL userErrors for product %d: %s", product_id, errors
-                )
+                logger.error("GraphQL userErrors for product %d: %s", product_id, errors)
                 return False
 
             await asyncio.sleep(0.5)
@@ -380,9 +368,7 @@ class ShopifyPusher:
             # Resolve variant IDs for this color
             color_variants = self.get_variant_ids(handle, color)
             if not color_variants:
-                logger.warning(
-                    "No variants for %s :: %s, skipping image", handle, color
-                )
+                logger.warning("No variants for %s :: %s, skipping image", handle, color)
                 continue
 
             variant_ids = [v["variant_id"] for v in color_variants]
@@ -406,9 +392,7 @@ class ShopifyPusher:
                 )
                 continue
 
-            result = await self.create_image(
-                product_id, image_url, variant_ids, alt_text, client
-            )
+            result = await self.create_image(product_id, image_url, variant_ids, alt_text, client)
             if result:
                 result.color = color
                 created_images.append(result)

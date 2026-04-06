@@ -3,6 +3,7 @@
 This is the ONLY module that imports from tvr. All other Lookout modules
 receive plain dicts, never SQLAlchemy models.
 """
+
 from __future__ import annotations
 
 import logging
@@ -75,8 +76,14 @@ class LookoutStore:
     def get_product(self, handle: str) -> dict | None:
         from sqlalchemy.orm import joinedload
         from tvr.db.models import Product
+
         with self._store.session() as s:
-            p = s.query(Product).options(joinedload(Product.images)).filter(Product.handle == handle).first()
+            p = (
+                s.query(Product)
+                .options(joinedload(Product.images))
+                .filter(Product.handle == handle)
+                .first()
+            )
             return self._product_to_dict(p) if p else None
 
     # --- Variant data ---
@@ -142,9 +149,7 @@ class LookoutStore:
             logger.warning(f"Catalog image lookup failed for {barcode}: {e}")
             return None
 
-    def find_catalog_image_by_style(
-        self, vendor: str, style: str, color: str
-    ) -> str | None:
+    def find_catalog_image_by_style(self, vendor: str, style: str, color: str) -> str | None:
         """Find a catalog image URL by vendor style code and color."""
         try:
             url = self._vendor_store.find_image_by_style_color(vendor, style, color)
@@ -178,8 +183,12 @@ class LookoutStore:
         images = []
         if hasattr(p, "images") and p.images:
             images = [
-                {"src": img.src or "", "position": img.position or 0,
-                 "alt": img.alt_text or "", "variant_id": img.variant_id}
+                {
+                    "src": img.src or "",
+                    "position": img.position or 0,
+                    "alt": img.alt_text or "",
+                    "variant_id": img.variant_id,
+                }
                 for img in sorted(p.images, key=lambda i: i.position or 0)
             ]
         return {

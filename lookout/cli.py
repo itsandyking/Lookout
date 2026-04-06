@@ -10,10 +10,10 @@ import click
 from dotenv import load_dotenv
 
 load_dotenv()
-from rich.console import Console
-from rich.logging import RichHandler
-from rich.panel import Panel
-from rich.table import Table
+from rich.console import Console  # noqa: E402
+from rich.logging import RichHandler  # noqa: E402
+from rich.panel import Panel  # noqa: E402
+from rich.table import Table  # noqa: E402
 
 console = Console()
 
@@ -97,13 +97,27 @@ def down():
 @cli.command()
 @click.option("--vendor", "-v", default=None, help="Filter by vendor")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path), default=None,
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
+    default=None,
     help="Export priority CSV",
 )
 @click.option("--include-house-brands", is_flag=True, help="Include house brands in audit")
-@click.option("--online/--no-online", default=False, help="Enrich with online opportunity signals (sessions, conversion)")
-@click.option("--gmc/--no-gmc", default=False, help="Enrich with Google Merchant Center signals (clicks, impressions, disapprovals)")
-@click.option("--lookback", default=90, help="Days to look back for online/GMC signals (default 90)")
+@click.option(
+    "--online/--no-online",
+    default=False,
+    help="Enrich with online opportunity signals (sessions, conversion)",
+)
+@click.option(
+    "--gmc/--no-gmc",
+    default=False,
+    help="Enrich with Google Merchant Center signals (clicks, impressions, disapprovals)",
+)
+@click.option(
+    "--lookback", default=90, help="Days to look back for online/GMC signals (default 90)"
+)
 @click.option("--verbose", is_flag=True)
 def audit(vendor, output_path, include_house_brands, online, gmc, lookback, verbose):
     """Run content audit — find products with gaps."""
@@ -122,19 +136,25 @@ def audit(vendor, output_path, include_house_brands, online, gmc, lookback, verb
         console.print("[dim]Fetching online signals from Shopify analytics...[/dim]")
         try:
             from tvr.mcp_report.shopify_api import ShopifyQLClient
+
             from lookout.audit.online_signals import fetch_online_signals
 
             # Build title→handle mapping for joining session data
             all_products = store.list_products(status="active")
             title_to_handle = {
                 p.get("title", ""): p.get("handle", "")
-                for p in all_products if p.get("title") and p.get("handle")
+                for p in all_products
+                if p.get("title") and p.get("handle")
             }
 
             client = ShopifyQLClient.from_config()
-            online_signals = asyncio.run(fetch_online_signals(
-                client, title_to_handle=title_to_handle, lookback_days=lookback,
-            ))
+            online_signals = asyncio.run(
+                fetch_online_signals(
+                    client,
+                    title_to_handle=title_to_handle,
+                    lookback_days=lookback,
+                )
+            )
             console.print(f"[dim]Got signals for {len(online_signals)} products[/dim]")
         except Exception as e:
             console.print(f"[yellow]Warning: Could not fetch online signals: {e}[/yellow]")
@@ -183,7 +203,9 @@ def audit(vendor, output_path, include_house_brands, online, gmc, lookback, verb
 @click.option("--online/--no-online", default=True, help="Enrich with online opportunity signals")
 @click.option("--gmc/--no-gmc", default=False, help="Enrich with Google Merchant Center signals")
 @click.option("--lookback", default=90, help="Days to look back for online/GMC signals")
-@click.option("--out", "-o", required=True, type=click.Path(path_type=Path), help="Output snapshot JSON path")
+@click.option(
+    "--out", "-o", required=True, type=click.Path(path_type=Path), help="Output snapshot JSON path"
+)
 @click.option("--include-house-brands", is_flag=True, help="Include house brands in audit")
 @click.option("--verbose", is_flag=True)
 def audit_snapshot(online, gmc, lookback, out, include_house_brands, verbose):
@@ -204,18 +226,24 @@ def audit_snapshot(online, gmc, lookback, out, include_house_brands, verbose):
         console.print("[dim]Fetching online signals from Shopify analytics...[/dim]")
         try:
             from tvr.mcp_report.shopify_api import ShopifyQLClient
+
             from lookout.audit.online_signals import fetch_online_signals
 
             all_products = store.list_products(status="active")
             title_to_handle = {
                 p.get("title", ""): p.get("handle", "")
-                for p in all_products if p.get("title") and p.get("handle")
+                for p in all_products
+                if p.get("title") and p.get("handle")
             }
 
             client = ShopifyQLClient.from_config()
-            online_signals = asyncio.run(fetch_online_signals(
-                client, title_to_handle=title_to_handle, lookback_days=lookback,
-            ))
+            online_signals = asyncio.run(
+                fetch_online_signals(
+                    client,
+                    title_to_handle=title_to_handle,
+                    lookback_days=lookback,
+                )
+            )
             console.print(f"[dim]Got signals for {len(online_signals)} products[/dim]")
         except Exception as e:
             console.print(f"[yellow]Warning: Could not fetch online signals: {e}[/yellow]")
@@ -240,16 +268,30 @@ def audit_snapshot(online, gmc, lookback, out, include_house_brands, verbose):
     result = auditor.audit()
     summary = result.summary()
 
-    console.print(f"Audited {summary['total_products']} products, {summary['products_with_gaps']} with gaps")
+    console.print(
+        f"Audited {summary['total_products']} products, {summary['products_with_gaps']} with gaps"
+    )
 
     save_snapshot(result.scores, Path(out))
     console.print(f"Snapshot saved to [green]{out}[/green]")
 
 
 @cli.command("audit-optimize")
-@click.option("--snapshot", "-s", required=True, type=click.Path(exists=True, path_type=Path), help="Snapshot JSON from audit-snapshot")
+@click.option(
+    "--snapshot",
+    "-s",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Snapshot JSON from audit-snapshot",
+)
 @click.option("--top-n", default=50, help="Top-N products to optimize for (default 50)")
-@click.option("--log-dir", "-l", default=Path("./audit_optimize_log"), type=click.Path(path_type=Path), help="Directory for optimization logs")
+@click.option(
+    "--log-dir",
+    "-l",
+    default=Path("./audit_optimize_log"),
+    type=click.Path(path_type=Path),
+    help="Directory for optimization logs",
+)
 @click.option("--max-iterations", "-n", default=200, help="Max iterations per restart")
 @click.option("--verbose", is_flag=True)
 def audit_optimize(snapshot, top_n, log_dir, max_iterations, verbose):
@@ -265,13 +307,15 @@ def audit_optimize(snapshot, top_n, log_dir, max_iterations, verbose):
 
     scores = load_snapshot(Path(snapshot))
 
-    console.print(Panel(
-        f"[bold]Audit Weight Optimization[/bold]\n"
-        f"Snapshot: {snapshot} ({len(scores)} products)\n"
-        f"Optimizing top-{top_n} coverage efficiency\n"
-        f"Max iterations: {max_iterations}",
-        title="Optimize",
-    ))
+    console.print(
+        Panel(
+            f"[bold]Audit Weight Optimization[/bold]\n"
+            f"Snapshot: {snapshot} ({len(scores)} products)\n"
+            f"Optimizing top-{top_n} coverage efficiency\n"
+            f"Max iterations: {max_iterations}",
+            title="Optimize",
+        )
+    )
 
     result = run_weight_optimization(
         scores=scores,
@@ -312,26 +356,50 @@ def audit_optimize(snapshot, top_n, log_dir, max_iterations, verbose):
     btable.add_column("Baseline", justify="right")
     btable.add_column("Optimized", justify="right", style="green")
 
-    btable.add_row("Variant leverage (0.30)", f"{bl['variant_leverage']:.1%}", f"{bt['variant_leverage']:.1%}")
-    btable.add_row("Vendor concentration (0.20)", f"{bl['vendor_concentration']:.1%}", f"{bt['vendor_concentration']:.1%}")
-    btable.add_row("Inventory coverage (0.25)", f"{bl['inventory_coverage']:.1%}", f"{bt['inventory_coverage']:.1%}")
-    btable.add_row("Traffic alignment (0.25)", f"{bl['traffic_alignment']:.1%}", f"{bt['traffic_alignment']:.1%}")
-    btable.add_row("[bold]Composite[/bold]", f"[bold]{bl['composite']:.1%}[/bold]", f"[bold green]{bt['composite']:.1%}[/bold green]")
+    btable.add_row(
+        "Variant leverage (0.30)", f"{bl['variant_leverage']:.1%}", f"{bt['variant_leverage']:.1%}"
+    )
+    btable.add_row(
+        "Vendor concentration (0.20)",
+        f"{bl['vendor_concentration']:.1%}",
+        f"{bt['vendor_concentration']:.1%}",
+    )
+    btable.add_row(
+        "Inventory coverage (0.25)",
+        f"{bl['inventory_coverage']:.1%}",
+        f"{bt['inventory_coverage']:.1%}",
+    )
+    btable.add_row(
+        "Traffic alignment (0.25)",
+        f"{bl['traffic_alignment']:.1%}",
+        f"{bt['traffic_alignment']:.1%}",
+    )
+    btable.add_row(
+        "[bold]Composite[/bold]",
+        f"[bold]{bl['composite']:.1%}[/bold]",
+        f"[bold green]{bt['composite']:.1%}[/bold green]",
+    )
 
     console.print(btable)
 
     if bt.get("top_vendors"):
-        console.print(f"\n[bold]Top vendors in optimized batch:[/bold]")
+        console.print("\n[bold]Top vendors in optimized batch:[/bold]")
         for vendor, count in bt["top_vendors"]:
             console.print(f"  {vendor}: {count} products")
 
-    console.print(f"\n[bold]Improvement:[/bold] {result['best_efficiency'] - result['baseline_efficiency']:+.4f}")
+    console.print(
+        f"\n[bold]Improvement:[/bold] {result['best_efficiency'] - result['baseline_efficiency']:+.4f}"
+    )
     console.print(f"[bold]Logs:[/bold] {log_dir}")
 
 
 @cli.command("shipping")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path), default=None,
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
+    default=None,
     help="Export shipping audit CSV",
 )
 @click.option("--verbose", is_flag=True)
@@ -343,7 +411,7 @@ def shipping(output_path, verbose):
     high percentage of product price (conversion blocker).
     """
     setup_logging(verbose)
-    from lookout.audit.shipping import run_shipping_audit, export_shipping_audit_csv
+    from lookout.audit.shipping import export_shipping_audit_csv, run_shipping_audit
     from lookout.store import LookoutStore
 
     try:
@@ -355,12 +423,12 @@ def shipping(output_path, verbose):
     issues = run_shipping_audit(store)
 
     # Summary
-    critical = [i for i in issues if i.severity == "critical"]
+    [i for i in issues if i.severity == "critical"]
     warnings = [i for i in issues if i.severity == "warning"]
     info = [i for i in issues if i.severity == "info"]
 
     zero_weight = [i for i in issues if i.issue_type == "zero_weight"]
-    mismatches = [i for i in issues if i.issue_type == "weight_mismatch"]
+    [i for i in issues if i.issue_type == "weight_mismatch"]
     high_ratio = [i for i in issues if i.issue_type == "high_shipping_ratio"]
 
     table = Table(title="Shipping Audit Summary")
@@ -391,7 +459,9 @@ def shipping(output_path, verbose):
 
     # Show high shipping ratio
     if high_ratio:
-        console.print(f"\n[yellow bold]High shipping-to-price ratio ({len(high_ratio)}):[/yellow bold]")
+        console.print(
+            f"\n[yellow bold]High shipping-to-price ratio ({len(high_ratio)}):[/yellow bold]"
+        )
         ht = Table()
         ht.add_column("Handle", max_width=35)
         ht.add_column("Price", justify="right")
@@ -426,17 +496,34 @@ def enrich():
 
 @enrich.command()
 @click.option(
-    "-i", "--input", "input_path", type=click.Path(exists=True, path_type=Path), default=None,
+    "-i",
+    "--input",
+    "input_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
     help="Input CSV (optional — audits internally if not provided)",
 )
 @click.option("--vendor", "-v", default=None, help="Filter by vendor (used with internal audit)")
-@click.option("--handle", "-h", "handles", multiple=True, help="Specific product handles to enrich (repeatable)")
 @click.option(
-    "--out", "-o", "output_dir", type=click.Path(path_type=Path), default=Path("./output"),
+    "--handle",
+    "-h",
+    "handles",
+    multiple=True,
+    help="Specific product handles to enrich (repeatable)",
+)
+@click.option(
+    "--out",
+    "-o",
+    "output_dir",
+    type=click.Path(path_type=Path),
+    default=Path("./output"),
     help="Output directory",
 )
 @click.option(
-    "--vendors", "vendors_path", type=click.Path(exists=True, path_type=Path), default=None,
+    "--vendors",
+    "vendors_path",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
     help="Path to vendors.yaml",
 )
 @click.option("--concurrency", "-c", type=int, default=5, help="Max concurrent requests")
@@ -444,11 +531,43 @@ def enrich():
 @click.option("--force", "-f", is_flag=True, help="Force re-processing")
 @click.option("--dry-run", is_flag=True, help="Process but don't write output")
 @click.option("--verify", is_flag=True, help="Enable LLM fact-checking of generated descriptions")
-@click.option("--only", "only_mode", type=click.Choice(["images", "description", "variant-images"]), default=None, help="Only fill this specific gap type")
-@click.option("--llm", "llm_provider", type=click.Choice(["claude", "reason", "ollama", "hybrid", "sdk"]), default=None, help="LLM provider: hybrid=reason+claude split (default: auto-detect)")
-@click.option("--brave-images/--no-brave-images", "brave_images", default=None, help="Enable/disable Brave Image Search fallback (default: from vendors.yaml)")
+@click.option(
+    "--only",
+    "only_mode",
+    type=click.Choice(["images", "description", "variant-images"]),
+    default=None,
+    help="Only fill this specific gap type",
+)
+@click.option(
+    "--llm",
+    "llm_provider",
+    type=click.Choice(["claude", "reason", "ollama", "hybrid", "sdk"]),
+    default=None,
+    help="LLM provider: hybrid=reason+claude split (default: auto-detect)",
+)
+@click.option(
+    "--brave-images/--no-brave-images",
+    "brave_images",
+    default=None,
+    help="Enable/disable Brave Image Search fallback (default: from vendors.yaml)",
+)
 @click.option("--verbose", is_flag=True)
-def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_rows, force, dry_run, verify, only_mode, llm_provider, brave_images, verbose):
+def run(
+    input_path,
+    vendor,
+    handles,
+    output_dir,
+    vendors_path,
+    concurrency,
+    max_rows,
+    force,
+    dry_run,
+    verify,
+    only_mode,
+    llm_provider,
+    brave_images,
+    verbose,
+):
     """Run the enrichment pipeline."""
     setup_logging(verbose)
     from lookout.enrich.pipeline import PipelineConfig, run_pipeline
@@ -475,6 +594,7 @@ def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_
             # Run audit on just this product to get gap analysis + variant data
             score = auditor._score_product(product)
             from lookout.audit.models import AuditResult
+
             mini_result = AuditResult(scores=[score], vendor=product.get("vendor", ""))
             # Use all_items (not priority_items) so handle mode works even for gapless products
             rows = mini_result.to_input_rows(store=store, include_all=True)
@@ -532,13 +652,15 @@ def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_
         brave_images=brave_images,
     )
 
-    console.print(Panel(
-        f"[bold]Input:[/bold] {input_path}\n"
-        f"[bold]Output:[/bold] {output_dir}\n"
-        f"[bold]Vendors:[/bold] {vendors_path}\n"
-        f"[bold]Concurrency:[/bold] {concurrency}",
-        title="Enrichment Pipeline",
-    ))
+    console.print(
+        Panel(
+            f"[bold]Input:[/bold] {input_path}\n"
+            f"[bold]Output:[/bold] {output_dir}\n"
+            f"[bold]Vendors:[/bold] {vendors_path}\n"
+            f"[bold]Concurrency:[/bold] {concurrency}",
+            title="Enrichment Pipeline",
+        )
+    )
 
     try:
         outputs = asyncio.run(run_pipeline(config))
@@ -556,11 +678,19 @@ def run(input_path, vendor, handles, output_dir, vendors_path, concurrency, max_
 
 @enrich.command("score")
 @click.option(
-    "--output-dir", "-d", "output_dir", type=click.Path(exists=True, path_type=Path),
-    default=Path("./output"), help="Enrichment output directory to score",
+    "--output-dir",
+    "-d",
+    "output_dir",
+    type=click.Path(exists=True, path_type=Path),
+    default=Path("./output"),
+    help="Enrichment output directory to score",
 )
-@click.option("--handle", "-h", "handles", multiple=True, help="Specific handles to score (repeatable)")
-@click.option("--verify/--no-verify", default=False, help="Run LLM fact-checking (requires API key)")
+@click.option(
+    "--handle", "-h", "handles", multiple=True, help="Specific handles to score (repeatable)"
+)
+@click.option(
+    "--verify/--no-verify", default=False, help="Run LLM fact-checking (requires API key)"
+)
 @click.option("--json-output", "json_out", is_flag=True, help="Output as JSON instead of table")
 @click.option("--verbose", is_flag=True)
 def score(output_dir, handles, verify, json_out, verbose):
@@ -582,15 +712,16 @@ def score(output_dir, handles, verify, json_out, verbose):
 
     if verify:
         console.print("[dim]Running LLM fact-checking (this uses API credits)...[/dim]")
-        from lookout.enrich.scorer import load_artifacts
         from lookout.enrich.llm import get_llm_client
+        from lookout.enrich.scorer import load_artifacts
 
         llm = get_llm_client()
 
         # Determine handles to verify
         if handle_list is None:
             handle_list = [
-                d.name for d in sorted(output_dir.iterdir())
+                d.name
+                for d in sorted(output_dir.iterdir())
                 if d.is_dir() and (d / "merch_output.json").exists()
             ]
 
@@ -645,7 +776,13 @@ def score(output_dir, handles, verify, json_out, verbose):
     # Per-axis averages
     if verbose:
         console.print("\n[bold]Per-axis averages:[/bold]")
-        axis_names = ["factual_fidelity", "structural_compliance", "length_targets", "anti_hype", "coverage"]
+        axis_names = [
+            "factual_fidelity",
+            "structural_compliance",
+            "length_targets",
+            "anti_hype",
+            "coverage",
+        ]
         for name in axis_names:
             vals = [s.axes[name].score for s in scores if name in s.axes]
             maxes = [s.axes[name].max_score for s in scores if name in s.axes]
@@ -657,8 +794,11 @@ def score(output_dir, handles, verify, json_out, verbose):
 
 @enrich.command("score-facts")
 @click.option(
-    "--test-dir", "-t", type=click.Path(exists=True, path_type=Path),
-    default=Path("./test_set/combined"), help="Directory with extracted facts",
+    "--test-dir",
+    "-t",
+    type=click.Path(exists=True, path_type=Path),
+    default=Path("./test_set/combined"),
+    help="Directory with extracted facts",
 )
 @click.option("--verbose", is_flag=True)
 def score_facts_cmd(test_dir, verbose):
@@ -722,22 +862,36 @@ def score_facts_cmd(test_dir, verbose):
 
 @enrich.command("optimize")
 @click.option(
-    "--test-dir", "-t", "test_dir", type=click.Path(exists=True, path_type=Path),
-    default=Path("./test_set/combined"), help="Test set directory with cached artifacts",
+    "--test-dir",
+    "-t",
+    "test_dir",
+    type=click.Path(exists=True, path_type=Path),
+    default=Path("./test_set/combined"),
+    help="Test set directory with cached artifacts",
 )
 @click.option(
-    "--prompt", "-p", "prompt_path", type=click.Path(exists=True, path_type=Path),
+    "--prompt",
+    "-p",
+    "prompt_path",
+    type=click.Path(exists=True, path_type=Path),
     default=Path("./lookout/enrich/prompts/generate_body_html.prompt"),
     help="Prompt file to optimize",
 )
 @click.option(
-    "--log-dir", "-l", "log_dir", type=click.Path(path_type=Path),
-    default=Path("./test_set/optimize_log"), help="Directory for iteration logs",
+    "--log-dir",
+    "-l",
+    "log_dir",
+    type=click.Path(path_type=Path),
+    default=Path("./test_set/optimize_log"),
+    help="Directory for iteration logs",
 )
 @click.option("--max-iterations", "-n", default=5, help="Maximum optimization iterations")
 @click.option(
-    "--feedback-dir", "-f", "feedback_dir",
-    type=click.Path(exists=True, path_type=Path), default=None,
+    "--feedback-dir",
+    "-f",
+    "feedback_dir",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
     help="Directory with user feedback JSON files (rejections/edits feed the optimizer)",
 )
 @click.option("--verbose", is_flag=True)
@@ -756,22 +910,26 @@ def optimize(test_dir, prompt_path, log_dir, max_iterations, feedback_dir, verbo
     from lookout.enrich.optimize import run_optimization_loop
 
     feedback_info = f"\nFeedback: {feedback_dir}" if feedback_dir else ""
-    console.print(Panel(
-        f"[bold]Karpathy Loop: Prompt Optimization[/bold]\n"
-        f"Test set: {test_dir}\n"
-        f"Prompt: {prompt_path}\n"
-        f"Max iterations: {max_iterations}{feedback_info}",
-        title="Optimize",
-    ))
+    console.print(
+        Panel(
+            f"[bold]Karpathy Loop: Prompt Optimization[/bold]\n"
+            f"Test set: {test_dir}\n"
+            f"Prompt: {prompt_path}\n"
+            f"Max iterations: {max_iterations}{feedback_info}",
+            title="Optimize",
+        )
+    )
 
     try:
-        history = asyncio.run(run_optimization_loop(
-            test_dir=test_dir,
-            prompt_path=prompt_path,
-            log_dir=log_dir,
-            max_iterations=max_iterations,
-            feedback_dir=feedback_dir,
-        ))
+        history = asyncio.run(
+            run_optimization_loop(
+                test_dir=test_dir,
+                prompt_path=prompt_path,
+                log_dir=log_dir,
+                max_iterations=max_iterations,
+                feedback_dir=feedback_dir,
+            )
+        )
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
@@ -851,7 +1009,11 @@ def validate(input_path, verbose):
 @click.option("--vendor", "-v", default=None, help="Filter by vendor")
 @click.option("--product-type", default=None, help="Filter by product type")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path), default=None,
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
+    default=None,
     help="Export rankings CSV",
 )
 @click.option("--limit", type=int, default=200, help="Max products to rank")
@@ -867,22 +1029,42 @@ def rank(collection, vendor, product_type, output_path, limit, verbose):
     store = LookoutStore()
     ranker = CollectionRanker(store)
     result = ranker.rank(
-        collection=collection, vendor=vendor, product_type=product_type, limit=limit,
+        collection=collection,
+        vendor=vendor,
+        product_type=product_type,
+        limit=limit,
     )
 
     if output_path:
         with open(output_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow([
-                "Rank", "Handle", "Title", "Vendor", "Score",
-                "Weekly Units", "Margin %", "Inventory", "WOS",
-            ])
+            writer.writerow(
+                [
+                    "Rank",
+                    "Handle",
+                    "Title",
+                    "Vendor",
+                    "Score",
+                    "Weekly Units",
+                    "Margin %",
+                    "Inventory",
+                    "WOS",
+                ]
+            )
             for p in result.ranked:
-                writer.writerow([
-                    p.rank, p.handle, p.title, p.vendor, f"{p.total_score:.3f}",
-                    f"{p.weekly_units:.1f}", f"{p.margin_pct:.1f}",
-                    p.total_inventory, f"{p.weeks_of_supply:.1f}",
-                ])
+                writer.writerow(
+                    [
+                        p.rank,
+                        p.handle,
+                        p.title,
+                        p.vendor,
+                        f"{p.total_score:.3f}",
+                        f"{p.weekly_units:.1f}",
+                        f"{p.margin_pct:.1f}",
+                        p.total_inventory,
+                        f"{p.weeks_of_supply:.1f}",
+                    ]
+                )
         console.print(f"Rankings written to [green]{output_path}[/green]")
     else:
         table = Table(title=f"Rankings: {result.collection_name}")
@@ -894,8 +1076,12 @@ def rank(collection, vendor, product_type, output_path, limit, verbose):
         table.add_column("Inv")
         for p in result.ranked[:50]:
             table.add_row(
-                str(p.rank), p.title[:40], p.vendor,
-                f"{p.total_score:.2f}", f"{p.weekly_units:.1f}", str(p.total_inventory),
+                str(p.rank),
+                p.title[:40],
+                p.vendor,
+                f"{p.total_score:.2f}",
+                f"{p.weekly_units:.1f}",
+                str(p.total_inventory),
             )
         console.print(table)
 
@@ -907,7 +1093,10 @@ def rank(collection, vendor, product_type, output_path, limit, verbose):
 
 @cli.command()
 @click.option(
-    "--vendors", "vendors_path", type=click.Path(path_type=Path), default=None,
+    "--vendors",
+    "vendors_path",
+    type=click.Path(path_type=Path),
+    default=None,
     help="Path to vendors.yaml",
 )
 def vendors(vendors_path):
@@ -967,7 +1156,10 @@ def matrixify_images(vendor, dry_run, output_path, verbose):
 
 @output.command("alt-text")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path),
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
     default=Path("alt_text.xlsx"),
 )
 @click.option("--verbose", is_flag=True)
@@ -984,7 +1176,10 @@ def alt_text(output_path, verbose):
 
 @output.command("google-shopping")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path),
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
     default=Path("google_shopping.xlsx"),
 )
 @click.option("--verbose", is_flag=True)
@@ -1003,7 +1198,10 @@ def google_shopping(output_path, verbose):
 
 @output.command("weights")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path),
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
     default=Path("weights.xlsx"),
 )
 @click.option("--verbose", is_flag=True)
@@ -1020,7 +1218,10 @@ def weights(output_path, verbose):
 
 @output.command("weight-audit")
 @click.option(
-    "--out", "-o", "output_path", type=click.Path(path_type=Path),
+    "--out",
+    "-o",
+    "output_path",
+    type=click.Path(path_type=Path),
     default=Path("weight_audit.csv"),
 )
 @click.option("--verbose", is_flag=True)
@@ -1041,10 +1242,20 @@ def weight_audit(output_path, verbose):
 
 
 @enrich.command("review")
-@click.option("--run-dir", "-d", required=True, type=click.Path(exists=True, path_type=Path),
-              help="Enrichment output directory to review")
-@click.option("--out", "-o", type=click.Path(path_type=Path), default=None,
-              help="Output HTML report path (default: {run-dir}/review.html)")
+@click.option(
+    "--run-dir",
+    "-d",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Enrichment output directory to review",
+)
+@click.option(
+    "--out",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Output HTML report path (default: {run-dir}/review.html)",
+)
 @click.option("--serve", is_flag=True, help="Start a local server (accessible from phone)")
 @click.option("--port", "-p", type=int, default=8787, help="Server port (default: 8787)")
 @click.option("--verbose", is_flag=True)
@@ -1058,6 +1269,7 @@ def review(run_dir, out, serve, port, verbose):
     """
     setup_logging(verbose)
     import json as json_mod
+
     from lookout.apply.models import ApplyRun, ProductChange
     from lookout.enrich.models import MerchOutput
     from lookout.review.report import generate_review_report
@@ -1094,7 +1306,9 @@ def review(run_dir, out, serve, port, verbose):
             continue
 
         # Get image data from merch output
-        new_images = [img.model_dump() if hasattr(img, 'model_dump') else img for img in (merch.images or [])]
+        new_images = [
+            img.model_dump() if hasattr(img, "model_dump") else img for img in (merch.images or [])
+        ]
         current_images = product.get("images", [])
         variant_image_map = dict(merch.variant_image_map) if merch.variant_image_map else None
 
@@ -1104,7 +1318,7 @@ def review(run_dir, out, serve, port, verbose):
         for v in variants:
             parts = []
             for i in (1, 2, 3):
-                name = v.get(f"option{i}_name", "")
+                v.get(f"option{i}_name", "")
                 val = v.get(f"option{i}_value", "")
                 if val:
                     parts.append(val)
@@ -1128,23 +1342,25 @@ def review(run_dir, out, serve, port, verbose):
         if not product.get("tags"):
             missing_fields.append("tags")
 
-        changes.append(ProductChange(
-            handle=merch.handle,
-            product_id=product["id"],
-            title=product.get("title", ""),
-            vendor=product.get("vendor", ""),
-            current_body_html=product.get("body_html", ""),
-            new_body_html=merch.body_html,
-            current_images=current_images,
-            new_images=new_images,
-            new_variant_image_map=variant_image_map,
-            variant_labels=variant_labels,
-            inventory_count=inventory_count,
-            inventory_value=inventory_value,
-            missing_fields=missing_fields,
-            confidence=merch.confidence,
-            source_url=source_url,
-        ))
+        changes.append(
+            ProductChange(
+                handle=merch.handle,
+                product_id=product["id"],
+                title=product.get("title", ""),
+                vendor=product.get("vendor", ""),
+                current_body_html=product.get("body_html", ""),
+                new_body_html=merch.body_html,
+                current_images=current_images,
+                new_images=new_images,
+                new_variant_image_map=variant_image_map,
+                variant_labels=variant_labels,
+                inventory_count=inventory_count,
+                inventory_value=inventory_value,
+                missing_fields=missing_fields,
+                confidence=merch.confidence,
+                source_url=source_url,
+            )
+        )
 
     run_id = run_dir.name
     run = ApplyRun(run_id=run_id, source_dir=str(run_dir), changes=changes)
@@ -1155,6 +1371,7 @@ def review(run_dir, out, serve, port, verbose):
 
     if serve:
         from lookout.review.server import serve_review
+
         dispositions_path = run_dir / f"{run_id}_dispositions.json"
         serve_review(output_path, dispositions_path, port=port)
     else:
@@ -1162,12 +1379,26 @@ def review(run_dir, out, serve, port, verbose):
 
 
 @enrich.command("apply")
-@click.option("--run-dir", "-d", required=True, type=click.Path(exists=True, path_type=Path),
-              help="Enrichment output directory")
-@click.option("--dispositions", "-r", required=True, type=click.Path(exists=True, path_type=Path),
-              help="Dispositions JSON from review")
-@click.option("--backup-dir", type=click.Path(path_type=Path), default=Path("./backups"),
-              help="Directory for pre-write backups")
+@click.option(
+    "--run-dir",
+    "-d",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Enrichment output directory",
+)
+@click.option(
+    "--dispositions",
+    "-r",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Dispositions JSON from review",
+)
+@click.option(
+    "--backup-dir",
+    type=click.Path(path_type=Path),
+    default=Path("./backups"),
+    help="Directory for pre-write backups",
+)
 @click.option("--dry-run", is_flag=True, help="Show what would be applied without writing")
 @click.option("--push/--no-push", default=False, help="Actually write to Shopify (default: off)")
 @click.option("--verbose", is_flag=True)
@@ -1179,11 +1410,12 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
     """
     setup_logging(verbose)
     import json as json_mod
-    from lookout.apply.models import ApplyRun, ProductChange, ChangeStatus
+
+    from lookout.apply.models import ApplyRun, ChangeStatus, ProductChange
     from lookout.apply.writer import apply_run
     from lookout.enrich.models import MerchOutput
     from lookout.feedback.collector import collect_feedback, save_feedback
-    from lookout.review.dispositions import load_dispositions, apply_dispositions_to_run
+    from lookout.review.dispositions import apply_dispositions_to_run, load_dispositions
     from lookout.store import LookoutStore
 
     store = LookoutStore()
@@ -1200,12 +1432,17 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
         product = store.get_product(merch.handle)
         if not product:
             continue
-        changes.append(ProductChange(
-            handle=merch.handle, product_id=product["id"],
-            title=product.get("title", ""), vendor=product.get("vendor", ""),
-            current_body_html=product.get("body_html", ""),
-            new_body_html=merch.body_html, confidence=merch.confidence,
-        ))
+        changes.append(
+            ProductChange(
+                handle=merch.handle,
+                product_id=product["id"],
+                title=product.get("title", ""),
+                vendor=product.get("vendor", ""),
+                current_body_html=product.get("body_html", ""),
+                new_body_html=merch.body_html,
+                confidence=merch.confidence,
+            )
+        )
 
     run = ApplyRun(run_id=Path(run_dir).name, source_dir=str(run_dir), changes=changes)
 
@@ -1216,7 +1453,9 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
     approved = run.approved
     rejected = run.rejected
 
-    console.print(f"Approved: [green]{len(approved)}[/green]  Rejected: [red]{len(rejected)}[/red]  Pending: {len(run.pending)}")
+    console.print(
+        f"Approved: [green]{len(approved)}[/green]  Rejected: [red]{len(rejected)}[/red]  Pending: {len(run.pending)}"
+    )
 
     if dry_run:
         console.print("\n[yellow]DRY RUN — no changes will be made[/yellow]")
@@ -1229,6 +1468,7 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
         # Apply to Shopify
         from tvr.mcp.api import ShopifyAdminAPI
         from tvr.mcp.auth import ShopifyAuth
+
         auth = ShopifyAuth()
         api = ShopifyAdminAPI(auth)
         asyncio.run(apply_run(run, api, Path(backup_dir)))
@@ -1240,7 +1480,9 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
         for c in failed:
             console.print(f"  [red]FAILED[/red] {c.handle}: {c.error}")
     elif approved and not dry_run:
-        console.print(f"\n[dim]{len(approved)} approved changes ready. Use --push to write to Shopify.[/dim]")
+        console.print(
+            f"\n[dim]{len(approved)} approved changes ready. Use --push to write to Shopify.[/dim]"
+        )
 
     # Collect and save feedback (from ALL dispositions, not just applied)
     feedback_entries = collect_feedback(run)
@@ -1254,7 +1496,7 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
         if decisions_path.exists():
             from lookout.feedback.analyzer import analyze
             from lookout.feedback.replay import replay_proposal
-            from lookout.feedback.report import format_terminal, format_report, write_report
+            from lookout.feedback.report import format_report, format_terminal, write_report
 
             clusters = analyze(decisions_path, feedback_dir)
             if clusters:
@@ -1266,9 +1508,14 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
 
                 # Count totals from decision log
                 import json
-                all_decisions = [json.loads(ln) for ln in decisions_path.read_text().splitlines() if ln.strip()]
+
+                all_decisions = [
+                    json.loads(ln) for ln in decisions_path.read_text().splitlines() if ln.strip()
+                ]
                 total = len(all_decisions)
-                rejected = sum(1 for d in all_decisions if d.get("outcome") in ("no_match", "all_failed"))
+                rejected = sum(
+                    1 for d in all_decisions if d.get("outcome") in ("no_match", "all_failed")
+                )
 
                 # Terminal summary
                 report_path = Path(run_dir) / "feedback_analysis.md"
@@ -1280,10 +1527,21 @@ def apply_cmd(run_dir, dispositions, backup_dir, dry_run, push, verbose):
 
 
 @enrich.command("revert")
-@click.option("--handle", "-h", "handles", multiple=True, help="Product handles to revert (repeatable)")
-@click.option("--run-dir", "-d", type=click.Path(exists=True, path_type=Path), help="Revert all products from a run")
-@click.option("--backup-dir", type=click.Path(exists=True, path_type=Path), default=Path("./backups"),
-              help="Directory containing backups")
+@click.option(
+    "--handle", "-h", "handles", multiple=True, help="Product handles to revert (repeatable)"
+)
+@click.option(
+    "--run-dir",
+    "-d",
+    type=click.Path(exists=True, path_type=Path),
+    help="Revert all products from a run",
+)
+@click.option(
+    "--backup-dir",
+    type=click.Path(exists=True, path_type=Path),
+    default=Path("./backups"),
+    help="Directory containing backups",
+)
 @click.option("--verbose", is_flag=True)
 def revert_cmd(handles, run_dir, backup_dir, verbose):
     """Revert applied enrichment changes from backup.
@@ -1302,6 +1560,7 @@ def revert_cmd(handles, run_dir, backup_dir, verbose):
     if run_dir:
         # Find all applied products from run feedback
         import json as json_mod
+
         feedback_dir = Path(run_dir) / "feedback"
         if feedback_dir.exists():
             for f in feedback_dir.glob("*_approved.json"):
@@ -1310,6 +1569,7 @@ def revert_cmd(handles, run_dir, backup_dir, verbose):
 
     from tvr.mcp.api import ShopifyAdminAPI
     from tvr.mcp.auth import ShopifyAuth
+
     auth = ShopifyAuth()
     api = ShopifyAdminAPI(auth)
 
@@ -1326,8 +1586,13 @@ def revert_cmd(handles, run_dir, backup_dir, verbose):
 
 
 @enrich.command("feedback")
-@click.option("--feedback-dir", "-d", type=click.Path(exists=True, path_type=Path),
-              default=None, help="Feedback directory to summarize")
+@click.option(
+    "--feedback-dir",
+    "-d",
+    type=click.Path(exists=True, path_type=Path),
+    default=None,
+    help="Feedback directory to summarize",
+)
 @click.option("--all-runs", is_flag=True, help="Aggregate feedback across all campaign runs")
 @click.option("--verbose", is_flag=True)
 def feedback_cmd(feedback_dir, all_runs, verbose):
@@ -1336,7 +1601,7 @@ def feedback_cmd(feedback_dir, all_runs, verbose):
     Displays approval rate, rejection reasons, and trends over time.
     """
     setup_logging(verbose)
-    from lookout.feedback.collector import load_all_feedback, feedback_summary
+    from lookout.feedback.collector import feedback_summary, load_all_feedback
 
     if all_runs:
         all_entries = []
@@ -1375,8 +1640,13 @@ def feedback_cmd(feedback_dir, all_runs, verbose):
 
 
 @enrich.command("test-resolver")
-@click.option("--output-dir", "-d", type=click.Path(exists=True, path_type=Path),
-              default=Path("./output"), help="Directory containing match_decisions.jsonl files")
+@click.option(
+    "--output-dir",
+    "-d",
+    type=click.Path(exists=True, path_type=Path),
+    default=Path("./output"),
+    help="Directory containing match_decisions.jsonl files",
+)
 @click.option("--verbose", is_flag=True)
 def test_resolver_cmd(output_dir, verbose):
     """Replay resolver scoring against cached candidates to detect regressions."""
@@ -1433,26 +1703,30 @@ def test_resolver_cmd(output_dir, verbose):
             passed += 1
         elif original_winner:
             regressed += 1
-            regressions.append({
-                "handle": d["handle"],
-                "vendor": d["vendor"],
-                "expected": original_winner,
-                "got": new_winner,
-            })
+            regressions.append(
+                {
+                    "handle": d["handle"],
+                    "vendor": d["vendor"],
+                    "expected": original_winner,
+                    "got": new_winner,
+                }
+            )
             if verbose:
-                console.print(f"[red]REGRESSED[/red] {d['handle']}: expected {original_winner[:50]} got {new_winner[:50]}")
+                console.print(
+                    f"[red]REGRESSED[/red] {d['handle']}: expected {original_winner[:50]} got {new_winner[:50]}"
+                )
         else:
             if verbose:
                 console.print(f"[dim]SKIP[/dim] {d['handle']}: original was no_match")
 
-    console.print(f"\n[bold]Resolver Regression Results[/bold]")
+    console.print("\n[bold]Resolver Regression Results[/bold]")
     console.print(f"  Passed: {passed}")
     console.print(f"  Regressed: {regressed}")
     console.print(f"  Skipped (no cached candidates): {skipped}")
     console.print(f"  Total decisions: {len(decisions)}")
 
     if regressions:
-        console.print(f"\n[red]Regressions:[/red]")
+        console.print("\n[red]Regressions:[/red]")
         for r in regressions:
             console.print(f"  {r['handle']} ({r['vendor']})")
             console.print(f"    expected: {r['expected'][:70]}")

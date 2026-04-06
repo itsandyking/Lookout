@@ -92,12 +92,33 @@ _EXOTIC_COLOR_MAP: dict[str, str] = {
 
 # Non-color modifiers to strip (case-insensitive, whole word)
 _NON_COLOR_MODIFIERS: set[str] = {
-    "rib", "heather", "melange", "marled", "marl",
-    "print", "printed", "stripe", "striped", "plaid",
-    "camo", "floral", "check", "checked",
-    "matte", "satin", "gloss", "glossy", "metallic",
-    "washed", "faded", "distressed", "acid",
-    "solid", "classic", "premium", "pro",
+    "rib",
+    "heather",
+    "melange",
+    "marled",
+    "marl",
+    "print",
+    "printed",
+    "stripe",
+    "striped",
+    "plaid",
+    "camo",
+    "floral",
+    "check",
+    "checked",
+    "matte",
+    "satin",
+    "gloss",
+    "glossy",
+    "metallic",
+    "washed",
+    "faded",
+    "distressed",
+    "acid",
+    "solid",
+    "classic",
+    "premium",
+    "pro",
 }
 
 # Regex: strip everything after "w/" or "with" (lens/optics descriptions)
@@ -157,6 +178,7 @@ def normalize_color_for_query(color: str) -> str:
             deduped.append(word)
 
     return " ".join(deduped) if deduped else color.lower().strip()
+
 
 BRAVE_IMAGE_SEARCH_URL = "https://api.search.brave.com/res/v1/images/search"
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from lookout.apply.models import ProductChange
@@ -19,7 +19,7 @@ def create_backup(change: ProductChange, backup_dir: Path) -> Path:
     """
     backup_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     filename = f"{change.handle}_{timestamp}.json"
     path = backup_dir / filename
 
@@ -30,7 +30,7 @@ def create_backup(change: ProductChange, backup_dir: Path) -> Path:
         "vendor": change.vendor,
         "body_html": change.current_body_html,
         "images": change.current_images or [],
-        "backed_up_at": datetime.now(timezone.utc).isoformat(),
+        "backed_up_at": datetime.now(UTC).isoformat(),
     }
 
     path.write_text(json.dumps(backup_data, indent=2))

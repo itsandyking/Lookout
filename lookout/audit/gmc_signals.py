@@ -169,9 +169,13 @@ def fetch_gmc_performance(
     signals: dict[str, GMCSignals] = {}
 
     try:
-        request = service.accounts().reports().search(
-            parent=parent,
-            body={"query": query, "pageSize": 1000},
+        request = (
+            service.accounts()
+            .reports()
+            .search(
+                parent=parent,
+                body={"query": query, "pageSize": 1000},
+            )
         )
 
         while request:
@@ -245,9 +249,13 @@ def fetch_gmc_product_status(
     signals: dict[str, GMCSignals] = {}
 
     try:
-        request = service.accounts().reports().search(
-            parent=parent,
-            body={"query": query, "pageSize": 1000},
+        request = (
+            service.accounts()
+            .reports()
+            .search(
+                parent=parent,
+                body={"query": query, "pageSize": 1000},
+            )
         )
 
         while request:
@@ -282,7 +290,8 @@ def fetch_gmc_product_status(
     disapproved_count = sum(1 for s in signals.values() if s.disapproved)
     logger.info(
         "GMC product status: %d products, %d disapproved",
-        len(signals), disapproved_count,
+        len(signals),
+        disapproved_count,
     )
     return signals
 

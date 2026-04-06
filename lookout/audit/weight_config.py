@@ -64,9 +64,7 @@ class PriorityWeights:
     def from_array(cls, arr: list[float], inventory_transform: str = "linear") -> PriorityWeights:
         """Construct from a flat array of 8 floats, clamping to BOUNDS."""
         if len(arr) != len(_CONTINUOUS_PARAMS):
-            raise ValueError(
-                f"Expected {len(_CONTINUOUS_PARAMS)} values, got {len(arr)}"
-            )
+            raise ValueError(f"Expected {len(_CONTINUOUS_PARAMS)} values, got {len(arr)}")
         kwargs: dict = {"inventory_transform": inventory_transform}
         for name, value in zip(_CONTINUOUS_PARAMS, arr):
             lo, hi = BOUNDS[name]

@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import csv
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 from lookout.output.google_shopping import get_weight_grams
 from lookout.store import LookoutStore
-from lookout.taxonomy.mappings import DIMENSIONAL_TYPES, EXCLUDED_VENDORS, LB_TO_GRAMS
+from lookout.taxonomy.mappings import EXCLUDED_VENDORS, LB_TO_GRAMS
 
 logger = logging.getLogger(__name__)
 
@@ -102,20 +102,22 @@ def run_shipping_audit(store: LookoutStore) -> list[ShippingIssue]:
 
             # 1. Zero weight on shippable variant
             if shopify_g == 0:
-                issues.append(ShippingIssue(
-                    handle=product["handle"],
-                    title=product["title"],
-                    vendor=product["vendor"],
-                    product_type=product_type,
-                    issue_type="zero_weight",
-                    severity="critical",
-                    details=f"Shippable variant has 0g weight — checkout will show wrong shipping rates",
-                    shopify_weight_g=0,
-                    estimated_weight_g=estimated_g or 0,
-                    price=price,
-                    variant_count=len(variants),
-                    product_id=product["id"],
-                ))
+                issues.append(
+                    ShippingIssue(
+                        handle=product["handle"],
+                        title=product["title"],
+                        vendor=product["vendor"],
+                        product_type=product_type,
+                        issue_type="zero_weight",
+                        severity="critical",
+                        details="Shippable variant has 0g weight — checkout will show wrong shipping rates",
+                        shopify_weight_g=0,
+                        estimated_weight_g=estimated_g or 0,
+                        price=price,
+                        variant_count=len(variants),
+                        product_id=product["id"],
+                    )
+                )
                 # Only flag once per product for zero weight
                 break
 
@@ -124,24 +126,26 @@ def run_shipping_audit(store: LookoutStore) -> list[ShippingIssue]:
                 ratio = shopify_g / estimated_g if estimated_g > 0 else 0
                 if ratio < 0.5 or ratio > 2.0:
                     direction = "lighter" if ratio < 0.5 else "heavier"
-                    issues.append(ShippingIssue(
-                        handle=product["handle"],
-                        title=product["title"],
-                        vendor=product["vendor"],
-                        product_type=product_type,
-                        issue_type="weight_mismatch",
-                        severity="warning",
-                        details=(
-                            f"Shopify weight ({shopify_g}g) is {ratio:.1f}x the "
-                            f"expected weight ({estimated_g}g) for {product_type} — "
-                            f"{'undercharging shipping' if direction == 'heavier' else 'overcharging, may hurt conversion'}"
-                        ),
-                        shopify_weight_g=shopify_g,
-                        estimated_weight_g=estimated_g,
-                        price=price,
-                        variant_count=len(variants),
-                        product_id=product["id"],
-                    ))
+                    issues.append(
+                        ShippingIssue(
+                            handle=product["handle"],
+                            title=product["title"],
+                            vendor=product["vendor"],
+                            product_type=product_type,
+                            issue_type="weight_mismatch",
+                            severity="warning",
+                            details=(
+                                f"Shopify weight ({shopify_g}g) is {ratio:.1f}x the "
+                                f"expected weight ({estimated_g}g) for {product_type} — "
+                                f"{'undercharging shipping' if direction == 'heavier' else 'overcharging, may hurt conversion'}"
+                            ),
+                            shopify_weight_g=shopify_g,
+                            estimated_weight_g=estimated_g,
+                            price=price,
+                            variant_count=len(variants),
+                            product_id=product["id"],
+                        )
+                    )
                     break
 
         # 3. Shipping-to-price ratio (use first variant as representative)
@@ -156,24 +160,26 @@ def run_shipping_audit(store: LookoutStore) -> list[ShippingIssue]:
             ratio_pct = (customer_cost / price) * 100
 
             if ratio_pct > 25:
-                issues.append(ShippingIssue(
-                    handle=product["handle"],
-                    title=product["title"],
-                    vendor=product["vendor"],
-                    product_type=product_type,
-                    issue_type="high_shipping_ratio",
-                    severity="warning" if ratio_pct > 40 else "info",
-                    details=(
-                        f"Shipping ~${customer_cost:.0f} is {ratio_pct:.0f}% of "
-                        f"${price:.0f} price — potential conversion blocker"
-                    ),
-                    shopify_weight_g=weight_g,
-                    price=price,
-                    estimated_shipping=customer_cost,
-                    shipping_to_price_pct=ratio_pct,
-                    variant_count=len(variants),
-                    product_id=product["id"],
-                ))
+                issues.append(
+                    ShippingIssue(
+                        handle=product["handle"],
+                        title=product["title"],
+                        vendor=product["vendor"],
+                        product_type=product_type,
+                        issue_type="high_shipping_ratio",
+                        severity="warning" if ratio_pct > 40 else "info",
+                        details=(
+                            f"Shipping ~${customer_cost:.0f} is {ratio_pct:.0f}% of "
+                            f"${price:.0f} price — potential conversion blocker"
+                        ),
+                        shopify_weight_g=weight_g,
+                        price=price,
+                        estimated_shipping=customer_cost,
+                        shipping_to_price_pct=ratio_pct,
+                        variant_count=len(variants),
+                        product_id=product["id"],
+                    )
+                )
 
     # Sort: critical first, then by shipping_to_price_pct descending
     severity_order = {"critical": 0, "warning": 1, "info": 2}
@@ -185,25 +191,38 @@ def run_shipping_audit(store: LookoutStore) -> list[ShippingIssue]:
 def export_shipping_audit_csv(issues: list[ShippingIssue], output_path: Path) -> None:
     """Export shipping audit to CSV."""
     headers = [
-        "Handle", "Title", "Vendor", "Product Type", "Issue Type", "Severity",
-        "Details", "Shopify Weight (g)", "Estimated Weight (g)", "Price",
-        "Est. Shipping", "Shipping/Price %",
+        "Handle",
+        "Title",
+        "Vendor",
+        "Product Type",
+        "Issue Type",
+        "Severity",
+        "Details",
+        "Shopify Weight (g)",
+        "Estimated Weight (g)",
+        "Price",
+        "Est. Shipping",
+        "Shipping/Price %",
     ]
     with open(output_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=headers)
         writer.writeheader()
         for i in issues:
-            writer.writerow({
-                "Handle": i.handle,
-                "Title": i.title,
-                "Vendor": i.vendor,
-                "Product Type": i.product_type,
-                "Issue Type": i.issue_type,
-                "Severity": i.severity,
-                "Details": i.details,
-                "Shopify Weight (g)": i.shopify_weight_g or "",
-                "Estimated Weight (g)": i.estimated_weight_g or "",
-                "Price": f"${i.price:.2f}" if i.price else "",
-                "Est. Shipping": f"${i.estimated_shipping:.2f}" if i.estimated_shipping else "",
-                "Shipping/Price %": f"{i.shipping_to_price_pct:.0f}%" if i.shipping_to_price_pct else "",
-            })
+            writer.writerow(
+                {
+                    "Handle": i.handle,
+                    "Title": i.title,
+                    "Vendor": i.vendor,
+                    "Product Type": i.product_type,
+                    "Issue Type": i.issue_type,
+                    "Severity": i.severity,
+                    "Details": i.details,
+                    "Shopify Weight (g)": i.shopify_weight_g or "",
+                    "Estimated Weight (g)": i.estimated_weight_g or "",
+                    "Price": f"${i.price:.2f}" if i.price else "",
+                    "Est. Shipping": f"${i.estimated_shipping:.2f}" if i.estimated_shipping else "",
+                    "Shipping/Price %": f"{i.shipping_to_price_pct:.0f}%"
+                    if i.shipping_to_price_pct
+                    else "",
+                }
+            )

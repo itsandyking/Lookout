@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from lookout.apply.models import ApplyRun, ChangeStatus
@@ -33,7 +33,7 @@ class FeedbackEntry:
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
 
 def collect_feedback(run: ApplyRun) -> list[FeedbackEntry]:
@@ -48,34 +48,40 @@ def collect_feedback(run: ApplyRun) -> list[FeedbackEntry]:
             continue
 
         if change.status == ChangeStatus.APPROVED:
-            entries.append(FeedbackEntry(
-                handle=change.handle,
-                run_id=run.run_id,
-                disposition="approved",
-                generated_html=change.new_body_html or "",
-                final_html=change.new_body_html or "",
-                confidence=change.confidence,
-            ))
+            entries.append(
+                FeedbackEntry(
+                    handle=change.handle,
+                    run_id=run.run_id,
+                    disposition="approved",
+                    generated_html=change.new_body_html or "",
+                    final_html=change.new_body_html or "",
+                    confidence=change.confidence,
+                )
+            )
 
         elif change.status == ChangeStatus.REJECTED:
-            entries.append(FeedbackEntry(
-                handle=change.handle,
-                run_id=run.run_id,
-                disposition="rejected",
-                reason=change.rejection_reason,
-                generated_html=change.new_body_html or "",
-                confidence=change.confidence,
-            ))
+            entries.append(
+                FeedbackEntry(
+                    handle=change.handle,
+                    run_id=run.run_id,
+                    disposition="rejected",
+                    reason=change.rejection_reason,
+                    generated_html=change.new_body_html or "",
+                    confidence=change.confidence,
+                )
+            )
 
         elif change.status == ChangeStatus.EDITED:
-            entries.append(FeedbackEntry(
-                handle=change.handle,
-                run_id=run.run_id,
-                disposition="edited",
-                generated_html=change.new_body_html or "",
-                final_html=change.edited_body_html or "",
-                confidence=change.confidence,
-            ))
+            entries.append(
+                FeedbackEntry(
+                    handle=change.handle,
+                    run_id=run.run_id,
+                    disposition="edited",
+                    generated_html=change.new_body_html or "",
+                    final_html=change.edited_body_html or "",
+                    confidence=change.confidence,
+                )
+            )
 
         elif change.status in (ChangeStatus.APPLIED, ChangeStatus.REVERTED, ChangeStatus.FAILED):
             disp = "approved"
@@ -83,15 +89,17 @@ def collect_feedback(run: ApplyRun) -> list[FeedbackEntry]:
                 disp = "rejected"
             elif change.edited_body_html:
                 disp = "edited"
-            entries.append(FeedbackEntry(
-                handle=change.handle,
-                run_id=run.run_id,
-                disposition=disp,
-                reason=change.rejection_reason,
-                generated_html=change.new_body_html or "",
-                final_html=change.edited_body_html or change.new_body_html or "",
-                confidence=change.confidence,
-            ))
+            entries.append(
+                FeedbackEntry(
+                    handle=change.handle,
+                    run_id=run.run_id,
+                    disposition=disp,
+                    reason=change.rejection_reason,
+                    generated_html=change.new_body_html or "",
+                    final_html=change.edited_body_html or change.new_body_html or "",
+                    confidence=change.confidence,
+                )
+            )
 
     return entries
 

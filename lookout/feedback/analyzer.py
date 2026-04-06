@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
-from collections import Counter, defaultdict
-from dataclasses import dataclass, field
+from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 
 from lookout.feedback.collector import FeedbackEntry, load_all_feedback
@@ -102,25 +102,28 @@ THRESHOLD_REGISTRY: dict[str, dict] = {
 }
 
 # Failure reasons considered non-actionable (no threshold fix possible)
-NON_ACTIONABLE_REASONS = frozenset({
-    "reject_bot_blocked",
-    "reject_no_candidates",
-    "reject_timeout",
-})
+NON_ACTIONABLE_REASONS = frozenset(
+    {
+        "reject_bot_blocked",
+        "reject_no_candidates",
+        "reject_timeout",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ThresholdProposal:
     """A proposed change to a scoring threshold."""
 
-    parameter: str          # e.g. "title_gate.word_overlap"
-    current_value: float    # e.g. 0.30
-    proposed_value: float   # e.g. 0.22
-    rationale: str          # e.g. "5 failures cluster at 0.25-0.29"
+    parameter: str  # e.g. "title_gate.word_overlap"
+    current_value: float  # e.g. 0.30
+    proposed_value: float  # e.g. 0.22
+    rationale: str  # e.g. "5 failures cluster at 0.25-0.29"
 
 
 @dataclass
@@ -140,6 +143,7 @@ class PatternCluster:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_decisions(path: Path) -> list[dict]:
     """Load decision objects from a JSONL file."""
@@ -266,10 +270,7 @@ def _detect_threshold_boundary(
             parameter=param,
             current_value=cutoff,
             proposed_value=proposed,
-            rationale=(
-                f"{len(in_boundary)} failures cluster at "
-                f"{val_min:.2f}-{val_max:.2f}"
-            ),
+            rationale=(f"{len(in_boundary)} failures cluster at {val_min:.2f}-{val_max:.2f}"),
         )
         return boundary, proposal
 
@@ -295,6 +296,7 @@ def _detect_penalty_stacking(entries: list[dict]) -> bool:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def analyze(
     decisions_path: Path,
@@ -323,7 +325,7 @@ def analyze(
     feedback: list[FeedbackEntry] = []
     if feedback_dir and feedback_dir.exists():
         feedback = load_all_feedback(feedback_dir)
-    feedback_by_handle = {f.handle: f for f in feedback}
+    {f.handle: f for f in feedback}
 
     # --- Pass 1: Group failed candidates by outcome reason ---
     failed = _extract_failed_candidates(decisions)
@@ -358,16 +360,18 @@ def analyze(
                 boundary = boundary or {}
                 boundary["penalty_stacking"] = True
 
-        clusters.append(PatternCluster(
-            failure_reason=reason,
-            count=len(entries),
-            common_vendor=common_vendor,
-            common_type=common_type,
-            affected_handles=handles,
-            threshold_boundary=boundary,
-            proposal=proposal,
-            actionable=actionable,
-        ))
+        clusters.append(
+            PatternCluster(
+                failure_reason=reason,
+                count=len(entries),
+                common_vendor=common_vendor,
+                common_type=common_type,
+                affected_handles=handles,
+                threshold_boundary=boundary,
+                proposal=proposal,
+                actionable=actionable,
+            )
+        )
 
     clusters.sort(key=lambda c: c.count, reverse=True)
     return clusters

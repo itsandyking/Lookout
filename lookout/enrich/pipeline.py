@@ -21,12 +21,17 @@ from typing import Any
 
 import httpx
 
-from .extractor import ContentExtractor, extract_content
 from .firecrawl_scraper import FirecrawlScraper
-from .gmc_rules import check_prohibited_terms, validate_title
 from .generator import Generator
+from .gmc_rules import check_prohibited_terms, validate_title
 from .io import parse_input_csv
 from .llm import LLMClient, get_llm_client
+from .match_validator import (
+    MatchDecisionLogger,
+    check_post_extraction,
+    check_title_gate,
+    extract_page_title,
+)
 from .models import (
     HandleLog,
     InputRow,
@@ -34,18 +39,10 @@ from .models import (
     MerchOutput,
     OutputImage,
     ProcessingStatus,
-    VendorConfig,
     VendorsConfig,
 )
 from .resolver import URLResolver
-from .scraper import WebScraper
 from .shopify_output import ShopifyOutputBuilder
-from .match_validator import (
-    MatchDecisionLogger,
-    check_post_extraction,
-    check_title_gate,
-    extract_page_title,
-)
 from .utils import ensure_dir, load_vendors_config, sanitize_filename
 
 logger = logging.getLogger(__name__)
@@ -171,8 +168,7 @@ def _cross_reference_catalog(store: Any, input_row: Any, facts: Any) -> dict[str
                 # Flag if scraped price differs by more than 50% from known price
                 if known_price > 0 and abs(scraped_f - known_price) / known_price > 0.5:
                     warnings.append(
-                        f"PRICE_MISMATCH: scraped=${scraped_f:.2f} "
-                        f"vs catalog=${known_price:.2f}"
+                        f"PRICE_MISMATCH: scraped=${scraped_f:.2f} vs catalog=${known_price:.2f}"
                     )
             except (ValueError, TypeError):
                 pass
@@ -299,11 +295,17 @@ class ProductProcessor:
             # Apply --only filter
             if self.only_mode:
                 if self.only_mode == "images":
-                    input_row = input_row.model_copy(update={"has_description": True, "has_variant_images": True})
+                    input_row = input_row.model_copy(
+                        update={"has_description": True, "has_variant_images": True}
+                    )
                 elif self.only_mode == "description":
-                    input_row = input_row.model_copy(update={"has_image": True, "has_variant_images": True})
+                    input_row = input_row.model_copy(
+                        update={"has_image": True, "has_variant_images": True}
+                    )
                 elif self.only_mode == "variant-images":
-                    input_row = input_row.model_copy(update={"has_image": True, "has_description": True})
+                    input_row = input_row.model_copy(
+                        update={"has_image": True, "has_description": True}
+                    )
 
             # Check if product has any gaps (force mode skips this check)
             if not self.force and not input_row.has_any_gap:
@@ -330,7 +332,10 @@ class ProductProcessor:
                 # (but skip for house brands — no external retailers to find)
                 if self.brave_resolver and not vendor_config.house_brand:
                     handle_log.entries.append(
-                        LogEntry(level="INFO", message="Attempting Brave image search fallback for blocked vendor")
+                        LogEntry(
+                            level="INFO",
+                            message="Attempting Brave image search fallback for blocked vendor",
+                        )
                     )
                     try:
                         colors = input_row.known_colors or []
@@ -358,11 +363,13 @@ class ProductProcessor:
                             )
                             images = []
                             for i, (color, url) in enumerate(variant_map.items(), 1):
-                                images.append(OutputImage(
-                                    src=url,
-                                    position=i,
-                                    alt=f"{input_row.title} - {color}",
-                                ))
+                                images.append(
+                                    OutputImage(
+                                        src=url,
+                                        position=i,
+                                        alt=f"{input_row.title} - {color}",
+                                    )
+                                )
                             merch_output = MerchOutput(
                                 handle=handle,
                                 body_html=None,
@@ -417,10 +424,7 @@ class ProductProcessor:
             all_colors_covered = (
                 known_colors
                 and catalog_images
-                and all(
-                    any(colors_match(kc, cc) for cc in catalog_images)
-                    for kc in known_colors
-                )
+                and all(any(colors_match(kc, cc) for cc in catalog_images) for kc in known_colors)
             )
 
             if all_colors_covered and not input_row.needs_description:
@@ -431,6 +435,7 @@ class ProductProcessor:
                 )
                 # Build output directly from catalog data
                 from .colors import find_matching_color
+
                 variant_map = {}
                 for color in known_colors:
                     match = find_matching_color(color, catalog_images)
@@ -440,7 +445,9 @@ class ProductProcessor:
                 images = []
                 if input_row.needs_images:
                     for i, (color, url) in enumerate(variant_map.items(), 1):
-                        images.append(OutputImage(src=url, position=i, alt=f"{input_row.title} - {color}"))
+                        images.append(
+                            OutputImage(src=url, position=i, alt=f"{input_row.title} - {color}")
+                        )
 
                 merch_output = MerchOutput(
                     handle=handle,
@@ -476,7 +483,10 @@ class ProductProcessor:
                         )
                     )
                     facts = shopify_facts
-                    scrape_url = shopify_facts.canonical_url or f"https://{vendor_config.domain}/products/{handle}"
+                    scrape_url = (
+                        shopify_facts.canonical_url
+                        or f"https://{vendor_config.domain}/products/{handle}"
+                    )
                     metadata["confidence"] = 100  # Direct API match
                     metadata["source"] = "shopify_json"
 
@@ -548,10 +558,9 @@ class ProductProcessor:
                 metadata["warnings"].extend(resolver_output.warnings)
 
                 # Step 2: Candidate retry loop — try top candidates with validation
-                from .firecrawl_scraper import is_bot_blocked, _firecrawl_json_to_facts
+                from .firecrawl_scraper import _firecrawl_json_to_facts, is_bot_blocked
 
                 catalog_title = input_row.title or handle
-                confidence_settings = self.vendors_config.settings.confidence
                 candidates = sorted(
                     resolver_output.candidates,
                     key=lambda c: c.confidence,
@@ -566,12 +575,14 @@ class ProductProcessor:
 
                 for candidate in candidates[:3]:
                     if candidate.confidence < 50:
-                        match_decisions.append({
-                            "url": candidate.url,
-                            "resolver_confidence": candidate.confidence,
-                            "outcome": "skip_low_confidence",
-                            "reason": f"confidence {candidate.confidence} < threshold 50",
-                        })
+                        match_decisions.append(
+                            {
+                                "url": candidate.url,
+                                "resolver_confidence": candidate.confidence,
+                                "outcome": "skip_low_confidence",
+                                "reason": f"confidence {candidate.confidence} < threshold 50",
+                            }
+                        )
                         continue
 
                     # Scrape the candidate
@@ -585,7 +596,9 @@ class ProductProcessor:
                         candidate.url,
                         swatch_selector=vendor_config.swatch_selector,
                         gallery_selector=vendor_config.gallery_selector,
-                        wait_after_click=1500 if (vendor_config.swatch_selector or vendor_config.gallery_selector) else None,
+                        wait_after_click=1500
+                        if (vendor_config.swatch_selector or vendor_config.gallery_selector)
+                        else None,
                         wait_for=vendor_config.wait_for,
                     )
 
@@ -598,12 +611,14 @@ class ProductProcessor:
                                 message=f"Candidate {block_reason}: {candidate.url}",
                             )
                         )
-                        match_decisions.append({
-                            "url": candidate.url,
-                            "resolver_confidence": candidate.confidence,
-                            "outcome": "reject_bot_blocked",
-                            "reason": block_reason,
-                        })
+                        match_decisions.append(
+                            {
+                                "url": candidate.url,
+                                "resolver_confidence": candidate.confidence,
+                                "outcome": "reject_bot_blocked",
+                                "reason": block_reason,
+                            }
+                        )
                         continue
 
                     # Title gate check
@@ -617,14 +632,16 @@ class ProductProcessor:
                                     message=f"Title gate failed: {gate['reason']} (page='{page_title}')",
                                 )
                             )
-                            match_decisions.append({
-                                "url": candidate.url,
-                                "resolver_confidence": candidate.confidence,
-                                "outcome": "reject_title_gate",
-                                "reason": gate["reason"],
-                                "title_extracted": page_title,
-                                "title_similarity": gate["title_similarity"],
-                            })
+                            match_decisions.append(
+                                {
+                                    "url": candidate.url,
+                                    "resolver_confidence": candidate.confidence,
+                                    "outcome": "reject_title_gate",
+                                    "reason": gate["reason"],
+                                    "title_extracted": page_title,
+                                    "title_similarity": gate["title_similarity"],
+                                }
+                            )
                             continue
 
                     # Extract facts
@@ -640,20 +657,27 @@ class ProductProcessor:
                                 message=f"Extraction failed for candidate: {candidate.url}",
                             )
                         )
-                        match_decisions.append({
-                            "url": candidate.url,
-                            "resolver_confidence": candidate.confidence,
-                            "outcome": "reject_extraction_failed",
-                            "reason": "no product_name in extraction",
-                        })
+                        match_decisions.append(
+                            {
+                                "url": candidate.url,
+                                "resolver_confidence": candidate.confidence,
+                                "outcome": "reject_extraction_failed",
+                                "reason": "no product_name in extraction",
+                            }
+                        )
                         continue
 
                     cand_facts = _firecrawl_json_to_facts(facts_dict, candidate.url)
 
                     # Post-extraction validation
-                    swatch_colors = list(cand_variant_images.keys()) if cand_variant_images else None
+                    swatch_colors = (
+                        list(cand_variant_images.keys()) if cand_variant_images else None
+                    )
                     post_check = check_post_extraction(
-                        cand_facts, catalog_title, _catalog_price, known_colors or [],
+                        cand_facts,
+                        catalog_title,
+                        _catalog_price,
+                        known_colors or [],
                         vendor_colors=swatch_colors,
                     )
                     if not post_check["pass"]:
@@ -664,14 +688,16 @@ class ProductProcessor:
                                 data=post_check["signals"],
                             )
                         )
-                        match_decisions.append({
-                            "url": candidate.url,
-                            "resolver_confidence": candidate.confidence,
-                            "outcome": "reject_post_extraction",
-                            "reason": post_check["reason"],
-                            "confidence": post_check["confidence"],
-                            "signals": post_check["signals"],
-                        })
+                        match_decisions.append(
+                            {
+                                "url": candidate.url,
+                                "resolver_confidence": candidate.confidence,
+                                "outcome": "reject_post_extraction",
+                                "reason": post_check["reason"],
+                                "confidence": post_check["confidence"],
+                                "signals": post_check["signals"],
+                            }
+                        )
                         continue
 
                     # Accepted!
@@ -680,14 +706,16 @@ class ProductProcessor:
                             message=f"Candidate accepted: {candidate.url} (post-scrape confidence={post_check['confidence']:.0f})",
                         )
                     )
-                    match_decisions.append({
-                        "url": candidate.url,
-                        "resolver_confidence": candidate.confidence,
-                        "outcome": "accept",
-                        "reason": "ok",
-                        "confidence": post_check["confidence"],
-                        "signals": post_check["signals"],
-                    })
+                    match_decisions.append(
+                        {
+                            "url": candidate.url,
+                            "resolver_confidence": candidate.confidence,
+                            "outcome": "accept",
+                            "reason": "ok",
+                            "confidence": post_check["confidence"],
+                            "signals": post_check["signals"],
+                        }
+                    )
                     accepted_facts = cand_facts
                     accepted_url = candidate.url
                     accepted_markdown = cand_markdown
@@ -707,9 +735,13 @@ class ProductProcessor:
                         catalog_price=_catalog_price,
                         catalog_colors=known_colors,
                         resolver_candidates=[
-                            {"url": c.url, "confidence": c.confidence,
-                             "title": c.title, "snippet": c.snippet,
-                             "reasoning": c.reasoning}
+                            {
+                                "url": c.url,
+                                "confidence": c.confidence,
+                                "title": c.title,
+                                "snippet": c.snippet,
+                                "reasoning": c.reasoning,
+                            }
                             for c in candidates
                         ],
                     )
@@ -723,12 +755,9 @@ class ProductProcessor:
                     )
 
                     # If all candidates were bot-blocked and we have Brave, try image fallback
-                    all_bot_blocked = (
-                        match_decisions
-                        and all(
-                            d.get("outcome") in ("reject_bot_blocked", "skip_low_confidence")
-                            for d in match_decisions
-                        )
+                    all_bot_blocked = match_decisions and all(
+                        d.get("outcome") in ("reject_bot_blocked", "skip_low_confidence")
+                        for d in match_decisions
                     )
                     if all_bot_blocked and self.brave_resolver and not vendor_config.house_brand:
                         handle_log.entries.append(
@@ -763,11 +792,13 @@ class ProductProcessor:
                                 )
                                 images = []
                                 for i, (color, url) in enumerate(variant_map.items(), 1):
-                                    images.append(OutputImage(
-                                        src=url,
-                                        position=i,
-                                        alt=f"{input_row.title} - {color}",
-                                    ))
+                                    images.append(
+                                        OutputImage(
+                                            src=url,
+                                            position=i,
+                                            alt=f"{input_row.title} - {color}",
+                                        )
+                                    )
                                 merch_output = MerchOutput(
                                     handle=handle,
                                     body_html=None,
@@ -817,9 +848,7 @@ class ProductProcessor:
             # Step 3b: Content quality check
             quality = _assess_extraction_quality(facts)
             if not quality["usable"]:
-                    metadata["warnings"].append(
-                        f"LOW_EXTRACTION_QUALITY: {quality['reason']}"
-                    )
+                metadata["warnings"].append(f"LOW_EXTRACTION_QUALITY: {quality['reason']}")
 
             # Step 3b1: Season signal detection
             from .season_signals import check_season_match as _check_season
@@ -839,7 +868,11 @@ class ProductProcessor:
             if self.store:
                 _prod = self.store.get_product(handle)
                 if _prod:
-                    _season_input["tags"] = _prod.get("tags", "").split(", ") if isinstance(_prod.get("tags"), str) else _prod.get("tags", [])
+                    _season_input["tags"] = (
+                        _prod.get("tags", "").split(", ")
+                        if isinstance(_prod.get("tags"), str)
+                        else _prod.get("tags", [])
+                    )
 
             _vendor_input = {
                 "colors": _vendor_colors,
@@ -919,6 +952,7 @@ class ProductProcessor:
                 v.option_name.lower() in ("color", "colour") for v in facts.variants
             ):
                 from .models import VariantOption
+
                 facts.variants.append(
                     VariantOption(option_name="Color", values=input_row.known_colors)
                 )
@@ -961,7 +995,9 @@ class ProductProcessor:
                 )
                 if color_variant and color_variant.values:
                     handle_log.entries.append(
-                        LogEntry(message=f"Searching for {len(color_variant.values)} color-specific images")
+                        LogEntry(
+                            message=f"Searching for {len(color_variant.values)} color-specific images"
+                        )
                     )
                     color_imgs = await self.resolver.search_color_images(
                         vendor_config=vendor_config,
@@ -1006,7 +1042,10 @@ class ProductProcessor:
                         vim_prefix = vim_norm.split(" / ")[0]
                         matched = (
                             vim_norm in store_normalized
-                            or any(vim_norm.startswith(sn) or sn.startswith(vim_norm) for sn in store_normalized)
+                            or any(
+                                vim_norm.startswith(sn) or sn.startswith(vim_norm)
+                                for sn in store_normalized
+                            )
                             or vim_prefix in store_prefixes
                         )
                         if matched:
@@ -1048,15 +1087,21 @@ class ProductProcessor:
             if merch_output.images:
                 from .generator import validate_image_urls
 
-                img_dicts = [{"src": img.src, "alt": img.alt, "position": img.position}
-                             for img in merch_output.images]
+                img_dicts = [
+                    {"src": img.src, "alt": img.alt, "position": img.position}
+                    for img in merch_output.images
+                ]
                 validated = await validate_image_urls(img_dicts, self.http_client)
 
                 valid_images = []
                 for img_data in validated:
                     if img_data.get("valid", True):
                         valid_images.append(
-                            OutputImage(src=img_data["src"], position=img_data["position"], alt=img_data["alt"])
+                            OutputImage(
+                                src=img_data["src"],
+                                position=img_data["position"],
+                                alt=img_data["alt"],
+                            )
                         )
                     else:
                         reason = img_data.get("validation_error", "unknown")
@@ -1067,7 +1112,9 @@ class ProductProcessor:
                                 data={"url": img_data["src"][:80]},
                             )
                         )
-                        metadata["warnings"].append(f"IMAGE_INVALID: {reason} — {img_data['src'][:60]}")
+                        metadata["warnings"].append(
+                            f"IMAGE_INVALID: {reason} — {img_data['src'][:60]}"
+                        )
 
                 # Re-number positions
                 for i, img in enumerate(valid_images, 1):
@@ -1076,9 +1123,7 @@ class ProductProcessor:
 
             # Step 4c: Catalog cross-reference (if store available)
             if self.store and input_row.barcode:
-                xref = _cross_reference_catalog(
-                    self.store, input_row, facts
-                )
+                xref = _cross_reference_catalog(self.store, input_row, facts)
                 if xref["warnings"]:
                     metadata["warnings"].extend(xref["warnings"])
                     for w in xref["warnings"]:
@@ -1132,6 +1177,7 @@ class ProductProcessor:
 
                     # Save verification result
                     import json as _json
+
                     verify_path = artifacts_dir / "fact_check.json"
                     with open(verify_path, "w") as f:
                         _json.dump(verification, f, indent=2)
@@ -1315,6 +1361,7 @@ class Pipeline:
             store = None
             try:
                 from lookout.store import LookoutStore
+
                 store = LookoutStore()
                 logger.info("Store connected — catalog cross-referencing enabled")
             except Exception:
@@ -1330,6 +1377,7 @@ class Pipeline:
             if brave_enabled:
                 try:
                     from .brave_images import BraveImageResolver
+
                     brave_resolver = BraveImageResolver(self.vendors_config.settings.brave_images)
                     logger.info("Brave image search enabled")
                 except Exception as e:

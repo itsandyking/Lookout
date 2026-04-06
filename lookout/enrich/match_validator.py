@@ -18,17 +18,36 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEMOGRAPHICS = frozenset({
-    "youth", "kids", "boys", "girls", "junior", "jr",
-    "mens", "men", "womens", "women", "unisex",
-})
+DEMOGRAPHICS = frozenset(
+    {
+        "youth",
+        "kids",
+        "boys",
+        "girls",
+        "junior",
+        "jr",
+        "mens",
+        "men",
+        "womens",
+        "women",
+        "unisex",
+    }
+)
 
 # Normalize "men" → "mens", "women" → "womens" so they match
 _DEMO_NORMALIZE = {"men": "mens", "women": "womens"}
 
 _HEADING_RE = re.compile(r"^#{1,3}\s+(.+)$", re.MULTILINE)
 
-_PRICE_KEYS = {"price", "msrp", "regular price", "retail price", "base price", "price range", "our price"}
+_PRICE_KEYS = {
+    "price",
+    "msrp",
+    "regular price",
+    "retail price",
+    "base price",
+    "price range",
+    "our price",
+}
 _PRICE_RE = re.compile(r"[\$€£]([\d,]+\.?\d*)")
 
 
@@ -194,16 +213,14 @@ def check_post_extraction(
          "signals": {"title_similarity", "price_ratio", "color_overlap", "content_quality"},
          "reason": str}
     """
-    from .season_signals import score_color_overlap
     from .pipeline import _assess_extraction_quality
+    from .season_signals import score_color_overlap
 
     signals: dict = {}
 
     # Title similarity (40% weight)
     if facts.product_name:
-        title_sim = SequenceMatcher(
-            None, facts.product_name.lower(), catalog_title.lower()
-        ).ratio()
+        title_sim = SequenceMatcher(None, facts.product_name.lower(), catalog_title.lower()).ratio()
     else:
         title_sim = 0.0
     signals["title_similarity"] = title_sim
@@ -214,7 +231,9 @@ def check_post_extraction(
     if scraped_price is not None and catalog_price and catalog_price > 0:
         try:
             price_diff = abs(scraped_price - catalog_price) / catalog_price
-            price_score = max(0.0, min(1.0, 1.0 - (price_diff - 0.2) / 0.4)) if price_diff > 0.2 else 1.0
+            price_score = (
+                max(0.0, min(1.0, 1.0 - (price_diff - 0.2) / 0.4)) if price_diff > 0.2 else 1.0
+            )
         except (ValueError, TypeError):
             price_score = 0.5
     else:
@@ -229,9 +248,7 @@ def check_post_extraction(
     elif facts.specs:
         for key, value in facts.specs.items():
             if key.strip().lower() in ("color", "colour", "colors", "colours"):
-                resolved_colors = [
-                    c.strip() for c in re.split(r"[/,|]", str(value)) if c.strip()
-                ]
+                resolved_colors = [c.strip() for c in re.split(r"[/,|]", str(value)) if c.strip()]
                 break
     if not resolved_colors:
         for v in facts.variants:
@@ -252,12 +269,7 @@ def check_post_extraction(
     signals["content_quality"] = quality_score
 
     # Weighted confidence
-    confidence = (
-        title_sim * 40
-        + price_score * 25
-        + color_score * 25
-        + quality_score * 10
-    )
+    confidence = title_sim * 40 + price_score * 25 + color_score * 25 + quality_score * 10
 
     passed = confidence >= 50
     reason = "ok" if passed else f"low_post_scrape_confidence: {confidence:.0f}"
@@ -310,5 +322,7 @@ class MatchDecisionLogger:
             f.write(json.dumps(record) + "\n")
         logger.info(
             "Match decision for %s: %s (%d candidates tried)",
-            handle, outcome, len(candidates_tried),
+            handle,
+            outcome,
+            len(candidates_tried),
         )

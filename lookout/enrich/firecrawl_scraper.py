@@ -11,7 +11,7 @@ import asyncio
 import logging
 import random
 import re
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from firecrawl import AsyncFirecrawl
 from tenacity import (
@@ -114,9 +114,23 @@ EXTRACTION_PROMPT = (
 # Query params that indicate resized/thumbnail images.
 # Stripping these typically yields the full-size original.
 _RESIZE_PARAMS = {
-    "imwidth", "imheight", "impolicy", "width", "height",
-    "w", "h", "resize", "size", "fit", "crop", "quality",
-    "q", "fmt", "format", "auto", "dpr",
+    "imwidth",
+    "imheight",
+    "impolicy",
+    "width",
+    "height",
+    "w",
+    "h",
+    "resize",
+    "size",
+    "fit",
+    "crop",
+    "quality",
+    "q",
+    "fmt",
+    "format",
+    "auto",
+    "dpr",
 }
 
 
@@ -207,9 +221,19 @@ def _extract_images_from_html(html: str, base_url: str) -> list[str]:
     seen: set[str] = set()
 
     skip_patterns = {
-        "placeholder", "loading", "spinner", "icon", "logo",
-        "badge", "banner", "1x1", "pixel", "blank", "spacer",
-        "transparent", "svg+xml",
+        "placeholder",
+        "loading",
+        "spinner",
+        "icon",
+        "logo",
+        "badge",
+        "banner",
+        "1x1",
+        "pixel",
+        "blank",
+        "spacer",
+        "transparent",
+        "svg+xml",
     }
 
     for img in search_area.find_all("img"):
@@ -323,7 +347,11 @@ class FirecrawlScraper:
 
             final_url = url
             if doc.metadata:
-                final_url = getattr(doc.metadata, "source_url", None) or getattr(doc.metadata, "sourceURL", None) or url
+                final_url = (
+                    getattr(doc.metadata, "source_url", None)
+                    or getattr(doc.metadata, "sourceURL", None)
+                    or url
+                )
 
             return _firecrawl_json_to_facts(doc.json, final_url)
 
@@ -343,7 +371,11 @@ class FirecrawlScraper:
             doc = await self._client.scrape(url, formats=["html"])
             final_url = url
             if doc.metadata:
-                final_url = getattr(doc.metadata, "source_url", None) or getattr(doc.metadata, "sourceURL", None) or url
+                final_url = (
+                    getattr(doc.metadata, "source_url", None)
+                    or getattr(doc.metadata, "sourceURL", None)
+                    or url
+                )
             return ScrapedPage(
                 url=url,
                 html=doc.html or "",
@@ -397,12 +429,17 @@ class FirecrawlScraper:
                 "formats": formats,
                 "only_main_content": True,
                 "exclude_tags": [
-                    "nav", "footer", "header",
+                    "nav",
+                    "footer",
+                    "header",
                     "[role='navigation']",
                     "[role='banner']",
                     "[role='contentinfo']",
-                    ".site-footer", ".site-header", ".site-nav",
-                    "#cookie-banner", ".cookie-notice",
+                    ".site-footer",
+                    ".site-header",
+                    ".site-nav",
+                    "#cookie-banner",
+                    ".cookie-notice",
                     ".announcement-bar",
                 ],
             }
@@ -418,7 +455,8 @@ class FirecrawlScraper:
                 if html_images:
                     logger.info(
                         "Supplemented markdown with %d images from HTML for %s",
-                        len(html_images), url,
+                        len(html_images),
+                        url,
                     )
                     markdown = _append_images_to_markdown(markdown, html_images)
 
@@ -446,12 +484,17 @@ class FirecrawlScraper:
             "formats": ["markdown"],
             "onlyMainContent": True,
             "excludeTags": [
-                "nav", "footer", "header",
+                "nav",
+                "footer",
+                "header",
                 "[role='navigation']",
                 "[role='banner']",
                 "[role='contentinfo']",
-                ".site-footer", ".site-header", ".site-nav",
-                "#cookie-banner", ".cookie-notice",
+                ".site-footer",
+                ".site-header",
+                ".site-nav",
+                "#cookie-banner",
+                ".cookie-notice",
                 ".announcement-bar",
             ],
         }
@@ -478,7 +521,8 @@ class FirecrawlScraper:
             if variant_images:
                 logger.info(
                     "Firecrawl returned variant images for %d colors from %s",
-                    len(variant_images), url,
+                    len(variant_images),
+                    url,
                 )
 
             return markdown, variant_images
@@ -524,13 +568,17 @@ class FirecrawlScraper:
             if variant_images:
                 logger.info(
                     "Swatch scrape found %d colors (%d swatches, method=%s) for %s",
-                    len(variant_images), swatch_count, method, url,
+                    len(variant_images),
+                    swatch_count,
+                    method,
+                    url,
                 )
                 return variant_images
             else:
                 logger.info(
                     "Swatch scrape found no variant images (%d swatches) for %s",
-                    swatch_count, url,
+                    swatch_count,
+                    url,
                 )
                 return None
 

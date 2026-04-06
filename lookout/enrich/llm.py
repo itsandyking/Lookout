@@ -207,6 +207,7 @@ class ClaudeCLIProvider(LLMProvider):
 
     def __init__(self, model: str = "claude-sonnet-4-6") -> None:
         import shutil
+
         self.model = model
         self.claude_bin = shutil.which("claude") or str(Path.home() / ".local" / "bin" / "claude")
 
@@ -222,17 +223,20 @@ class ClaudeCLIProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.0,
     ) -> str:
-        import asyncio
         cmd = [
-            self.claude_bin, "--print",
-            "--model", self.model,
-            "--max-turns", "1",
+            self.claude_bin,
+            "--print",
+            "--model",
+            self.model,
+            "--max-turns",
+            "1",
         ]
         if system:
             cmd += ["--system-prompt", system]
 
         # Don't pass ANTHROPIC_API_KEY to CLI — let it use its own auth (Max subscription)
         import os
+
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
 
         proc = await asyncio.create_subprocess_exec(
@@ -250,7 +254,9 @@ class ClaudeCLIProvider(LLMProvider):
         if proc.returncode != 0:
             err = stderr.decode().strip()
             out = stdout.decode().strip()[:200]
-            raise RuntimeError(f"claude CLI failed (exit {proc.returncode}): stderr={err!r} stdout={out!r}")
+            raise RuntimeError(
+                f"claude CLI failed (exit {proc.returncode}): stderr={err!r} stdout={out!r}"
+            )
 
         return stdout.decode().strip()
 
@@ -275,7 +281,9 @@ class ClaudeCLIProvider(LLMProvider):
         structured_system = system or ""
         structured_system += "\nYou must respond with only valid JSON. No other text."
 
-        text = await self.complete(structured_prompt, system=structured_system.strip(), max_tokens=max_tokens)
+        text = await self.complete(
+            structured_prompt, system=structured_system.strip(), max_tokens=max_tokens
+        )
         return AnthropicProvider._extract_and_parse_json(text)
 
 
@@ -362,6 +370,7 @@ def _create_default_provider() -> LLMProvider:
     Prefers claude CLI (uses Max subscription), falls back to SDK.
     """
     import shutil
+
     claude_bin = shutil.which("claude") or str(Path.home() / ".local" / "bin" / "claude")
 
     # Check if claude CLI is available
@@ -375,9 +384,7 @@ def _create_default_provider() -> LLMProvider:
         logger.info("Using Anthropic SDK provider")
         return AnthropicProvider(api_key=api_key)
 
-    raise ValueError(
-        "No LLM provider available. Install claude CLI or set ANTHROPIC_API_KEY."
-    )
+    raise ValueError("No LLM provider available. Install claude CLI or set ANTHROPIC_API_KEY.")
 
 
 class OllamaVisionClient:
@@ -429,13 +436,12 @@ class OllamaVisionClient:
         image_url: str = "",
     ) -> str:
         """Build the vision prompt with color menu and URL hint."""
-        options_list = "\n".join(
-            self._describe_color_option(c) for c in color_options
-        )
+        options_list = "\n".join(self._describe_color_option(c) for c in color_options)
 
         url_hint = ""
         if image_url:
             from urllib.parse import unquote, urlparse
+
             path = unquote(urlparse(image_url).path)
             url_hint = f"\nImage URL path: {path}"
 
@@ -517,6 +523,7 @@ class OllamaVisionClient:
         url_hint = ""
         if image_url:
             from urllib.parse import unquote, urlparse
+
             path = unquote(urlparse(image_url).path)
             url_hint = f"\nImage URL path: {path}"
 
@@ -561,8 +568,23 @@ class OllamaVisionClient:
         """
         desc_tokens = {t.lower().strip(",.") for t in description.split()}
         # Remove noise words
-        noise = {"and", "with", "the", "a", "an", "dark", "light", "bright",
-                 "deep", "pale", "matte", "product", "is", "color", "colored"}
+        noise = {
+            "and",
+            "with",
+            "the",
+            "a",
+            "an",
+            "dark",
+            "light",
+            "bright",
+            "deep",
+            "pale",
+            "matte",
+            "product",
+            "is",
+            "color",
+            "colored",
+        }
         desc_tokens -= noise
 
         best_option = None
@@ -635,7 +657,9 @@ class OllamaVisionClient:
                 break
             try:
                 matched = await self.match_image_to_color(
-                    data, remaining_colors, image_url=url,
+                    data,
+                    remaining_colors,
+                    image_url=url,
                 )
                 if matched:
                     mapping[matched] = url
@@ -652,7 +676,8 @@ class OllamaVisionClient:
         if remaining_colors and unmatched_images:
             logger.info(
                 "Vision pass 2: %d colors remain, %d images to retry",
-                len(remaining_colors), len(unmatched_images),
+                len(remaining_colors),
+                len(unmatched_images),
             )
             used_urls: set[str] = set(mapping.values())
 
@@ -668,9 +693,13 @@ class OllamaVisionClient:
                         mapping[matched] = url
                         remaining_colors.remove(matched)
                         used_urls.add(url)
-                        logger.debug("Vision pass 2: %s → %s (from '%s')", url, matched, description)
+                        logger.debug(
+                            "Vision pass 2: %s → %s (from '%s')", url, matched, description
+                        )
                     else:
-                        logger.debug("Vision pass 2: %s described as '%s' — no match", url, description)
+                        logger.debug(
+                            "Vision pass 2: %s described as '%s' — no match", url, description
+                        )
                 except Exception as e:
                     logger.warning("Vision pass 2 failed for %s: %s", url, e)
 
@@ -929,7 +958,9 @@ class LLMClient:
                 seen.add(normalized)
                 unique_urls.append(url)
         if len(unique_urls) < len(image_urls):
-            logger.debug("Vision: deduplicated %d → %d image URLs", len(image_urls), len(unique_urls))
+            logger.debug(
+                "Vision: deduplicated %d → %d image URLs", len(image_urls), len(unique_urls)
+            )
 
         downloaded = await OllamaVisionClient.download_images(unique_urls)
         if not downloaded:
@@ -995,7 +1026,9 @@ class LLMClient:
                 system=system,
             )
             # Remap safe keys back to original color names
-            safe_to_original = {c.replace(" ", "_").replace("'", "").replace("/", "_"): c for c in color_values}
+            safe_to_original = {
+                c.replace(" ", "_").replace("'", "").replace("/", "_"): c for c in color_values
+            }
             return {safe_to_original.get(k, k): v for k, v in result.items() if v}
         except Exception as e:
             logger.warning("Structured variant image selection failed: %s", e)

@@ -276,9 +276,7 @@ class ImageEnricher:
             return
 
         # Step C: Style-map + color match
-        image_url = self.store.find_catalog_image_by_style(
-            product["vendor"], "", color
-        )
+        image_url = self.store.find_catalog_image_by_style(product["vendor"], "", color)
         # Note: find_catalog_image_by_style needs (vendor, style, color) but
         # we don't have the style code from the product dict. The store's
         # find_catalog_image_by_style looks up style via VendorStyleMap internally

@@ -57,15 +57,11 @@ def compute_priority(score: ProductScore, weights: PriorityWeights) -> float:
     boost = 1.0
 
     if score.online_sessions > 0:
-        session_weight = math.log1p(score.online_sessions) / math.log1p(
-            weights.session_scale
-        )
+        session_weight = math.log1p(score.online_sessions) / math.log1p(weights.session_scale)
         boost += score.opportunity_gap * session_weight
 
     if score.gmc_impressions > 0:
-        impression_weight = math.log1p(score.gmc_impressions) / math.log1p(
-            weights.impression_scale
-        )
+        impression_weight = math.log1p(score.gmc_impressions) / math.log1p(weights.impression_scale)
         boost += score.discovery_gap * impression_weight
 
     if score.gmc_disapproved:
@@ -74,9 +70,7 @@ def compute_priority(score: ProductScore, weights: PriorityWeights) -> float:
     return base_score * boost
 
 
-def rank_scores(
-    scores: list[ProductScore], weights: PriorityWeights
-) -> list[str]:
+def rank_scores(scores: list[ProductScore], weights: PriorityWeights) -> list[str]:
     """Rank products by priority, returning handles in descending order.
 
     Only products with at least one gap (gap_count > 0 under the given

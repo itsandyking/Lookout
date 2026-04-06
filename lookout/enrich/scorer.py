@@ -202,12 +202,14 @@ def score_structural_compliance(body_html: str, facts: ExtractedFacts) -> AxisSc
         axis.details.append("no specs in facts (ok)")
 
     # Semantic HTML usage
-    semantic_count = sum([
-        parser.has_p,
-        parser.has_h3,
-        parser.has_ul or not facts.feature_bullets,
-        parser.has_table or not facts.specs,
-    ])
+    semantic_count = sum(
+        [
+            parser.has_p,
+            parser.has_h3,
+            parser.has_ul or not facts.feature_bullets,
+            parser.has_table or not facts.specs,
+        ]
+    )
     semantic_score = min(5, int(semantic_count / 4 * 5))
     axis.score += semantic_score
     axis.details.append(f"semantic HTML: {semantic_count}/4 elements")
@@ -253,9 +255,7 @@ def score_length_targets(body_html: str) -> AxisScore:
             # Partial credit
             ok_ratio = 1 - len(long_bullets) / len(parser.li_texts)
             axis.score += int(5 * ok_ratio)
-            axis.details.append(
-                f"{len(long_bullets)}/{len(parser.li_texts)} bullets >12 words"
-            )
+            axis.details.append(f"{len(long_bullets)}/{len(parser.li_texts)} bullets >12 words")
     else:
         axis.score += 5  # no bullets = no penalty
         axis.details.append("no bullets to check")
@@ -273,7 +273,7 @@ def score_anti_hype(body_html: str) -> AxisScore:
     text_lower = _extract_text(body_html).lower()
     found = []
     for word in BANNED_WORDS:
-        if re.search(r'\b' + re.escape(word) + r'\b', text_lower):
+        if re.search(r"\b" + re.escape(word) + r"\b", text_lower):
             found.append(word)
 
     if found:
@@ -309,7 +309,9 @@ def score_coverage(body_html: str, facts: ExtractedFacts) -> AxisScore:
                     blocks_used += 1
         if blocks_used > 0:
             axis.score += 5
-            axis.details.append(f"description: {blocks_used}/{len(facts.description_blocks)} blocks used")
+            axis.details.append(
+                f"description: {blocks_used}/{len(facts.description_blocks)} blocks used"
+            )
         else:
             axis.details.append("description blocks not reflected in output")
     else:
@@ -327,9 +329,7 @@ def score_coverage(body_html: str, facts: ExtractedFacts) -> AxisScore:
                     features_used += 1
         ratio = features_used / len(facts.feature_bullets)
         axis.score += int(5 * ratio)
-        axis.details.append(
-            f"features: {features_used}/{len(facts.feature_bullets)} used"
-        )
+        axis.details.append(f"features: {features_used}/{len(facts.feature_bullets)} used")
     else:
         axis.score += 5
         axis.details.append("no feature bullets in facts (ok)")
@@ -347,22 +347,26 @@ def score_coverage(body_html: str, facts: ExtractedFacts) -> AxisScore:
         used = 0
         if facts.specs:
             # Check if any spec values appear in output
-            spec_hits = sum(
-                1 for v in facts.specs.values() if v.lower() in text_lower
-            )
+            spec_hits = sum(1 for v in facts.specs.values() if v.lower() in text_lower)
             if spec_hits > 0:
                 used += 1
         if facts.materials:
             mat_words = [w for w in facts.materials.lower().split() if len(w) > 4]
-            if mat_words and sum(1 for w in mat_words[:10] if w in text_lower) >= min(2, len(mat_words[:10])):
+            if mat_words and sum(1 for w in mat_words[:10] if w in text_lower) >= min(
+                2, len(mat_words[:10])
+            ):
                 used += 1
         if facts.care:
             care_words = [w for w in facts.care.lower().split() if len(w) > 4]
-            if care_words and sum(1 for w in care_words[:10] if w in text_lower) >= min(2, len(care_words[:10])):
+            if care_words and sum(1 for w in care_words[:10] if w in text_lower) >= min(
+                2, len(care_words[:10])
+            ):
                 used += 1
         ratio = used / len(rich_fields)
         axis.score += int(5 * ratio)
-        axis.details.append(f"rich fields: {used}/{len(rich_fields)} used ({', '.join(rich_fields)})")
+        axis.details.append(
+            f"rich fields: {used}/{len(rich_fields)} used ({', '.join(rich_fields)})"
+        )
     else:
         axis.score += 5
         axis.details.append("no rich fields in facts (ok)")
@@ -433,9 +437,7 @@ def score_quality(
 
     # Axis 1: Factual fidelity (requires LLM verification)
     if verification:
-        qs.axes["factual_fidelity"] = score_factual_fidelity_from_verification(
-            verification
-        )
+        qs.axes["factual_fidelity"] = score_factual_fidelity_from_verification(verification)
     else:
         qs.axes["factual_fidelity"] = AxisScore(
             name="factual_fidelity",
@@ -453,7 +455,9 @@ def score_quality(
     return qs
 
 
-def load_artifacts(output_dir: Path, handle: str) -> tuple[MerchOutput | None, ExtractedFacts | None]:
+def load_artifacts(
+    output_dir: Path, handle: str
+) -> tuple[MerchOutput | None, ExtractedFacts | None]:
     """Load merch_output.json and extracted_facts.json for a product handle."""
     handle_dir = output_dir / handle
 
