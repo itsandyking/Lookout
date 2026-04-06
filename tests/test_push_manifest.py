@@ -1,6 +1,6 @@
 """Tests for lookout.push.manifest — round-trip, dir creation, file naming."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -23,7 +23,7 @@ def sample_manifest() -> PushManifest:
     """Build a realistic manifest for testing."""
     return PushManifest(
         run_id="enrich-20260406",
-        pushed_at=datetime(2026, 4, 6, 18, 30, 0, tzinfo=timezone.utc),
+        pushed_at=datetime(2026, 4, 6, 18, 30, 0, tzinfo=UTC),
         dispositions_path="dispositions_v2.json",
         summary=PushSummary(
             products_pushed=1,
@@ -94,7 +94,7 @@ class TestRoundTrip:
     def test_round_trip_empty_manifest(self, tmp_path: Path):
         manifest = PushManifest(
             run_id="empty-run",
-            pushed_at=datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+            pushed_at=datetime(2026, 1, 1, 0, 0, 0, tzinfo=UTC),
             dispositions_path="none.json",
         )
         saved_path = save_manifest(manifest, tmp_path)
@@ -132,7 +132,7 @@ class TestFileNaming:
     def test_filename_uses_run_id(self, tmp_path: Path):
         manifest = PushManifest(
             run_id="custom-run-name",
-            pushed_at=datetime(2026, 12, 25, 9, 15, 0, tzinfo=timezone.utc),
+            pushed_at=datetime(2026, 12, 25, 9, 15, 0, tzinfo=UTC),
             dispositions_path="test.json",
         )
         saved_path = save_manifest(manifest, tmp_path)
