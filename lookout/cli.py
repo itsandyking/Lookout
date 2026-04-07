@@ -1809,8 +1809,23 @@ def push_cmd(run_dir, dispositions, dry_run, verbose):
 
     from lookout.store import _default_db_url
 
-    pusher = ShopifyPusher(config=config, db_url=_default_db_url(), dry_run=dry_run)
+    db_url = _default_db_url()
+    pusher = ShopifyPusher(config=config, db_url=db_url, dry_run=dry_run)
     run_id = run_dir.name if run_dir else "manual"
+
+    # --- Dolt checkpoint (skip for dry-run) ---
+    if not dry_run:
+        from lookout.push.checkpoint import CheckpointError, create_dolt_checkpoint
+
+        try:
+            tag = create_dolt_checkpoint(db_url, run_id)
+            console.print(f"Dolt checkpoint: [green]{tag}[/green]")
+        except CheckpointError as e:
+            console.print(f"[red]Checkpoint failed: {e}[/red]")
+            console.print("[red]Aborting push — cannot create safety checkpoint[/red]")
+            return
+    else:
+        console.print("[yellow]DRY RUN — skipping Dolt checkpoint[/yellow]")
 
     products_manifest: dict = {}
     summary = {
