@@ -240,7 +240,7 @@ async def main():
                     f"{color} — {unique_count} distinct images"
                 )
 
-            # Progress + flush
+            # Progress + periodic flush
             if (i + 1) % BATCH_SIZE == 0 or i == len(groups) - 1:
                 elapsed = time.time() - t_start
                 rate = (i + 1) / elapsed if elapsed > 0 else 0
@@ -251,6 +251,12 @@ async def main():
                     f"unknown={stats['unknown']} anomalies={stats['anomaly']} "
                     f"({elapsed:.0f}s elapsed, ~{remaining:.0f}s remaining)"
                 )
+
+                # Flush to disk periodically to protect against interruption
+                with open(output_csv, "w", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(results)
     finally:
         await http.aclose()
 
@@ -262,11 +268,11 @@ async def main():
 
     # Summary
     elapsed = time.time() - t_start
-    total = len(results)
+    total = max(len(results), 1)
     print(f"\n{'='*60}")
     print("  COLOR FAMILY CLASSIFICATION COMPLETE")
     print(f"{'='*60}")
-    print(f"  Total color groups: {total}")
+    print(f"  Total color groups: {len(results)}")
     print(f"  Time: {elapsed/60:.1f} minutes")
     print(f"  Vision:   {stats['vision']:5d} ({100*stats['vision']/total:.1f}%)")
     print(f"  Text:     {stats['text']:5d} ({100*stats['text']/total:.1f}%)")

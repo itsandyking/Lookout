@@ -98,7 +98,7 @@ async def check_image(
         "images": [b64],
         "stream": False,
         "think": False,
-        "options": {"num_predict": 20, "temperature": 0.1},
+        "options": {"num_predict": 30, "temperature": 0.1},
     }
 
     raw = await vision._post_vision(payload)
@@ -171,9 +171,10 @@ async def main():
                 with open(existing) as f:
                     for row in csv.DictReader(f):
                         audited_handles.add(row.get("handle", ""))
-                print(f"Resuming: {len(audited_handles)} products already audited")
             except Exception:
                 pass
+        if audited_handles:
+            print(f"Resuming: {len(audited_handles)} products already audited")
 
     products = load_products(vendor=args.vendor)
     if args.resume:
@@ -284,7 +285,7 @@ async def main():
                     f"{'; '.join(notes_parts)}"
                 )
 
-            # Progress + flush
+            # Progress + periodic flush
             if (i + 1) % BATCH_SIZE == 0 or i == len(products) - 1:
                 elapsed = time.time() - t_start
                 rate = (i + 1) / elapsed if elapsed > 0 else 0
@@ -295,6 +296,12 @@ async def main():
                     f"FAIL={severity_counts['FAIL']} "
                     f"({elapsed:.0f}s elapsed, ~{remaining:.0f}s remaining)"
                 )
+
+                # Flush to disk periodically to protect against interruption
+                with open(output_csv, "w", newline="") as f:
+                    writer = csv.DictWriter(f, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(results)
     finally:
         if http:
             await http.aclose()
@@ -307,11 +314,11 @@ async def main():
 
     # Summary
     elapsed = time.time() - t_start
-    total = len(results)
+    total = max(len(results), 1)
     print(f"\n{'='*60}")
     print("  CATALOG HEALTH AUDIT COMPLETE")
     print(f"{'='*60}")
-    print(f"  Total products: {total}")
+    print(f"  Total products: {len(results)}")
     print(f"  Time: {elapsed/60:.1f} minutes")
     print(f"  OK:   {severity_counts['OK']:5d} ({100*severity_counts['OK']/total:.1f}%)")
     print(f"  WARN: {severity_counts['WARN']:5d} ({100*severity_counts['WARN']/total:.1f}%)")
