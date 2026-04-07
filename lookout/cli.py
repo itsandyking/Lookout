@@ -1740,7 +1740,6 @@ def test_resolver_cmd(output_dir, verbose):
 # enrich push / undo
 # ---------------------------------------------------------------------------
 
-_DB_PATH = Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db"
 _SHOPIFY_CONFIG_PATH = Path.home() / ".tvr" / "shopify" / "config.json"
 
 
@@ -1808,7 +1807,9 @@ def push_cmd(run_dir, dispositions, dry_run, verbose):
     if body_html_by_handle:
         console.print(f"  + {len(body_html_by_handle)} description updates")
 
-    pusher = ShopifyPusher(config=config, db_path=_DB_PATH, dry_run=dry_run)
+    from lookout.store import _default_db_url
+
+    pusher = ShopifyPusher(config=config, db_url=_default_db_url(), dry_run=dry_run)
     run_id = run_dir.name if run_dir else "manual"
 
     products_manifest: dict = {}

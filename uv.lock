@@ -1079,6 +1079,7 @@ dependencies = [
     { name = "click" },
     { name = "openpyxl" },
     { name = "pydantic" },
+    { name = "pymysql" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "rich" },
@@ -1128,6 +1129,7 @@ requires-dist = [
     { name = "lxml", marker = "extra == 'enrich'", specifier = ">=5.0" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "pymysql", specifier = ">=1.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "python-dotenv", specifier = ">=1.0" },
@@ -1139,7 +1141,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
     { name = "sqlalchemy", specifier = ">=2.0" },
     { name = "tenacity", marker = "extra == 'enrich'", specifier = ">=8.0" },
-    { name = "the-variant-range", editable = "/Users/andyking/The-Variant-Range" },
+    { name = "the-variant-range", git = "ssh://git@github.com/itsandyking/The-Variant-Range.git" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.20" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'" },
 ]
@@ -1785,6 +1787,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pymysql"
+version = "1.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/ae/1fe3fcd9f959efa0ebe200b8de88b5a5ce3e767e38c7ac32fb179f16a388/pymysql-1.1.2.tar.gz", hash = "sha256:4961d3e165614ae65014e361811a724e2044ad3ea3739de9903ae7c21f539f03", size = 48258, upload-time = "2025-08-24T12:55:55.146Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/4c/ad33b92b9864cbde84f259d5df035a6447f91891f5be77788e2a3892bce3/pymysql-1.1.2-py3-none-any.whl", hash = "sha256:e6b1d89711dd51f8f74b1631fe08f039e7d76cf67a42a323d3178f0f25762ed9", size = 45300, upload-time = "2025-08-24T12:55:53.394Z" },
+]
+
+[[package]]
 name = "pyparsing"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2105,44 +2116,14 @@ wheels = [
 [[package]]
 name = "the-variant-range"
 version = "0.1.0"
-source = { editable = "/Users/andyking/The-Variant-Range" }
+source = { git = "ssh://git@github.com/itsandyking/The-Variant-Range.git#00b7ef5cef10dc4f37537ddf837a0dfb7c8a3b3a" }
 dependencies = [
     { name = "click" },
     { name = "openpyxl" },
+    { name = "pymysql" },
     { name = "rich" },
     { name = "sqlalchemy" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "click", specifier = ">=8.0" },
-    { name = "fastapi", marker = "extra == 'web'" },
-    { name = "google-api-python-client", marker = "extra == 'drive'", specifier = ">=2.80" },
-    { name = "google-auth-httplib2", marker = "extra == 'drive'", specifier = ">=0.2" },
-    { name = "google-auth-oauthlib", marker = "extra == 'drive'", specifier = ">=1.1" },
-    { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
-    { name = "httpx", marker = "extra == 'mcp'", specifier = ">=0.27" },
-    { name = "jinja2", marker = "extra == 'web'" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.0.0" },
-    { name = "openpyxl", specifier = ">=3.1" },
-    { name = "openpyxl", marker = "extra == 'ui'", specifier = ">=3.1" },
-    { name = "pandas", marker = "extra == 'ui'", specifier = ">=2.0" },
-    { name = "pdfplumber", marker = "extra == 'invoice'", specifier = ">=0.10" },
-    { name = "playwright", marker = "extra == 'scraping'", specifier = ">=1.40" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
-    { name = "pytest-cov", marker = "extra == 'dev'" },
-    { name = "python-barcode", marker = "extra == 'enrichment'", specifier = ">=0.15.1" },
-    { name = "python-multipart", marker = "extra == 'web'" },
-    { name = "reportlab", marker = "extra == 'enrichment'", specifier = ">=4.0" },
-    { name = "requests", marker = "extra == 'ui'", specifier = ">=2.28" },
-    { name = "rich", specifier = ">=13.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.8" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
-    { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.20" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'web'" },
-]
-provides-extras = ["dev", "web", "ui", "invoice", "mcp", "enrichment", "scraping", "drive"]
 
 [[package]]
 name = "tomli"

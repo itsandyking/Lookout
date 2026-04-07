@@ -15,6 +15,8 @@ dependencies = [
     "click>=8.0",
     "rich>=13.0",
     "python-dotenv>=1.0",
+    "the-variant-range",
+    "pymysql>=1.1",
 ]
 
 [project.optional-dependencies]

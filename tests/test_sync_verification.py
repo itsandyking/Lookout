@@ -1,7 +1,7 @@
 """Verify TVR database is in sync with live Shopify API.
 
 These tests require:
-- TVR database populated at ~/The-Variant-Range/tvr/db/shopify.db
+- TVR Dolt database reachable (configured via ~/.tvr/dolt/config.json)
 - Shopify API credentials at ~/.tvr/shopify/config.json
 
 Skip automatically if either is unavailable.
@@ -12,13 +12,25 @@ from pathlib import Path
 
 import pytest
 
-# Skip entire module if prerequisites aren't met
-DB_PATH = Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db"
+
+def _dolt_reachable() -> bool:
+    try:
+        from tvr.db.dolt_config import load_dolt_config
+        from tvr.db.store import ShopifyStore
+
+        store = ShopifyStore(load_dolt_config().connection_string)
+        with store.session() as s:
+            s.execute(__import__("sqlalchemy").text("SELECT 1"))
+        return True
+    except Exception:
+        return False
+
+
 CREDS_PATH = Path.home() / ".tvr" / "shopify" / "config.json"
 
 pytestmark = pytest.mark.skipif(
-    not DB_PATH.exists() or not CREDS_PATH.exists(),
-    reason="TVR database or Shopify credentials not available",
+    not _dolt_reachable() or not CREDS_PATH.exists(),
+    reason="TVR Dolt database or Shopify credentials not available",
 )
 
 
@@ -42,7 +54,7 @@ def store():
     """Create a LookoutStore connected to the real database."""
     from lookout.store import LookoutStore
 
-    return LookoutStore(db_url=str(DB_PATH))
+    return LookoutStore()
 
 
 def test_total_product_count_matches(shopify_client, store):

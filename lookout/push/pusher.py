@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import sqlite3
-from pathlib import Path
 
 import httpx
 
@@ -37,29 +35,29 @@ class ShopifyPusher:
     def __init__(
         self,
         config: dict,
-        db_path: Path,
+        db_url: str,
         dry_run: bool = False,
     ) -> None:
         self.store_url: str = config["store_url"]
         self.access_token: str = config["access_token"]
         self.api_version: str = config.get("api_version", "2026-04")
-        self.db_path = db_path
+        self.db_url = db_url
         self.dry_run = dry_run
-        self._conn: sqlite3.Connection | None = None
+        self._store: object | None = None
 
     # --------------------------------------------------------------------- #
     # Database helpers
     # --------------------------------------------------------------------- #
 
-    def _get_conn(self) -> sqlite3.Connection:
-        if self._conn is None:
-            self._conn = sqlite3.connect(str(self.db_path))
-        return self._conn
+    def _get_store(self):
+        if self._store is None:
+            from tvr.db.store import ShopifyStore
+
+            self._store = ShopifyStore(self.db_url)
+        return self._store
 
     def close(self) -> None:
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
+        self._store = None
 
     # --------------------------------------------------------------------- #
     # HTTP helpers
@@ -138,18 +136,21 @@ class ShopifyPusher:
     # --------------------------------------------------------------------- #
 
     def get_variant_ids(self, handle: str, color: str) -> list[dict]:
-        """Find all variant IDs for a handle+color combo from TVR shopify.db."""
-        conn = self._get_conn()
-        rows = conn.execute(
-            """
-            SELECT v.id, v.option1_value, v.option2_value, p.id as product_id
-            FROM variants v
-            JOIN products p ON v.product_id = p.id
-            WHERE p.handle = ?
-            AND (v.option1_value = ? OR v.option2_value = ?)
-            """,
-            (handle, color, color),
-        ).fetchall()
+        """Find all variant IDs for a handle+color combo from TVR database."""
+        from sqlalchemy import text
+
+        store = self._get_store()
+        with store.session() as s:
+            rows = s.execute(
+                text(
+                    "SELECT v.id, v.option1_value, v.option2_value, p.id as product_id "
+                    "FROM variants v "
+                    "JOIN products p ON v.product_id = p.id "
+                    "WHERE p.handle = :handle "
+                    "AND (v.option1_value = :color OR v.option2_value = :color)"
+                ),
+                {"handle": handle, "color": color},
+            ).fetchall()
 
         return [
             {

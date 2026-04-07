@@ -21,19 +21,21 @@ Usage:
 import argparse
 import asyncio
 import csv
-import json
-import sqlite3
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import httpx
+from sqlalchemy import text
+from tvr.db.dolt_config import load_dolt_config
+from tvr.db.store import ShopifyStore
+
 from lookout.enrich.llm import OllamaVisionClient
 
-SHOPIFY_DB = Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db"
+_store = ShopifyStore(load_dolt_config().connection_string)
 OUTPUT_DIR = Path(__file__).parent.parent / "output" / "audits"
 BATCH_SIZE = 10  # Write results every N images
 
@@ -43,9 +45,6 @@ def load_audit_pairs(
     limit: int | None = None,
 ) -> list[dict]:
     """Load unique (product, color, image_url) pairs to audit."""
-    conn = sqlite3.connect(str(SHOPIFY_DB))
-    conn.row_factory = sqlite3.Row
-
     query = """
         SELECT
             p.id as product_id,
@@ -61,20 +60,20 @@ def load_audit_pairs(
           AND v.image_src IS NOT NULL AND v.image_src != ''
           AND p.status = 'active'
     """
-    params = []
+    params: dict = {}
     if vendor:
-        query += " AND p.vendor = ? COLLATE NOCASE"
-        params.append(vendor)
+        query += " AND LOWER(p.vendor) = LOWER(:vendor)"
+        params["vendor"] = vendor
 
-    query += " GROUP BY p.id, v.option1_value, SUBSTR(v.image_src, 1, INSTR(v.image_src || '?', '?') - 1)"
+    query += " GROUP BY p.id, v.option1_value, SUBSTRING_INDEX(v.image_src, '?', 1)"
     query += " ORDER BY p.vendor, p.title, v.option1_value"
 
     if limit:
         query += f" LIMIT {limit}"
 
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    with _store.session() as s:
+        rows = s.execute(text(query), params).fetchall()
+    return [dict(r._mapping) for r in rows]
 
 
 async def audit_image(
@@ -169,7 +168,7 @@ async def main():
             if f"{p['product_id']}|{p['color']}|{p['image_url'].split('?')[0]}" not in audited_keys
         ]
 
-    print(f"Variant Image Audit")
+    print("Variant Image Audit")
     print(f"  Pairs to audit: {len(pairs)}")
     print(f"  Estimated time: {len(pairs) * 1.5 / 60:.0f} minutes")
     print(f"  Output: {output_csv}")
@@ -279,7 +278,7 @@ async def main():
     # Summary
     elapsed = time.time() - t_start
     print(f"\n{'='*60}")
-    print(f"  AUDIT COMPLETE")
+    print("  AUDIT COMPLETE")
     print(f"{'='*60}")
     print(f"  Total pairs audited: {len(results)}")
     print(f"  Time: {elapsed/60:.1f} minutes ({elapsed/len(results):.1f}s/pair)")
@@ -290,7 +289,7 @@ async def main():
     print(f"\n  Results: {output_csv}")
     if mismatches:
         print(f"  Mismatches: {mismatches_csv}")
-        print(f"\n  Top mismatched vendors:")
+        print("\n  Top mismatched vendors:")
         vendor_mismatches: dict[str, int] = {}
         for m in mismatches:
             vendor_mismatches[m["vendor"]] = vendor_mismatches.get(m["vendor"], 0) + 1

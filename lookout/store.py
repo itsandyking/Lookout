@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-# Default TVR database path (sibling repo to Lookout)
-_DEFAULT_DB = str(Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db")
+def _default_db_url() -> str:
+    """Resolve default TVR database URL from Dolt config or env."""
+    from tvr.db.dolt_config import load_dolt_config
+
+    return load_dolt_config().connection_string
 
 
 class LookoutStore:
@@ -25,16 +27,13 @@ class LookoutStore:
         from tvr.db.store import ShopifyStore
         from tvr.db.vendor_store import VendorStore
 
-        # Use explicit path, or env var, or default TVR location
-        db_path = db_url or os.environ.get("LOOKOUT_DB_PATH") or _DEFAULT_DB
-        if Path(db_path).exists():
-            self._store = ShopifyStore(db_path)
-        else:
-            logger.warning(f"Database not found at {db_path}, using in-memory")
-            self._store = ShopifyStore()
-        vendor_db_path = os.environ.get("LOOKOUT_VENDOR_DB_PATH")
-        if vendor_db_path:
-            self._vendor_store = VendorStore(vendor_db_path)
+        db_url = db_url or os.environ.get("LOOKOUT_DB_URL") or _default_db_url()
+        self._store = ShopifyStore(db_url)
+        self._db_url = db_url
+
+        vendor_db_url = os.environ.get("LOOKOUT_VENDOR_DB_URL")
+        if vendor_db_url:
+            self._vendor_store = VendorStore(vendor_db_url)
         else:
             self._vendor_store = VendorStore()
 

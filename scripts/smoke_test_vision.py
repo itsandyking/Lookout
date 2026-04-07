@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Smoke test: vision-based variant image matching against real products.
 
-Pulls products from TVR's shopify.db, downloads their images from Shopify CDN,
+Pulls products from TVR's Dolt database, downloads their images from Shopify CDN,
 and runs Gemma 4 E2B to match images to color variants.
 
 Usage:
@@ -9,18 +9,20 @@ Usage:
 """
 
 import asyncio
-import json
-import sqlite3
+import sys
 import time
 from pathlib import Path
 
-# Add project root to path
-import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from sqlalchemy import text
+from tvr.db.dolt_config import load_dolt_config
+from tvr.db.store import ShopifyStore
 
 from lookout.enrich.llm import OllamaVisionClient
 
-SHOPIFY_DB = Path.home() / "The-Variant-Range" / "tvr" / "db" / "shopify.db"
+_config = load_dolt_config()
+_store = ShopifyStore(_config.connection_string)
 
 # Test products: handle → description (for reporting)
 TEST_PRODUCTS = [
@@ -38,39 +40,39 @@ TEST_PRODUCTS = [
 
 
 def load_product_data(handle: str) -> dict | None:
-    """Load colors and image URLs from shopify.db."""
-    conn = sqlite3.connect(str(SHOPIFY_DB))
-    conn.row_factory = sqlite3.Row
+    """Load colors and image URLs from TVR database."""
+    with _store.session() as s:
+        product = s.execute(
+            text("SELECT id, title, vendor FROM products WHERE handle = :handle"),
+            {"handle": handle},
+        ).fetchone()
+        if not product:
+            return None
 
-    product = conn.execute(
-        "SELECT id, title, vendor FROM products WHERE handle = ?", (handle,)
-    ).fetchone()
-    if not product:
-        return None
+        colors = [
+            row[0]
+            for row in s.execute(
+                text(
+                    "SELECT DISTINCT option1_value FROM variants "
+                    "WHERE product_id = :pid AND option1_name IN ('Color', 'color') "
+                    "AND option1_value != 'Default Title'"
+                ),
+                {"pid": product[0]},
+            ).fetchall()
+        ]
 
-    colors = [
-        row[0]
-        for row in conn.execute(
-            """SELECT DISTINCT option1_value FROM variants
-               WHERE product_id = ? AND option1_name IN ('Color', 'color')
-               AND option1_value != 'Default Title'""",
-            (product["id"],),
-        ).fetchall()
-    ]
+        images = [
+            row[0]
+            for row in s.execute(
+                text("SELECT src FROM images WHERE product_id = :pid ORDER BY position"),
+                {"pid": product[0]},
+            ).fetchall()
+        ]
 
-    images = [
-        row[0]
-        for row in conn.execute(
-            "SELECT src FROM images WHERE product_id = ? ORDER BY position",
-            (product["id"],),
-        ).fetchall()
-    ]
-
-    conn.close()
     return {
         "handle": handle,
-        "title": product["title"],
-        "vendor": product["vendor"],
+        "title": product[1],
+        "vendor": product[2],
         "colors": colors,
         "image_urls": images,
     }
@@ -138,8 +140,8 @@ async def test_product(product: dict) -> dict:
 
 async def main():
     print("Vision Variant Image Matching — Smoke Test")
-    print(f"Model: vision (Gemma 4 E2B)")
-    print(f"Database: {SHOPIFY_DB}")
+    print("Model: vision (Gemma 4 E2B)")
+    print(f"Database: {_config.connection_string}")
 
     results = []
     for handle in TEST_PRODUCTS:
