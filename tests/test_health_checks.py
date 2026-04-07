@@ -61,8 +61,8 @@ class TestDescriptionQuality:
     def test_html_tags_stripped(self):
         """Quality check should work on text content, not raw HTML."""
         result = check_description_quality(
-            "<div><ul><li>Feature 1</li><li>Feature 2</li><li>Feature 3</li>"
-            "<li>Feature 4</li><li>Feature 5</li></ul></div>"
+            "<div><ul><li>Waterproof shell</li><li>800-fill down</li>"
+            "<li>Adjustable hood</li><li>Zippered pockets</li></ul></div>"
         )
         assert result["quality"] == "ok"
 

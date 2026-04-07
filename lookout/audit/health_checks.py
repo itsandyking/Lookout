@@ -20,7 +20,7 @@ _BOILERPLATE_PATTERNS = [
 _BOILERPLATE_RE = re.compile("|".join(_BOILERPLATE_PATTERNS), re.IGNORECASE)
 
 # Minimum text length (after stripping HTML) to consider "adequate"
-_MIN_DESCRIPTION_LENGTH = 40
+_MIN_DESCRIPTION_LENGTH = 50
 
 # Words to ignore when checking title-description coherence
 _IGNORE_WORDS = {
