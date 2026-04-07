@@ -64,3 +64,7 @@ class TestInferColorFamily:
 
     def test_tan_is_brown(self):
         assert infer_color_family("Tan") == "Brown"
+
+    def test_word_creative_fallback(self):
+        # "Deep" is unknown, "Obsidian" hits creative lookup word-by-word
+        assert infer_color_family("Deep Obsidian") == "Black"

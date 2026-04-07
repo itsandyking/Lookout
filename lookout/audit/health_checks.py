@@ -66,7 +66,6 @@ def check_description_quality(
     if match:
         return {"quality": "weak", "reason": f"Boilerplate: '{match.group()}'"}
 
-
     return {"quality": "ok", "reason": ""}
 
 
@@ -86,7 +85,7 @@ def check_title_description_coherence(
     desc_text = _strip_html(body_html).lower()
 
     # Extract meaningful words from title and product_type
-    title_words = set(title.lower().split()) - _IGNORE_WORDS
+    title_words = set(title.lower().split()) - _IGNORE_WORDS if title else set()
     type_words = set(product_type.lower().split()) - _IGNORE_WORDS if product_type else set()
 
     # Check: does any meaningful title word or type word appear in description?

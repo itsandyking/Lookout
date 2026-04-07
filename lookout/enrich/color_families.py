@@ -149,7 +149,7 @@ def infer_color_family(color_name: str) -> str | None:
     name = color_name.strip()
 
     # Multi-color: slash-separated names
-    if "/" in name and len(name.split("/")) >= 2:
+    if "/" in name:
         parts = [p.strip() for p in name.split("/")]
         if len(parts) >= 2 and all(len(p) > 0 for p in parts):
             return "Multi"
