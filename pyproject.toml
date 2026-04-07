@@ -52,7 +52,7 @@ lookout = "lookout.cli:main"
 include = ["lookout*"]
 
 [tool.uv.sources]
-the-variant-range = { path = "/Users/andyking/The-Variant-Range", editable = true }
+the-variant-range = { git = "ssh://git@github.com/itsandyking/The-Variant-Range.git" }
 
 [tool.ruff]
 line-length = 100
