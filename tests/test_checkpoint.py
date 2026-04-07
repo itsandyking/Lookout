@@ -20,7 +20,7 @@ class TestCreateDoltCheckpoint:
         store.session.return_value.__exit__ = MagicMock(return_value=False)
         return store, session
 
-    @patch("lookout.push.checkpoint.ShopifyStore")
+    @patch("tvr.db.store.ShopifyStore")
     def test_creates_commit_and_tag(self, MockStore):
         store, session = self._mock_session()
         MockStore.return_value = store
@@ -29,12 +29,13 @@ class TestCreateDoltCheckpoint:
 
         assert tag.startswith("pre-push/enrich-20260406_")
         calls = session.execute.call_args_list
-        # First call: dolt_commit
-        assert "dolt_commit" in str(calls[0])
+        assert len(calls) == 2
+        # First call: dolt_commit — check the TextClause text
+        assert "dolt_commit" in calls[0].args[0].text
         # Second call: dolt_tag
-        assert "dolt_tag" in str(calls[1])
+        assert "dolt_tag" in calls[1].args[0].text
 
-    @patch("lookout.push.checkpoint.ShopifyStore")
+    @patch("tvr.db.store.ShopifyStore")
     def test_nothing_to_commit_still_tags(self, MockStore):
         """When livesync already committed everything, the commit call
         raises 'nothing to commit' but tagging should still proceed."""
@@ -53,7 +54,7 @@ class TestCreateDoltCheckpoint:
         assert tag.startswith("pre-push/test-run_")
         assert session.execute.call_count == 2
 
-    @patch("lookout.push.checkpoint.ShopifyStore")
+    @patch("tvr.db.store.ShopifyStore")
     def test_commit_error_raises_checkpoint_error(self, MockStore):
         """Non-'nothing to commit' errors should raise CheckpointError."""
         from sqlalchemy.exc import OperationalError
@@ -69,7 +70,7 @@ class TestCreateDoltCheckpoint:
         with pytest.raises(CheckpointError, match="table locked"):
             create_dolt_checkpoint("mysql://pi5:3306/shopify", "test-run")
 
-    @patch("lookout.push.checkpoint.ShopifyStore")
+    @patch("tvr.db.store.ShopifyStore")
     def test_tag_error_raises_checkpoint_error(self, MockStore):
         from sqlalchemy.exc import OperationalError
 
@@ -84,14 +85,14 @@ class TestCreateDoltCheckpoint:
         with pytest.raises(CheckpointError, match="tag already exists"):
             create_dolt_checkpoint("mysql://pi5:3306/shopify", "test-run")
 
-    @patch("lookout.push.checkpoint.ShopifyStore")
+    @patch("tvr.db.store.ShopifyStore")
     def test_connection_error_raises_checkpoint_error(self, MockStore):
         MockStore.side_effect = Exception("Can't connect to MySQL server on 'pi5'")
 
         with pytest.raises(CheckpointError, match="Can't connect"):
             create_dolt_checkpoint("mysql://pi5:3306/shopify", "test-run")
 
-    @patch("lookout.push.checkpoint.ShopifyStore")
+    @patch("tvr.db.store.ShopifyStore")
     def test_tag_name_includes_timestamp(self, MockStore):
         store, session = self._mock_session()
         MockStore.return_value = store

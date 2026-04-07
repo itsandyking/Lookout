@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-from tvr.db.store import ShopifyStore
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,8 @@ def create_dolt_checkpoint(db_url: str, run_id: str) -> str:
     timestamp = datetime.now().strftime("%H%M%S")
     tag_name = f"pre-push/{run_id}_{timestamp}"
 
+    from tvr.db.store import ShopifyStore
+
     try:
         store = ShopifyStore(db_url)
     except Exception as e:
@@ -47,7 +49,7 @@ def create_dolt_checkpoint(db_url: str, run_id: str) -> str:
         # wire protocol directly — appropriate for Dolt stored procedures.
         try:
             session.execute(
-                "CALL dolt_commit('-Am', :msg)",
+                text("CALL dolt_commit('-Am', :msg)"),
                 {"msg": commit_msg},
             )
             logger.info("Dolt commit created for checkpoint %s", run_id)
@@ -60,7 +62,7 @@ def create_dolt_checkpoint(db_url: str, run_id: str) -> str:
         # Step 2: Tag the current HEAD
         try:
             session.execute(
-                "CALL dolt_tag(:tag, 'HEAD')",
+                text("CALL dolt_tag(:tag, 'HEAD')"),
                 {"tag": tag_name},
             )
             logger.info("Dolt tag created: %s", tag_name)
