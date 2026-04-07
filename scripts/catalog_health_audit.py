@@ -138,7 +138,7 @@ def _overall_severity(image_verdict: str, desc_quality: str, coherence: str) -> 
     """Determine overall severity from individual check results."""
     if image_verdict == "mismatch" or coherence == "mismatch":
         return "FAIL"
-    if image_verdict in ("lifestyle", "placeholder", "no_image"):
+    if image_verdict in ("lifestyle", "placeholder", "no_image", "error"):
         return "WARN"
     if desc_quality in ("weak", "empty"):
         return "WARN"

@@ -17,7 +17,6 @@ import base64
 import csv
 import sys
 import time
-from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
@@ -204,7 +203,7 @@ async def main():
                         if result:
                             families_seen.append(result)
                     except Exception:
-                        pass
+                        stats["error"] += 1
 
                 if families_seen:
                     # Use the most common classification
