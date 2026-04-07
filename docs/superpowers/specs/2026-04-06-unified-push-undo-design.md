@@ -135,17 +135,17 @@ It also reads `merch_output.json` files from the run directory for description c
 
 ### Variant ID Resolution
 
-Uses TVR's `shopify.db` to find variant IDs by handle + color (same as current script). Query:
+Uses TVR's Dolt database (on Pi5) to find variant IDs by handle + color via SQLAlchemy. Query:
 
 ```sql
 SELECT v.id, v.option1_value, v.option2_value, p.id as product_id
 FROM variants v JOIN products p ON v.product_id = p.id
-WHERE p.handle = ? AND (v.option1_value = ? OR v.option2_value = ?)
+WHERE p.handle = :handle AND (v.option1_value = :color OR v.option2_value = :color)
 ```
 
 ### Dependencies
 
 - Shopify REST API (image create/delete, product read)
 - Shopify GraphQL API (body_html update for undo restore)
-- TVR shopify.db (variant ID lookup)
+- TVR Dolt database (variant ID lookup via ShopifyStore)
 - httpx (async HTTP client)
