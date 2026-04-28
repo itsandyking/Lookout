@@ -1196,6 +1196,142 @@ def google_shopping(output_path, verbose):
     )
 
 
+@output.command("push-gmc-attributes")
+@click.option("--vendor", "-v", multiple=True, help="Limit to specific vendors (repeatable)")
+@click.option("--dry-run", is_flag=True, help="Preview what would be pushed, no writes")
+@click.option("--verbose", is_flag=True)
+def push_gmc_attributes(vendor, dry_run, verbose):
+    """Push google_shopping.gender + age_group metafields directly to Shopify API.
+
+    Derives values from product tags and title using the same logic as the
+    google-shopping XLSX command. Skips excluded vendors and blank gender values.
+    Batches ~12 products (up to 25 metafields) per API call.
+    """
+    import asyncio as _asyncio
+    import time
+
+    setup_logging(verbose)
+
+    from lookout.output.google_shopping import get_age_group, get_gender
+    from lookout.store import LookoutStore
+    from lookout.taxonomy.mappings import EXCLUDED_VENDORS
+
+    store = LookoutStore()
+    vendor_filter = {v.lower() for v in vendor}
+    products = store.list_products()
+
+    METAFIELDS_SET = """
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+            metafields { key namespace ownerType }
+            userErrors { field message }
+        }
+    }
+    """
+
+    # Build (product_summary, metafields_list) pairs for all qualifying products
+    entries = []
+    skipped = 0
+    for p in products:
+        p_vendor = (p["vendor"] or "").strip()
+        if p_vendor.lower() in EXCLUDED_VENDORS:
+            skipped += 1
+            continue
+        if vendor_filter and p_vendor.lower() not in vendor_filter:
+            continue
+
+        tags = p["tags"] or ""
+        title = p["title"] or ""
+        gender = get_gender(tags, title)
+        age_group = get_age_group(tags, title)
+        owner_id = f"gid://shopify/Product/{p['id']}"
+
+        mfs = []
+        if gender:
+            mfs.append({
+                "ownerId": owner_id,
+                "namespace": "google_shopping",
+                "key": "gender",
+                "value": gender,
+                "type": "single_line_text_field",
+            })
+        mfs.append({
+            "ownerId": owner_id,
+            "namespace": "google_shopping",
+            "key": "age_group",
+            "value": age_group,
+            "type": "single_line_text_field",
+        })
+        entries.append((p["handle"], gender, age_group, mfs))
+
+    console.print(
+        f"[dim]Products to push: {len(entries)}  |  Skipped (excluded vendor): {skipped}[/dim]"
+    )
+
+    if dry_run:
+        console.print("[yellow]DRY RUN — no changes written[/yellow]")
+        for handle, gender, age_group, _ in entries[:10]:
+            console.print(
+                f"  {handle} | gender={gender or '(skip)'} | age_group={age_group}"
+            )
+        if len(entries) > 10:
+            console.print(f"  ... and {len(entries) - 10} more")
+        return
+
+    # Batch into groups of up to 25 metafields
+    batches: list[list[dict]] = []
+    current: list[dict] = []
+    for _, _, _, mfs in entries:
+        if len(current) + len(mfs) > 25:
+            batches.append(current)
+            current = []
+        current.extend(mfs)
+    if current:
+        batches.append(current)
+
+    total_mfs = sum(len(b) for b in batches)
+    console.print(f"[dim]Batches: {len(batches)}  |  Total metafields: {total_mfs}[/dim]")
+
+    async def push_all():
+        from tvr.mcp.api import RateLimitError, ShopifyAdminAPI
+        from tvr.mcp.auth import ShopifyAuth
+
+        auth = ShopifyAuth()
+        api = ShopifyAdminAPI(auth)
+        pushed = failed = 0
+
+        for i, batch in enumerate(batches, 1):
+            if verbose:
+                logger.debug("Batch %d/%d (%d metafields)", i, len(batches), len(batch))
+            while True:
+                try:
+                    result = await api.execute(METAFIELDS_SET, {"metafields": batch})
+                    errors = result.get("metafieldsSet", {}).get("userErrors", [])
+                    if errors:
+                        for e in errors:
+                            logger.error("metafieldsSet userError: %s", e)
+                        failed += 1
+                    else:
+                        pushed += 1
+                    await _asyncio.sleep(0.5)
+                    break
+                except RateLimitError as exc:
+                    wait = exc.retry_after or 2.0
+                    logger.warning("Rate limited, sleeping %.1fs", wait)
+                    await _asyncio.sleep(wait)
+
+        return pushed, failed
+
+    t0 = time.time()
+    pushed, failed = _asyncio.run(push_all())
+    elapsed = time.time() - t0
+
+    console.print(
+        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK,"
+        f" [red]{failed}[/red] failed"
+    )
+
+
 @output.command("weights")
 @click.option(
     "--out",
