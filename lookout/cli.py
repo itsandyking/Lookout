@@ -1311,7 +1311,7 @@ def push_gmc_attributes(vendor, dry_run, verbose):
         async with httpx.AsyncClient(timeout=30.0) as client:
             for i, batch in enumerate(batches, 1):
                 if verbose:
-                    logger.debug("Batch %d/%d (%d metafields)", i, len(batches), len(batch))
+                    console.print(f"[dim]Batch {i}/{len(batches)} ({len(batch)} metafields)[/dim]")
                 while True:
                     resp = await client.post(
                         _graphql_url,
@@ -1320,7 +1320,7 @@ def push_gmc_attributes(vendor, dry_run, verbose):
                     )
                     if resp.status_code == 429:
                         wait = float(resp.headers.get("Retry-After", "2.0"))
-                        logger.warning("Rate limited, sleeping %.1fs", wait)
+                        console.print(f"[yellow]Rate limited, sleeping {wait:.1f}s[/yellow]")
                         await _asyncio.sleep(wait)
                         continue
                     resp.raise_for_status()
@@ -1328,7 +1328,7 @@ def push_gmc_attributes(vendor, dry_run, verbose):
                     errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors", [])
                     if errors:
                         for e in errors:
-                            logger.error("metafieldsSet userError: %s", e)
+                            console.print(f"[red]metafieldsSet error: {e}[/red]")
                         failed += 1
                     else:
                         pushed += 1
