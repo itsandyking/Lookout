@@ -1347,6 +1347,144 @@ def push_gmc_attributes(vendor, dry_run, verbose):
     )
 
 
+@output.command("push-gmc-category")
+@click.option("--vendor", "-v", multiple=True, help="Limit to specific vendors (repeatable)")
+@click.option("--dry-run", is_flag=True, help="Preview what would be pushed, no writes")
+@click.option("--verbose", is_flag=True)
+def push_gmc_category(vendor, dry_run, verbose):
+    """Push google_shopping.google_product_category metafields directly to Shopify API.
+
+    Derives the Google category from TMA Product Type via PRODUCT_TYPE_TO_GOOGLE_CATEGORY.
+    Skips products with no mappable product type (Used, Sample, blank, internal types).
+    Batches up to 25 metafields per API call.
+    """
+    import asyncio as _asyncio
+    import json as _json
+    import time
+
+    setup_logging(verbose)
+
+    from lookout.output.google_shopping import get_google_category
+    from lookout.store import LookoutStore
+    from lookout.taxonomy.mappings import EXCLUDED_VENDORS
+
+    SKIP_TYPES = {
+        "used", "sample", "samples", "rental", "new", "",
+        "shop work non-taxable", "shop work taxable", "credit",
+        "gift cards", "gift", "test",
+    }
+
+    store = LookoutStore()
+    vendor_filter = {v.lower() for v in vendor}
+    products = store.list_products()
+
+    METAFIELDS_SET = """
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+            metafields { key namespace ownerType }
+            userErrors { field message }
+        }
+    }
+    """
+
+    entries = []
+    skipped = 0
+    for p in products:
+        p_vendor = (p["vendor"] or "").strip()
+        pt = (p["product_type"] or "").strip()
+
+        if p_vendor.lower() in EXCLUDED_VENDORS or pt.lower() in SKIP_TYPES:
+            skipped += 1
+            continue
+        if vendor_filter and p_vendor.lower() not in vendor_filter:
+            continue
+
+        category = get_google_category(pt)
+        if not category:
+            continue
+
+        owner_id = f"gid://shopify/Product/{p['id']}"
+        entries.append((p["handle"], pt, category, owner_id))
+
+    console.print(
+        f"[dim]Products to push: {len(entries)}  |  Skipped (no category/excluded): {skipped}[/dim]"
+    )
+
+    if dry_run:
+        console.print("[yellow]DRY RUN — no changes written[/yellow]")
+        for handle, pt, cat, _ in entries[:10]:
+            console.print(f"  {handle} | {pt}  →  {cat}")
+        if len(entries) > 10:
+            console.print(f"  ... and {len(entries) - 10} more")
+        return
+
+    # Batch up to 25 metafields
+    batches: list[list[dict]] = []
+    current: list[dict] = []
+    for _, _, category, owner_id in entries:
+        current.append({
+            "ownerId": owner_id,
+            "namespace": "google_shopping",
+            "key": "google_product_category",
+            "value": category,
+            "type": "single_line_text_field",
+        })
+        if len(current) >= 25:
+            batches.append(current)
+            current = []
+    if current:
+        batches.append(current)
+
+    console.print(f"[dim]Batches: {len(batches)}  |  Total metafields: {sum(len(b) for b in batches)}[/dim]")
+
+    with open(_SHOPIFY_CONFIG_PATH) as _f:
+        _cfg = _json.load(_f)
+    _store_url = _cfg["store_url"]
+    _access_token = _cfg["access_token"]
+    _api_version = _cfg.get("api_version", "2026-04")
+    _graphql_url = f"https://{_store_url}/admin/api/{_api_version}/graphql.json"
+    _headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": _access_token}
+
+    async def push_all():
+        import httpx
+        pushed = failed = 0
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for i, batch in enumerate(batches, 1):
+                if verbose:
+                    console.print(f"[dim]Batch {i}/{len(batches)}[/dim]")
+                while True:
+                    resp = await client.post(
+                        _graphql_url,
+                        json={"query": METAFIELDS_SET, "variables": {"metafields": batch}},
+                        headers=_headers,
+                    )
+                    if resp.status_code == 429:
+                        wait = float(resp.headers.get("Retry-After", "2.0"))
+                        console.print(f"[yellow]Rate limited, sleeping {wait:.1f}s[/yellow]")
+                        await _asyncio.sleep(wait)
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                    errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors", [])
+                    if errors:
+                        for e in errors:
+                            console.print(f"[red]metafieldsSet error: {e}[/red]")
+                        failed += 1
+                    else:
+                        pushed += 1
+                    await _asyncio.sleep(0.5)
+                    break
+        return pushed, failed
+
+    t0 = time.time()
+    pushed, failed = _asyncio.run(push_all())
+    elapsed = time.time() - t0
+    console.print(
+        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK,"
+        f" [red]{failed}[/red] failed"
+    )
+
+
 @output.command("weights")
 @click.option(
     "--out",
