@@ -1323,6 +1323,10 @@ def push_gmc_attributes(vendor, dry_run, verbose):
                         console.print(f"[yellow]Rate limited, sleeping {wait:.1f}s[/yellow]")
                         await _asyncio.sleep(wait)
                         continue
+                    if resp.status_code >= 500:
+                        console.print(f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]")
+                        await _asyncio.sleep(3.0)
+                        continue
                     resp.raise_for_status()
                     data = resp.json()
                     errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors", [])
@@ -1462,6 +1466,10 @@ def push_gmc_category(vendor, dry_run, verbose):
                         wait = float(resp.headers.get("Retry-After", "2.0"))
                         console.print(f"[yellow]Rate limited, sleeping {wait:.1f}s[/yellow]")
                         await _asyncio.sleep(wait)
+                        continue
+                    if resp.status_code >= 500:
+                        console.print(f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]")
+                        await _asyncio.sleep(3.0)
                         continue
                     resp.raise_for_status()
                     data = resp.json()
