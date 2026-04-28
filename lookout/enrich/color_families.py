@@ -5,9 +5,22 @@ set of 16 color families for Shopify Search & Discovery swatch filtering.
 """
 
 COLOR_FAMILIES = [
-    "Black", "White", "Gray", "Navy", "Blue", "Green", "Red",
-    "Pink", "Orange", "Yellow", "Brown", "Beige", "Purple",
-    "Gold", "Silver", "Multi",
+    "Black",
+    "White",
+    "Gray",
+    "Navy",
+    "Blue",
+    "Green",
+    "Red",
+    "Pink",
+    "Orange",
+    "Yellow",
+    "Brown",
+    "Beige",
+    "Purple",
+    "Gold",
+    "Silver",
+    "Multi",
 ]
 
 # Creative color names that don't contain their family as a substring.
@@ -123,9 +136,21 @@ _CREATIVE_LOOKUP: dict[str, str] = {
 # Families to check via substring, ordered so more specific matches
 # come first (e.g., "Navy" before "Blue" so "Navy Blue" → Navy).
 _FAMILY_PRIORITY = [
-    "Black", "White", "Navy", "Gray", "Blue", "Green", "Red",
-    "Pink", "Orange", "Yellow", "Brown", "Beige", "Purple",
-    "Gold", "Silver",
+    "Black",
+    "White",
+    "Navy",
+    "Gray",
+    "Blue",
+    "Green",
+    "Red",
+    "Pink",
+    "Orange",
+    "Yellow",
+    "Brown",
+    "Beige",
+    "Purple",
+    "Gold",
+    "Silver",
 ]
 
 

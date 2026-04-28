@@ -1,0 +1,17 @@
+# Mirrors .github/workflows/ci.yml — runs the same gates locally.
+# Skip with: LEFTHOOK=0 git push
+pre-commit:
+  commands:
+    ruff-format:
+      run: uv run ruff format --check lookout/
+
+pre-push:
+  parallel: true
+  commands:
+    ruff-lint:
+      run_once: true
+      run: uv run ruff check lookout/
+    ty:
+      run: uv run ty check --exit-zero
+    pytest:
+      run: uv run pytest tests/ -q -x

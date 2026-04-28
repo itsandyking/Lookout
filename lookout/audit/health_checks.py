@@ -24,9 +24,27 @@ _MIN_DESCRIPTION_LENGTH = 50
 
 # Words to ignore when checking title-description coherence
 _IGNORE_WORDS = {
-    "the", "a", "an", "and", "or", "of", "for", "in", "on", "to", "with",
-    "men's", "mens", "women's", "womens", "unisex", "kid's", "kids",
-    "youth", "junior", "adult",
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "for",
+    "in",
+    "on",
+    "to",
+    "with",
+    "men's",
+    "mens",
+    "women's",
+    "womens",
+    "unisex",
+    "kid's",
+    "kids",
+    "youth",
+    "junior",
+    "adult",
 }
 
 
@@ -105,8 +123,12 @@ def check_title_description_coherence(
             found.add(w)
             continue
         # Stem match: check word starts with a desc word, or desc word starts with check word
-        stem = w[:max(4, len(w) - 1)]
-        if any(d.startswith(stem) or w.startswith(d[:max(4, len(d) - 1)]) for d in desc_words if len(d) > 3):
+        stem = w[: max(4, len(w) - 1)]
+        if any(
+            d.startswith(stem) or w.startswith(d[: max(4, len(d) - 1)])
+            for d in desc_words
+            if len(d) > 3
+        ):
             found.add(w)
 
     if found:
@@ -115,5 +137,5 @@ def check_title_description_coherence(
     return {
         "coherence": "mismatch",
         "reason": f"No title/type words found in description. "
-                  f"Expected one of: {', '.join(sorted(all_check_words))}",
+        f"Expected one of: {', '.join(sorted(all_check_words))}",
     }

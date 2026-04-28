@@ -1248,20 +1248,24 @@ def push_gmc_attributes(vendor, dry_run, verbose):
 
         mfs = []
         if gender:
-            mfs.append({
+            mfs.append(
+                {
+                    "ownerId": owner_id,
+                    "namespace": "google_shopping",
+                    "key": "gender",
+                    "value": gender,
+                    "type": "single_line_text_field",
+                }
+            )
+        mfs.append(
+            {
                 "ownerId": owner_id,
                 "namespace": "google_shopping",
-                "key": "gender",
-                "value": gender,
+                "key": "age_group",
+                "value": age_group,
                 "type": "single_line_text_field",
-            })
-        mfs.append({
-            "ownerId": owner_id,
-            "namespace": "google_shopping",
-            "key": "age_group",
-            "value": age_group,
-            "type": "single_line_text_field",
-        })
+            }
+        )
         entries.append((p["handle"], gender, age_group, mfs))
 
     console.print(
@@ -1271,9 +1275,7 @@ def push_gmc_attributes(vendor, dry_run, verbose):
     if dry_run:
         console.print("[yellow]DRY RUN — no changes written[/yellow]")
         for handle, gender, age_group, _ in entries[:10]:
-            console.print(
-                f"  {handle} | gender={gender or '(skip)'} | age_group={age_group}"
-            )
+            console.print(f"  {handle} | gender={gender or '(skip)'} | age_group={age_group}")
         if len(entries) > 10:
             console.print(f"  ... and {len(entries) - 10} more")
         return
@@ -1324,7 +1326,9 @@ def push_gmc_attributes(vendor, dry_run, verbose):
                         await _asyncio.sleep(wait)
                         continue
                     if resp.status_code >= 500:
-                        console.print(f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]")
+                        console.print(
+                            f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]"
+                        )
                         await _asyncio.sleep(3.0)
                         continue
                     resp.raise_for_status()
@@ -1346,8 +1350,7 @@ def push_gmc_attributes(vendor, dry_run, verbose):
     elapsed = time.time() - t0
 
     console.print(
-        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK,"
-        f" [red]{failed}[/red] failed"
+        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK, [red]{failed}[/red] failed"
     )
 
 
@@ -1373,9 +1376,18 @@ def push_gmc_category(vendor, dry_run, verbose):
     from lookout.taxonomy.mappings import EXCLUDED_VENDORS
 
     SKIP_TYPES = {
-        "used", "sample", "samples", "rental", "new", "",
-        "shop work non-taxable", "shop work taxable", "credit",
-        "gift cards", "gift", "test",
+        "used",
+        "sample",
+        "samples",
+        "rental",
+        "new",
+        "",
+        "shop work non-taxable",
+        "shop work taxable",
+        "credit",
+        "gift cards",
+        "gift",
+        "test",
     }
 
     store = LookoutStore()
@@ -1426,20 +1438,24 @@ def push_gmc_category(vendor, dry_run, verbose):
     batches: list[list[dict]] = []
     current: list[dict] = []
     for _, _, category, owner_id in entries:
-        current.append({
-            "ownerId": owner_id,
-            "namespace": "google_shopping",
-            "key": "google_product_category",
-            "value": category,
-            "type": "single_line_text_field",
-        })
+        current.append(
+            {
+                "ownerId": owner_id,
+                "namespace": "google_shopping",
+                "key": "google_product_category",
+                "value": category,
+                "type": "single_line_text_field",
+            }
+        )
         if len(current) >= 25:
             batches.append(current)
             current = []
     if current:
         batches.append(current)
 
-    console.print(f"[dim]Batches: {len(batches)}  |  Total metafields: {sum(len(b) for b in batches)}[/dim]")
+    console.print(
+        f"[dim]Batches: {len(batches)}  |  Total metafields: {sum(len(b) for b in batches)}[/dim]"
+    )
 
     with open(_SHOPIFY_CONFIG_PATH) as _f:
         _cfg = _json.load(_f)
@@ -1451,6 +1467,7 @@ def push_gmc_category(vendor, dry_run, verbose):
 
     async def push_all():
         import httpx
+
         pushed = failed = 0
         async with httpx.AsyncClient(timeout=30.0) as client:
             for i, batch in enumerate(batches, 1):
@@ -1468,7 +1485,9 @@ def push_gmc_category(vendor, dry_run, verbose):
                         await _asyncio.sleep(wait)
                         continue
                     if resp.status_code >= 500:
-                        console.print(f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]")
+                        console.print(
+                            f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]"
+                        )
                         await _asyncio.sleep(3.0)
                         continue
                     resp.raise_for_status()
@@ -1488,8 +1507,7 @@ def push_gmc_category(vendor, dry_run, verbose):
     pushed, failed = _asyncio.run(push_all())
     elapsed = time.time() - t0
     console.print(
-        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK,"
-        f" [red]{failed}[/red] failed"
+        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK, [red]{failed}[/red] failed"
     )
 
 
