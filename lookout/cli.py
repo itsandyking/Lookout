@@ -1292,21 +1292,40 @@ def push_gmc_attributes(vendor, dry_run, verbose):
     total_mfs = sum(len(b) for b in batches)
     console.print(f"[dim]Batches: {len(batches)}  |  Total metafields: {total_mfs}[/dim]")
 
-    async def push_all():
-        from tvr.mcp.api import RateLimitError, ShopifyAdminAPI
-        from tvr.mcp.auth import ShopifyAuth
+    import json as _json
 
-        auth = ShopifyAuth()
-        api = ShopifyAdminAPI(auth)
+    with open(_SHOPIFY_CONFIG_PATH) as _f:
+        _cfg = _json.load(_f)
+
+    _store_url = _cfg["store_url"]
+    _access_token = _cfg["access_token"]
+    _api_version = _cfg.get("api_version", "2026-04")
+    _graphql_url = f"https://{_store_url}/admin/api/{_api_version}/graphql.json"
+    _headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": _access_token}
+
+    async def push_all():
+        import httpx
+
         pushed = failed = 0
 
-        for i, batch in enumerate(batches, 1):
-            if verbose:
-                logger.debug("Batch %d/%d (%d metafields)", i, len(batches), len(batch))
-            while True:
-                try:
-                    result = await api.execute(METAFIELDS_SET, {"metafields": batch})
-                    errors = result.get("metafieldsSet", {}).get("userErrors", [])
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for i, batch in enumerate(batches, 1):
+                if verbose:
+                    logger.debug("Batch %d/%d (%d metafields)", i, len(batches), len(batch))
+                while True:
+                    resp = await client.post(
+                        _graphql_url,
+                        json={"query": METAFIELDS_SET, "variables": {"metafields": batch}},
+                        headers=_headers,
+                    )
+                    if resp.status_code == 429:
+                        wait = float(resp.headers.get("Retry-After", "2.0"))
+                        logger.warning("Rate limited, sleeping %.1fs", wait)
+                        await _asyncio.sleep(wait)
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                    errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors", [])
                     if errors:
                         for e in errors:
                             logger.error("metafieldsSet userError: %s", e)
@@ -1315,10 +1334,6 @@ def push_gmc_attributes(vendor, dry_run, verbose):
                         pushed += 1
                     await _asyncio.sleep(0.5)
                     break
-                except RateLimitError as exc:
-                    wait = exc.retry_after or 2.0
-                    logger.warning("Rate limited, sleeping %.1fs", wait)
-                    await _asyncio.sleep(wait)
 
         return pushed, failed
 
