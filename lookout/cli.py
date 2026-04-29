@@ -1525,6 +1525,194 @@ def push_gmc_category(vendor, handle, dry_run, verbose):
     )
 
 
+@output.command("push-gmc-color")
+@click.option(
+    "--vendor",
+    "-v",
+    type=click.Choice(["goodr", "tma"], case_sensitive=False),
+    required=True,
+    help="Vendor group: 'goodr' or 'tma'",
+)
+@click.option("--dry-run", is_flag=True, help="Preview what would be pushed, no writes")
+@click.option("--verbose", is_flag=True)
+def push_gmc_color(vendor, dry_run, verbose):
+    """Push google_shopping.color metafields for Goodr and TMA branded items.
+
+    Goodr: color = full product title (the colorway IS the title).
+    TMA: color = leading color word(s) extracted from title.
+    Pushes to both google_shopping and mm-google-shopping namespaces.
+    """
+    import asyncio as _asyncio
+    import json as _json
+    import re
+    import time
+
+    setup_logging(verbose)
+
+    from lookout.store import LookoutStore
+
+    # Color words to detect at start of TMA product titles
+    TMA_COLOR_WORDS = [
+        "Black",
+        "White",
+        "Navy",
+        "Gray",
+        "Grey",
+        "Red",
+        "Blue",
+        "Green",
+        "Yellow",
+        "Orange",
+        "Purple",
+        "Pink",
+        "Brown",
+        "Tan",
+        "Olive",
+        "Slate",
+        "Charcoal",
+        "Natural",
+        "Stone",
+    ]
+    TMA_COLOR_PATTERN = re.compile(
+        r"^(" + "|".join(re.escape(c) for c in TMA_COLOR_WORDS) + r")(?:\s+|$)",
+        re.IGNORECASE,
+    )
+
+    TMA_SUFFIX = " | The Mountain Air"
+
+    def extract_color(p: dict, vendor_group: str) -> str | None:
+        title = (p["title"] or "").strip()
+        if vendor_group == "goodr":
+            # Strip trailing store suffix if present
+            if title.lower().endswith(TMA_SUFFIX.lower()):
+                title = title[: -len(TMA_SUFFIX)].strip()
+            return title or None
+        else:  # tma
+            m = TMA_COLOR_PATTERN.match(title)
+            return m.group(1).capitalize() if m else None
+
+    store = LookoutStore()
+    products = store.list_products()
+
+    # Filter products by vendor group
+    if vendor == "goodr":
+        vendor_match = lambda v: v.lower() == "goodr"  # noqa: E731
+    else:
+        vendor_match = lambda v: "mountain air" in v.lower() or v.lower() == "tma"  # noqa: E731
+
+    METAFIELDS_SET = """
+    mutation metafieldsSet($metafields: [MetafieldsSetInput!]!) {
+        metafieldsSet(metafields: $metafields) {
+            metafields { key namespace ownerType }
+            userErrors { field message }
+        }
+    }
+    """
+
+    entries = []
+    skipped_no_color = 0
+    for p in products:
+        p_vendor = (p["vendor"] or "").strip()
+        if not vendor_match(p_vendor):
+            continue
+        color = extract_color(p, vendor)
+        if not color:
+            skipped_no_color += 1
+            continue
+        owner_id = f"gid://shopify/Product/{p['id']}"
+        entries.append((p["handle"], p["title"], color, owner_id))
+
+    console.print(
+        f"[dim]Vendor group: {vendor}  |  Products to push: {len(entries)}"
+        f"  |  Skipped (no color): {skipped_no_color}[/dim]"
+    )
+
+    if dry_run:
+        console.print("[yellow]DRY RUN — no changes written[/yellow]")
+        for handle, title, color, _ in entries[:20]:
+            console.print(f"  {handle} | title={title!r}  →  color={color!r}")
+        if len(entries) > 20:
+            console.print(f"  ... and {len(entries) - 20} more")
+        return
+
+    # Batch up to 25 metafields (2 per product: google_shopping + mm-google-shopping)
+    batches: list[list[dict]] = []
+    current: list[dict] = []
+    for _, _, color, owner_id in entries:
+        for ns in ("google_shopping", "mm-google-shopping"):
+            current.append(
+                {
+                    "ownerId": owner_id,
+                    "namespace": ns,
+                    "key": "color",
+                    "value": color,
+                    "type": "single_line_text_field",
+                }
+            )
+        if len(current) >= 24:
+            batches.append(current)
+            current = []
+    if current:
+        batches.append(current)
+
+    console.print(
+        f"[dim]Batches: {len(batches)}  |  Total metafields: {sum(len(b) for b in batches)}[/dim]"
+    )
+
+    with open(_SHOPIFY_CONFIG_PATH) as _f:
+        _cfg = _json.load(_f)
+    _store_url = _cfg["store_url"]
+    _access_token = _cfg["access_token"]
+    _api_version = _cfg.get("api_version", "2026-04")
+    _graphql_url = f"https://{_store_url}/admin/api/{_api_version}/graphql.json"
+    _headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": _access_token}
+
+    async def push_all():
+        import httpx
+
+        pushed = failed = 0
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for i, batch in enumerate(batches, 1):
+                if verbose:
+                    console.print(f"[dim]Batch {i}/{len(batches)} ({len(batch)} metafields)[/dim]")
+                while True:
+                    resp = await client.post(
+                        _graphql_url,
+                        json={"query": METAFIELDS_SET, "variables": {"metafields": batch}},
+                        headers=_headers,
+                    )
+                    if resp.status_code == 429:
+                        wait = float(resp.headers.get("Retry-After", "2.0"))
+                        console.print(f"[yellow]Rate limited, sleeping {wait:.1f}s[/yellow]")
+                        await _asyncio.sleep(wait)
+                        continue
+                    if resp.status_code >= 500:
+                        console.print(
+                            f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]"
+                        )
+                        await _asyncio.sleep(3.0)
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                    errors = data.get("data", {}).get("metafieldsSet", {}).get("userErrors", [])
+                    if errors:
+                        for e in errors:
+                            console.print(f"[red]metafieldsSet error: {e}[/red]")
+                        failed += 1
+                    else:
+                        pushed += 1
+                    await _asyncio.sleep(0.5)
+                    break
+        return pushed, failed
+
+    t0 = time.time()
+    pushed, failed = _asyncio.run(push_all())
+    elapsed = time.time() - t0
+    console.print(
+        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK, [red]{failed}[/red] failed"
+    )
+
+
 @output.command("weights")
 @click.option(
     "--out",
