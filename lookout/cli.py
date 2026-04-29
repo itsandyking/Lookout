@@ -1585,7 +1585,7 @@ def exclude_from_shopping(dry_run, verbose):
         conn.close()
 
     console.print(f"[bold]Products to exclude from Google & YouTube:[/bold] {len(rows)}")
-    for product_id, title, vendor, product_type in rows:
+    for product_id, title, vendor, _product_type in rows:
         console.print(f"  [dim]{product_id}[/dim]  {title}  [dim]({vendor})[/dim]")
 
     if dry_run:
@@ -1607,7 +1607,7 @@ def exclude_from_shopping(dry_run, verbose):
 
         ok = failed = 0
         async with httpx.AsyncClient(timeout=30.0) as client:
-            for product_id, title, vendor, product_type in rows:
+            for product_id, title, _vendor, _product_type in rows:
                 gid = f"gid://shopify/Product/{product_id}"
                 while True:
                     resp = await client.post(
