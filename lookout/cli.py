@@ -1198,9 +1198,12 @@ def google_shopping(output_path, verbose):
 
 @output.command("push-gmc-attributes")
 @click.option("--vendor", "-v", multiple=True, help="Limit to specific vendors (repeatable)")
+@click.option(
+    "--handle", "-h", multiple=True, help="Limit to specific product handles (repeatable)"
+)
 @click.option("--dry-run", is_flag=True, help="Preview what would be pushed, no writes")
 @click.option("--verbose", is_flag=True)
-def push_gmc_attributes(vendor, dry_run, verbose):
+def push_gmc_attributes(vendor, handle, dry_run, verbose):
     """Push google_shopping.gender + age_group metafields directly to Shopify API.
 
     Derives values from product tags and title using the same logic as the
@@ -1218,6 +1221,7 @@ def push_gmc_attributes(vendor, dry_run, verbose):
 
     store = LookoutStore()
     vendor_filter = {v.lower() for v in vendor}
+    handle_filter = {h.lower() for h in handle}
     products = store.list_products()
 
     METAFIELDS_SET = """
@@ -1239,6 +1243,8 @@ def push_gmc_attributes(vendor, dry_run, verbose):
             continue
         if vendor_filter and p_vendor.lower() not in vendor_filter:
             continue
+        if handle_filter and (p["handle"] or "").lower() not in handle_filter:
+            continue
 
         tags = p["tags"] or ""
         title = p["title"] or ""
@@ -1247,25 +1253,26 @@ def push_gmc_attributes(vendor, dry_run, verbose):
         owner_id = f"gid://shopify/Product/{p['id']}"
 
         mfs = []
-        if gender:
+        for ns in ("google_shopping", "mm-google-shopping"):
+            if gender:
+                mfs.append(
+                    {
+                        "ownerId": owner_id,
+                        "namespace": ns,
+                        "key": "gender",
+                        "value": gender,
+                        "type": "single_line_text_field",
+                    }
+                )
             mfs.append(
                 {
                     "ownerId": owner_id,
-                    "namespace": "google_shopping",
-                    "key": "gender",
-                    "value": gender,
+                    "namespace": ns,
+                    "key": "age_group",
+                    "value": age_group,
                     "type": "single_line_text_field",
                 }
             )
-        mfs.append(
-            {
-                "ownerId": owner_id,
-                "namespace": "google_shopping",
-                "key": "age_group",
-                "value": age_group,
-                "type": "single_line_text_field",
-            }
-        )
         entries.append((p["handle"], gender, age_group, mfs))
 
     console.print(
@@ -1356,9 +1363,12 @@ def push_gmc_attributes(vendor, dry_run, verbose):
 
 @output.command("push-gmc-category")
 @click.option("--vendor", "-v", multiple=True, help="Limit to specific vendors (repeatable)")
+@click.option(
+    "--handle", "-h", multiple=True, help="Limit to specific product handles (repeatable)"
+)
 @click.option("--dry-run", is_flag=True, help="Preview what would be pushed, no writes")
 @click.option("--verbose", is_flag=True)
-def push_gmc_category(vendor, dry_run, verbose):
+def push_gmc_category(vendor, handle, dry_run, verbose):
     """Push google_shopping.google_product_category metafields directly to Shopify API.
 
     Derives the Google category from TMA Product Type via PRODUCT_TYPE_TO_GOOGLE_CATEGORY.
@@ -1392,6 +1402,7 @@ def push_gmc_category(vendor, dry_run, verbose):
 
     store = LookoutStore()
     vendor_filter = {v.lower() for v in vendor}
+    handle_filter = {h.lower() for h in handle}
     products = store.list_products()
 
     METAFIELDS_SET = """
@@ -1413,6 +1424,8 @@ def push_gmc_category(vendor, dry_run, verbose):
             skipped += 1
             continue
         if vendor_filter and p_vendor.lower() not in vendor_filter:
+            continue
+        if handle_filter and (p["handle"] or "").lower() not in handle_filter:
             continue
 
         category = get_google_category(pt)
@@ -1438,16 +1451,17 @@ def push_gmc_category(vendor, dry_run, verbose):
     batches: list[list[dict]] = []
     current: list[dict] = []
     for _, _, category, owner_id in entries:
-        current.append(
-            {
-                "ownerId": owner_id,
-                "namespace": "google_shopping",
-                "key": "google_product_category",
-                "value": category,
-                "type": "single_line_text_field",
-            }
-        )
-        if len(current) >= 25:
+        for ns in ("google_shopping", "mm-google-shopping"):
+            current.append(
+                {
+                    "ownerId": owner_id,
+                    "namespace": ns,
+                    "key": "google_product_category",
+                    "value": category,
+                    "type": "single_line_text_field",
+                }
+            )
+        if len(current) >= 24:
             batches.append(current)
             current = []
     if current:
