@@ -1525,6 +1525,133 @@ def push_gmc_category(vendor, handle, dry_run, verbose):
     )
 
 
+@output.command("exclude-from-shopping")
+@click.option("--dry-run", is_flag=True, help="Preview what would be excluded, no writes")
+@click.option("--verbose", is_flag=True)
+def exclude_from_shopping(dry_run, verbose):
+    """Unpublish service/rental products from the Google & YouTube channel.
+
+    Targets:
+      - vendor IN ('The Mountain Air Back Shop', 'The Mountain Air Deposits')
+      - title LIKE '%rental%' (excluding Switchback used-gear and sale items)
+    """
+    import asyncio as _asyncio
+    import json as _json
+
+    setup_logging(verbose)
+
+    GOOGLE_PUBLICATION_ID = "gid://shopify/Publication/55692951597"
+
+    PUBLISHABLE_UNPUBLISH = """
+    mutation publishableUnpublish($id: ID!, $input: PublicationInput!) {
+      publishableUnpublish(id: $id, input: $input) {
+        publishable { ... on Product { id title } }
+        userErrors { field message }
+      }
+    }
+    """
+
+    # Query Dolt directly — LookoutStore doesn't expose raw SQL for this filter
+    import pymysql
+
+    conn = pymysql.connect(
+        host="100.122.28.91",
+        port=3306,
+        user="tvr",
+        password="",
+        database="shopify",
+        connect_timeout=10,
+    )
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, vendor, product_type
+                FROM products
+                WHERE status = 'active'
+                AND (
+                    vendor IN ('The Mountain Air Back Shop', 'The Mountain Air Deposits')
+                    OR (
+                        LOWER(title) LIKE '%rental%'
+                        AND vendor NOT LIKE '%Switchback%'
+                        AND LOWER(title) NOT LIKE '%sale%'
+                    )
+                )
+                ORDER BY title
+                """
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    console.print(f"[bold]Products to exclude from Google & YouTube:[/bold] {len(rows)}")
+    for product_id, title, vendor, product_type in rows:
+        console.print(f"  [dim]{product_id}[/dim]  {title}  [dim]({vendor})[/dim]")
+
+    if dry_run:
+        console.print(
+            f"\n[yellow]DRY RUN — {len(rows)} products would be excluded. No changes written.[/yellow]"
+        )
+        return
+
+    with open(_SHOPIFY_CONFIG_PATH) as _f:
+        _cfg = _json.load(_f)
+    _store_url = _cfg["store_url"]
+    _access_token = _cfg["access_token"]
+    _api_version = _cfg.get("api_version", "2026-04")
+    _graphql_url = f"https://{_store_url}/admin/api/{_api_version}/graphql.json"
+    _headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": _access_token}
+
+    async def unpublish_all():
+        import httpx
+
+        ok = failed = 0
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for product_id, title, vendor, product_type in rows:
+                gid = f"gid://shopify/Product/{product_id}"
+                while True:
+                    resp = await client.post(
+                        _graphql_url,
+                        json={
+                            "query": PUBLISHABLE_UNPUBLISH,
+                            "variables": {
+                                "id": gid,
+                                "input": {"publicationId": GOOGLE_PUBLICATION_ID},
+                            },
+                        },
+                        headers=_headers,
+                    )
+                    if resp.status_code == 429:
+                        wait = float(resp.headers.get("Retry-After", "2.0"))
+                        console.print(f"[yellow]Rate limited, sleeping {wait:.1f}s[/yellow]")
+                        await _asyncio.sleep(wait)
+                        continue
+                    if resp.status_code >= 500:
+                        console.print(
+                            f"[yellow]Server error {resp.status_code}, retrying in 3s[/yellow]"
+                        )
+                        await _asyncio.sleep(3.0)
+                        continue
+                    resp.raise_for_status()
+                    data = resp.json()
+                    errors = (
+                        data.get("data", {}).get("publishableUnpublish", {}).get("userErrors", [])
+                    )
+                    if errors:
+                        for e in errors:
+                            console.print(f"[red]  {title}: {e['message']}[/red]")
+                        failed += 1
+                    else:
+                        console.print(f"[green]  Excluded:[/green] {title}")
+                        ok += 1
+                    await _asyncio.sleep(0.3)
+                    break
+        return ok, failed
+
+    ok, failed = _asyncio.run(unpublish_all())
+    console.print(f"\n[bold]Done[/bold] — [green]{ok}[/green] excluded, [red]{failed}[/red] failed")
+
+
 @output.command("push-gmc-color")
 @click.option(
     "--vendor",
