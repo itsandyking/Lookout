@@ -1202,18 +1202,38 @@ def google_shopping(output_path, verbose):
     "--handle", "-h", multiple=True, help="Limit to specific product handles (repeatable)"
 )
 @click.option("--dry-run", is_flag=True, help="Preview what would be pushed, no writes")
+@click.option(
+    "--no-touch",
+    is_flag=True,
+    help="Skip the productUpdate touch that bumps updated_at to trigger Google channel re-sync",
+)
+@click.option(
+    "--touch-only",
+    is_flag=True,
+    help="Skip metafield writes; only bump updated_at to re-sync existing data to GMC",
+)
 @click.option("--verbose", is_flag=True)
-def push_gmc_attributes(vendor, handle, dry_run, verbose):
+def push_gmc_attributes(vendor, handle, dry_run, no_touch, touch_only, verbose):
     """Push google_shopping.gender + age_group metafields directly to Shopify API.
 
     Derives values from product tags and title using the same logic as the
     google-shopping XLSX command. Skips excluded vendors and blank gender values.
     Batches ~12 products (up to 25 metafields) per API call.
+
+    After metafield writes, touches each product with a no-op productUpdate so
+    Shopify's Google & YouTube channel app re-syncs the affected variants to
+    GMC (metafieldsSet alone does not bump updated_at, so the channel can miss
+    the change). Use --no-touch to skip, or --touch-only to re-sync existing
+    metafields without re-pushing them.
     """
     import asyncio as _asyncio
     import time
 
     setup_logging(verbose)
+
+    if touch_only and no_touch:
+        console.print("[red]--touch-only and --no-touch are mutually exclusive[/red]")
+        return
 
     from lookout.output.google_shopping import get_age_group, get_gender
     from lookout.store import LookoutStore
@@ -1233,7 +1253,16 @@ def push_gmc_attributes(vendor, handle, dry_run, verbose):
     }
     """
 
-    # Build (product_summary, metafields_list) pairs for all qualifying products
+    PRODUCT_UPDATE = """
+    mutation productUpdate($input: ProductInput!) {
+        productUpdate(input: $input) {
+            product { id updatedAt }
+            userErrors { field message }
+        }
+    }
+    """
+
+    # Build (handle, product_id, tags, gender, age_group, metafields_list) per qualifying product
     entries = []
     skipped = 0
     for p in products:
@@ -1273,24 +1302,25 @@ def push_gmc_attributes(vendor, handle, dry_run, verbose):
                     "type": "single_line_text_field",
                 }
             )
-        entries.append((p["handle"], gender, age_group, mfs))
+        entries.append((p["handle"], p["id"], tags, gender, age_group, mfs))
 
+    mode = "TOUCH-ONLY" if touch_only else ("PUSH" if no_touch else "PUSH+TOUCH")
     console.print(
-        f"[dim]Products to push: {len(entries)}  |  Skipped (excluded vendor): {skipped}[/dim]"
+        f"[dim]Mode: {mode}  |  Products: {len(entries)}  |  Skipped (excluded vendor): {skipped}[/dim]"
     )
 
     if dry_run:
         console.print("[yellow]DRY RUN — no changes written[/yellow]")
-        for handle, gender, age_group, _ in entries[:10]:
+        for handle, _, _, gender, age_group, _ in entries[:10]:
             console.print(f"  {handle} | gender={gender or '(skip)'} | age_group={age_group}")
         if len(entries) > 10:
             console.print(f"  ... and {len(entries) - 10} more")
         return
 
-    # Batch into groups of up to 25 metafields
+    # Batch metafields into groups of up to 25 per call
     batches: list[list[dict]] = []
     current: list[dict] = []
-    for _, _, _, mfs in entries:
+    for _, _, _, _, _, mfs in entries:
         if len(current) + len(mfs) > 25:
             batches.append(current)
             current = []
@@ -1298,8 +1328,11 @@ def push_gmc_attributes(vendor, handle, dry_run, verbose):
     if current:
         batches.append(current)
 
-    total_mfs = sum(len(b) for b in batches)
-    console.print(f"[dim]Batches: {len(batches)}  |  Total metafields: {total_mfs}[/dim]")
+    if not touch_only:
+        total_mfs = sum(len(b) for b in batches)
+        console.print(
+            f"[dim]Metafield batches: {len(batches)}  |  Total metafields: {total_mfs}[/dim]"
+        )
 
     import json as _json
 
@@ -1312,7 +1345,7 @@ def push_gmc_attributes(vendor, handle, dry_run, verbose):
     _graphql_url = f"https://{_store_url}/admin/api/{_api_version}/graphql.json"
     _headers = {"Content-Type": "application/json", "X-Shopify-Access-Token": _access_token}
 
-    async def push_all():
+    async def push_metafields():
         import httpx
 
         pushed = failed = 0
@@ -1352,13 +1385,84 @@ def push_gmc_attributes(vendor, handle, dry_run, verbose):
 
         return pushed, failed
 
-    t0 = time.time()
-    pushed, failed = _asyncio.run(push_all())
-    elapsed = time.time() - t0
+    async def touch_products():
+        # Bump updated_at on each product so the Google & YouTube channel app
+        # re-syncs to GMC. Shopify dedupes no-op productUpdate calls (passing
+        # unchanged tags is silently a no-op), so we write a `lookout.last_resync_at`
+        # metafield with the current timestamp — a real value change guarantees
+        # the bump, and leaves a useful breadcrumb of when each product was last
+        # touched for resync.
+        import datetime as _dt
 
-    console.print(
-        f"Done in {elapsed:.0f}s — [green]{pushed}[/green] batches OK, [red]{failed}[/red] failed"
-    )
+        import httpx
+
+        ts = _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        sem = _asyncio.Semaphore(5)
+        touched = failed = 0
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+
+            async def touch_one(handle: str, pid: int, _tags_str: str):
+                nonlocal touched, failed
+                product_input = {
+                    "id": f"gid://shopify/Product/{pid}",
+                    "metafields": [
+                        {
+                            "namespace": "lookout",
+                            "key": "last_resync_at",
+                            "value": ts,
+                            "type": "single_line_text_field",
+                        }
+                    ],
+                }
+                async with sem:
+                    while True:
+                        resp = await client.post(
+                            _graphql_url,
+                            json={"query": PRODUCT_UPDATE, "variables": {"input": product_input}},
+                            headers=_headers,
+                        )
+                        if resp.status_code == 429:
+                            wait = float(resp.headers.get("Retry-After", "2.0"))
+                            await _asyncio.sleep(wait)
+                            continue
+                        if resp.status_code >= 500:
+                            await _asyncio.sleep(3.0)
+                            continue
+                        resp.raise_for_status()
+                        data = resp.json()
+                        errors = data.get("data", {}).get("productUpdate", {}).get("userErrors", [])
+                        if errors:
+                            for e in errors:
+                                console.print(f"[red]productUpdate {handle} error: {e}[/red]")
+                            failed += 1
+                        else:
+                            touched += 1
+                        await _asyncio.sleep(0.1)
+                        break
+
+            await _asyncio.gather(*(touch_one(h, pid, tags) for h, pid, tags, _, _, _ in entries))
+
+        return touched, failed
+
+    if not touch_only:
+        t0 = time.time()
+        pushed, failed = _asyncio.run(push_metafields())
+        elapsed = time.time() - t0
+        console.print(
+            f"Metafields: {elapsed:.0f}s — [green]{pushed}[/green] batches OK, [red]{failed}[/red] failed"
+        )
+
+    if not no_touch:
+        console.print(
+            f"[dim]Touching {len(entries)} products to trigger Google channel re-sync...[/dim]"
+        )
+        t0 = time.time()
+        touched, t_failed = _asyncio.run(touch_products())
+        elapsed = time.time() - t0
+        console.print(
+            f"Touch: {elapsed:.0f}s — [green]{touched}[/green] OK, [red]{t_failed}[/red] failed"
+        )
 
 
 @output.command("push-gmc-category")
@@ -1529,11 +1633,12 @@ def push_gmc_category(vendor, handle, dry_run, verbose):
 @click.option("--dry-run", is_flag=True, help="Preview what would be excluded, no writes")
 @click.option("--verbose", is_flag=True)
 def exclude_from_shopping(dry_run, verbose):
-    """Unpublish service/rental products from the Google & YouTube channel.
+    """Unpublish service/rental/used/sample products from the Google & YouTube channel.
 
     Targets:
       - vendor IN ('The Mountain Air Back Shop', 'The Mountain Air Deposits')
       - title LIKE '%rental%' (excluding Switchback used-gear and sale items)
+      - product_type IN ('used', 'sample') case-insensitive
     """
     import asyncio as _asyncio
     import json as _json
@@ -1576,6 +1681,7 @@ def exclude_from_shopping(dry_run, verbose):
                         AND vendor NOT LIKE '%Switchback%'
                         AND LOWER(title) NOT LIKE '%sale%'
                     )
+                    OR LOWER(product_type) IN ('used', 'sample')
                 )
                 ORDER BY title
                 """
